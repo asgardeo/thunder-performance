@@ -1,0 +1,67 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+parameters:
+  - name: BASTION_USER
+    type: string
+    default: 'azureuser'
+
+steps:
+  - template: ./utils/set-aks-credentials.yaml
+  - template: ./utils/get-bastion-node-ip.yaml
+  - task: DownloadSecureFile@1
+    name: vmKey
+    displayName: 'Download VM Key'
+    inputs:
+      secureFile: 'azureVMSSHKey'
+
+  - task: AzureCLI@2
+    displayName: 'Add Thunder Ingress IP to Hosts File of VM'
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        # Get the IP of the thunder-perf-ingress
+        INGRESS_IP=$(kubectl get ingress $(THUNDER_KUBERNETES_INGRESS) -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        
+        # Check if the ingress IP is empty and retry after waiting
+        RETRY_COUNT=0
+        MAX_RETRIES=3
+        
+        while [ -z "$INGRESS_IP" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          echo "Ingress IP for $(THUNDER_KUBERNETES_INGRESS) is empty. Waiting 20 seconds and retrying... (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
+          sleep 20
+          INGRESS_IP=$(kubectl get ingress $(THUNDER_KUBERNETES_INGRESS) -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          RETRY_COUNT=$((RETRY_COUNT+1))
+        done
+        
+        # If still empty after retries, fail the task
+        if [ -z "$INGRESS_IP" ]; then
+          echo "##vso[task.logissue type=error]The ingress IP for $(THUNDER_KUBERNETES_INGRESS) is still empty after $MAX_RETRIES retries. Please ensure the ingress is properly configured and has an assigned IP address."
+          echo "##vso[task.complete result=Failed;]"
+          exit 1
+        fi
+        
+        # Set the IP as pipeline variable
+        echo "##vso[task.setvariable variable=THUNDER_INGRESS_IP]$INGRESS_IP"
+        echo "Thunder ingress IP: $INGRESS_IP"
+        
+        echo "SSH into the VM and update /etc/hosts file"
+        BASTION_USER=${{ parameters.BASTION_USER }}
+        BASTION_NODE_IP=$(BASTION_NODE_IP)
+        sudo chmod 400 $(vmKey.secureFilePath)
+        ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP "echo '$INGRESS_IP thunder.local' | sudo tee -a /etc/hosts"

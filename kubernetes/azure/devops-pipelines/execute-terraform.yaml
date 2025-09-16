@@ -1,0 +1,307 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+trigger: none
+
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: TERRAFORM_ACTION
+    type: string
+    displayName: "Terraform Action"
+    default: "create"
+    values:
+      - "create"
+      - "destroy"
+  - name: TERRAFORM_PERFORMANCE_REPO
+    type: string
+    displayName: "Terraform Performance Repository"
+    default: "asgardeo/thunder-performance"
+  - name: TERRAFORM_PERFORMANCE_REPO_BRANCH
+    type: string
+    displayName: "Terraform Performance Repository Branch"
+    default: "main"
+
+variables:
+  - group: vg-thunder-perf
+  - name: TERRAFORM_REPO_NAME
+    value: ${{parameters.TERRAFORM_PERFORMANCE_REPO}}
+  - name: TERRAFORM_REPO_BRANCH
+    value: ${{parameters.TERRAFORM_PERFORMANCE_REPO_BRANCH}}
+
+resources:
+  repositories:
+    - repository: thunder-performance-repo
+      type: github
+      endpoint: thunder-performance
+      name: $(TERRAFORM_REPO_NAME)
+      ref: $(TERRAFORM_REPO_BRANCH)
+
+stages:
+  - stage: PrePlan_Terraform
+    displayName: "PrePlan - Terraform"
+    jobs:
+      - job: TerraformPrePlanJob
+        displayName: "Check Terraform State Lock"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Check Blob Lease Status"
+            name: CheckLease
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Checking if blob '$(TF_STATE_NAME)' exists in container '$(TF_STATE_CONTAINER_NAME)'..."
+                lease_status="unlocked" # Default to unlocked
+                exists=$(az storage blob exists \
+                  --account-name $(TF_STATE_STORAGE_ACCOUNT_NAME) \
+                  --container-name $(TF_STATE_CONTAINER_NAME) \
+                  --name $(TF_STATE_NAME) \
+                  --auth-mode login \
+                  --query exists -o tsv 2>/dev/null)
+                if [[ "$exists" == "true" ]]; then
+                  echo "Blob found. Checking lease status..."
+                  lease_status_check=$(az storage blob show \
+                    --account-name $(TF_STATE_STORAGE_ACCOUNT_NAME) \
+                    --container-name $(TF_STATE_CONTAINER_NAME) \
+                    --name $(TF_STATE_NAME) \
+                    --auth-mode login \
+                    --query properties.lease.status -o tsv 2>/dev/null)
+                  if [[ -n "$lease_status_check" ]]; then
+                    lease_status=$lease_status_check
+                  else
+                    echo "##vso[task.logissue type=error;]Error checking blob lease status"
+                    exit 1
+                  fi
+                else
+                  echo "State blob not found. Assuming unlocked."
+                fi
+                echo "Determined lease status: $lease_status"
+                # Set output variable for conditional tasks in subsequent jobs within this stage
+                echo "##vso[task.setvariable variable=LeaseStatus;isOutput=true]$lease_status"
+
+      - job: ManualLeaseBreakValidationJob
+        displayName: "Manual Validation: Break Lease?"
+        dependsOn: TerraformPrePlanJob
+        condition: eq(dependencies.TerraformPrePlanJob.outputs['CheckLease.LeaseStatus'], 'locked')
+        pool: server
+        timeoutInMinutes: 30
+        steps:
+          - task: ManualValidation@0
+            inputs:
+              notifyUsers: ''
+              instructions: |
+                ⚠️ Terraform state file ($(TF_STATE_NAME) in storage account $(TF_STATE_STORAGE_ACCOUNT_NAME)) is locked.
+                This usually means another plan/apply is in progress or failed unexpectedly.
+                Action required:
+                - RESUME: Break the lease and continue with the Plan stage.
+                - REJECT: Cancel deployment
+                Ensure no other critical operation is holding the lock before approving.
+              onTimeout: "reject"
+
+      - job: BreakLeaseJob
+        displayName: "Break Blob Lease"
+        dependsOn: ManualLeaseBreakValidationJob
+        condition: succeeded('ManualLeaseBreakValidationJob')
+        steps:
+          - task: AzureCLI@2
+            displayName: "Break Blob Lease"
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Attempting to break lease on blob '$(TF_STATE_NAME)'..."
+                az storage blob lease break \
+                  --account-name $(TF_STATE_STORAGE_ACCOUNT_NAME) \
+                  --container-name $(TF_STATE_CONTAINER_NAME) \
+                  --blob-name $(TF_STATE_NAME) \
+                  --auth-mode login \
+                  --output none # Suppress verbose output
+                if [[ $? -eq 0 ]]; then
+                  echo "Lease successfully broken for blob '$(TF_STATE_NAME)'."
+                else
+                  echo "##vso[task.logissue type=error;]Failed to break lease for blob '$(TF_STATE_NAME)'."
+                  exit 1
+                fi
+
+  - stage: Execute_Terraform
+    displayName: "Execute - Terraform"
+    jobs:
+      - job: TerraformExecuteJob
+        displayName: "Run Terraform Execute Job"
+        steps:
+          # Checkout Terraform deployment repository
+          - checkout: thunder-performance-repo
+            path: "thunder-performance-repo"
+            displayName: "Checkout Terraform Deployment Repository"
+
+          - task: DownloadSecureFile@1
+            name: downloadVMPublicKey
+            displayName: 'Download VM Public Key'
+            inputs:
+              secureFile: 'azureVMSSHPublicKey.pub'
+
+          - task: DownloadSecureFile@1
+            name: downloadAKSPublicKey
+            displayName: 'Download AKS Public Key'
+            inputs:
+              secureFile: 'azureAKSSSHPublicKey.pub'
+
+          - script: |
+              echo "Moving the SSH public keys to the terraform directory"
+              mkdir -p public-keys/vm
+              mkdir -p public-keys/aks
+              sudo mv $(downloadVMPublicKey.secureFilePath) public-keys/vm/id_rsa.pub
+              sudo mv $(downloadAKSPublicKey.secureFilePath) public-keys/aks/id_rsa.pub
+            displayName: 'Setup SSH Public Keys'
+            workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform
+
+          # Construct Terraform secrets
+          - task: AzureCLI@2
+            displayName: "Construct Terraform Secrets"
+            inputs:
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/conf
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Constructing Terraform secrets"
+                # Azure Key Vault name
+                KEY_VAULT_NAME=$(PRE_KEYVAULT_NAME)
+                
+                # Path to the secrets map JSON file
+                SECRETS_MAP="conf.secrets.map.json"
+                # Check if secrets map file exists
+                if [ ! -f "$SECRETS_MAP" ]; then
+                  echo "Secrets map file ($SECRETS_MAP) not found. Skipping secret construction."
+                  exit 0
+                fi
+                # Create the thunder.conf.secrets.tfvars file
+                printf "\n\n#Automatically generated secrets\n" > thunder.conf.secrets.tfvars
+                # Fetch and write each secret defined in the map
+                for key in $(jq -r 'keys[]' $SECRETS_MAP); do
+                  SECRET_NAME=$(jq -r --arg key "$key" '.[$key]' $SECRETS_MAP)
+                  SECRET_VALUE=$(az keyvault secret show --name $SECRET_NAME --vault-name $KEY_VAULT_NAME --query value -o tsv)
+                  echo "$key = \"$SECRET_VALUE\"" >> thunder.conf.secrets.tfvars
+                done
+
+          - task: Bash@3
+            displayName: "Download and Install Terraform"
+            inputs:
+              targetType: 'inline'
+              script: |
+                sudo apt-get update
+                sudo apt-get install -y unzip
+                wget https://releases.hashicorp.com/terraform/1.13.2/terraform_1.13.2_linux_amd64.zip
+                unzip -o terraform_1.13.2_linux_amd64.zip
+                sudo mv terraform /usr/local/bin/
+
+          # Prepare Azure credentials
+          - task: AzureCLI@2
+            displayName: "Prepare Azure Credentials"
+            inputs:
+              addSpnToEnvironment: true
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Setting up Azure credentials"
+                echo "##vso[task.setvariable variable=ARM_USE_OIDC;issecret=false]true"
+                echo "##vso[task.setvariable variable=ARM_CLIENT_ID;issecret=true]${servicePrincipalId}"
+                echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;issecret=true]$(az account show --query 'id' -o tsv)"
+                echo "##vso[task.setvariable variable=ARM_TENANT_ID;issecret=true]${tenantId}"
+                echo "##vso[task.setvariable variable=ARM_OIDC_TOKEN;issecret=true]${idToken}"
+                # get the Azure storage account resource_group_name
+                resource_group=$(az storage account show --name $(TF_STATE_STORAGE_ACCOUNT_NAME) --query 'resourceGroup' -o tsv)
+                echo "##vso[task.setvariable variable=TF_STATE_ST_ACC_RG_NAME;issecret=false]$resource_group"
+
+          - task: AzureCLI@2
+            displayName: "Initialize Terraform"
+            inputs:
+              addSpnToEnvironment: true
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/deployment
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Initializing Terraform"
+
+                terraform init \
+                  -backend-config="resource_group_name=$(TF_STATE_ST_ACC_RG_NAME)" \
+                  -backend-config="storage_account_name=$(TF_STATE_STORAGE_ACCOUNT_NAME)" \
+                  -backend-config="container_name=$(TF_STATE_CONTAINER_NAME)" \
+                  -backend-config="key=$(TF_STATE_NAME)"
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)
+              ARM_USE_CLI: true
+
+          # Apply Terraform deployment
+          - task: AzureCLI@2
+            name: TerraformApply
+            displayName: "Apply Terraform Deployment"
+            condition: eq('${{ parameters.TERRAFORM_ACTION }}', 'create')
+            inputs:
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/deployment
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Running Terraform apply"
+                terraform apply \
+                  -var-file="../conf/thunder.conf.secrets.tfvars" \
+                  -var-file="../conf/thunder.conf.tfvars" \
+                  -auto-approve
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)
+              ARM_USE_CLI: true
+
+          # Destroy Terraform deployment
+          - task: AzureCLI@2
+            name: TerraformDestroy
+            displayName: "Destroy Terraform Deployment"
+            condition: eq('${{ parameters.TERRAFORM_ACTION }}', 'destroy')
+            inputs:
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/deployment
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Running Terraform destroy"
+                # Destroy AKS cluster first to avoid dependency issues
+                terraform destroy -target=module.aks-cluster \
+                  -var-file="../conf/thunder.conf.secrets.tfvars" \
+                  -var-file="../conf/thunder.conf.tfvars" \
+                  -auto-approve
+                
+                # Then destroy the rest of the resources
+                terraform destroy \
+                  -var-file="../conf/thunder.conf.secrets.tfvars" \
+                  -var-file="../conf/thunder.conf.tfvars" \
+                  -auto-approve
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)
+              ARM_USE_CLI: true

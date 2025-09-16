@@ -1,0 +1,63 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+parameters:
+  - name: WORKING_DIRECTORY
+    type: string
+  - name: BASTION_USER
+    type: string
+    default: 'azureuser'
+    
+steps:
+  - template: ./utils/get-bastion-node-ip.yaml
+  - task: DownloadSecureFile@1
+    name: vmKey
+    displayName: 'Download VM Key'
+    inputs:
+      secureFile: 'azureVMSSHKey'
+
+  - task: AzureCLI@2
+    displayName: 'Populate Postgres Database'
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
+      inlineScript: |
+        BASTION_USER=${{ parameters.BASTION_USER }}
+        BASTION_NODE_IP=$(BASTION_NODE_IP)
+        sudo chmod 400 $(vmKey.secureFilePath)
+        echo "Bastion User: $BASTION_USER, Bastion Node IP: $BASTION_NODE_IP"
+        echo "SSH into the VM and set ownership"
+        ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP \
+          "sudo chown -R $BASTION_USER:$BASTION_USER /home/$BASTION_USER"
+        
+        echo "Copying DB scripts to bastion VM"
+        scp -r -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) dbscripts $BASTION_USER@$BASTION_NODE_IP:/home/$BASTION_USER/
+
+        echo "SSH into VM and execute database population commands"
+        POSTGRES_ADMIN_USERNAME=$(POSTGRES-ADMIN-USERNAME)
+        POSTGRES_ADMIN_PASSWORD=$(POSTGRES-ADMIN-PASSWORD)
+        RUNTIME_DB_NAME=$(RUNTIME_DB_NAME)
+        THUNDER_DB_NAME=$(THUNDER_DB_NAME)
+        RUNTIME_DB_HOST=$(RUNTIME_DB_HOST)
+        THUNDER_DB_HOST=$(THUNDER_DB_HOST)
+        RUNTIME_DB_PORT=$(RUNTIME_DB_PORT)
+        THUNDER_DB_PORT=$(THUNDER_DB_PORT)
+        ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP "export PGPASSWORD=$POSTGRES_ADMIN_PASSWORD && \
+        cd /home/$BASTION_USER/dbscripts/ && \
+        psql -h $RUNTIME_DB_HOST -p $RUNTIME_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $RUNTIME_DB_NAME -f runtimedb/postgres.sql && \
+        psql -h $THUNDER_DB_HOST -p $THUNDER_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $THUNDER_DB_NAME -f thunderdb/postgres.sql"

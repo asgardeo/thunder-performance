@@ -1,0 +1,112 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+trigger: none
+
+parameters:
+  - name: INSTALL_INTERNAL_NGINX_INGRESS
+    displayName: Install Internal NGINX Ingress Controller
+    type: boolean
+    default: true
+  - name: CREATE_TLS_SECRET
+    displayName: Create Nginx TLS Secret
+    type: boolean
+    default: true
+  - name: POPULATE_DATABASE
+    displayName: Populate Database
+    type: boolean
+    default: true
+  - name: INSTALL_THUNDER
+    displayName: Install Thunder
+    type: boolean
+    default: true
+  - name: ADD_HOSTS_ENTRY
+    displayName: Add Hosts Entry to VM
+    type: boolean
+    default: true
+  - name: THUNDER_REPO
+    type: string
+    displayName: "Thunder Repository"
+    default: "asgardeo/thunder"
+  - name: THUNDER_REPO_BRANCH
+    type: string
+    displayName: "Thunder Repository Branch"
+    default: "main"
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: vg-thunder-perf
+  - group: vg-thunder-perf-secrets
+  - template: ./variables.yaml
+  - name: THUNDER_REPO
+    value: ${{parameters.THUNDER_REPO}}
+  - name: THUNDER_REPO_BRANCH
+    value: ${{parameters.THUNDER_REPO_BRANCH}}
+
+resources:
+  repositories:
+    - repository: thunder-repo
+      type: github
+      endpoint: thunder-performance
+      name: $(THUNDER_REPO)
+      ref: $(THUNDER_REPO_BRANCH)
+
+
+jobs:
+  - job: create_tls_secret
+    condition: eq('${{ parameters.CREATE_TLS_SECRET }}', true)
+    displayName: Create Nginx TLS Secret
+    steps:
+      - template: './templates/create-tls-secret.yaml'
+
+  - job: install_nginx
+    condition: eq('${{ parameters.INSTALL_INTERNAL_NGINX_INGRESS }}', true)
+    displayName: Install NGINX Ingress Controller
+    steps:
+      - template: './templates/install-nginx.yaml'
+        parameters:
+          LB_INTERNAL_IP: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP)
+          LB_INTERNAL_SUBNET: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET)
+
+  - job: populate_db
+    displayName: Populate Database
+    condition: eq('${{ parameters.POPULATE_DATABASE }}', true)
+    steps:
+      - checkout: thunder-repo
+        path: "thunder-repo"
+      - template: './templates/populate-db.yaml'
+        parameters:
+          WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/backend
+
+  - job: install_thunder
+    displayName: Install Thunder
+    dependsOn: populate_db
+    condition: eq('${{ parameters.INSTALL_THUNDER }}', true)
+    steps:
+      - checkout: thunder-repo
+        path: "thunder-repo"
+      - template: './templates/install-thunder.yaml'
+        parameters:
+          WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/install/helm
+
+  - job: add_hosts_entry_to_vm
+    displayName: Add Hosts Entry to VM
+    dependsOn: install_thunder
+    condition: eq('${{ parameters.ADD_HOSTS_ENTRY }}', true)
+    steps:
+      - template: './templates/add-hosts-entry-to-vm.yaml'
