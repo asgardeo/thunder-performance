@@ -146,6 +146,26 @@ stages:
             path: "thunder-performance-repo"
             displayName: "Checkout Terraform Deployment Repository"
 
+          - task: DownloadSecureFile@1
+            name: downloadVMPublicKey
+            displayName: 'Download VM Public Key'
+            inputs:
+              secureFile: 'azureVMSSHPublicKey.pub'
+          - task: DownloadSecureFile@1
+            name: downloadAKSPublicKey
+            displayName: 'Download AKS Public Key'
+            inputs:
+              secureFile: 'azureAKSSSHPublicKey.pub'
+
+          - script: |
+              echo "Moving the SSH public keys to the terraform directory"
+              mkdir -p public-keys/vm
+              mkdir -p public-keys/aks
+              sudo mv $(downloadVMPublicKey.secureFilePath) public-keys/vm/id_rsa.pub
+              sudo mv $(downloadAKSPublicKey.secureFilePath) public-keys/aks/id_rsa.pub
+            displayName: 'Setup SSH Public Keys'
+            workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform
+
           # Construct Terraform secrets
           - task: AzureCLI@2
             displayName: "Construct Terraform Secrets"

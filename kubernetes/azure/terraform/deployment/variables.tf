@@ -98,6 +98,12 @@ variable "aks_admin_username" {
   default     = "aksadmin"
 }
 
+variable "aks_public_ssh_key_path" {
+    description = "The path to the public SSH key for the AKS cluster"
+    type        = string
+    default     = "../public-keys/aks/id_rsa.pub"
+}
+
 variable "kubernetes_version" {
   description = "The Kubernetes version for the AKS cluster"
   type        = string
@@ -212,6 +218,12 @@ variable "vm_os_disk_size_gb" {
   description = "The size of the OS disk in GB"
   type        = string
   default     = "30"
+}
+
+variable "vm_public_ssh_key_path" {
+    description = "The path to the public SSH key for the VM"
+    type        = string
+    default     = "../public-keys/vm/id_rsa.pub"
 }
 
 variable "vm_image_id" {

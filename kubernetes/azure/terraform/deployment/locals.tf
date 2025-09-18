@@ -29,16 +29,10 @@ locals {
   vm_subnet_address_prefix        = [cidrsubnet(var.virtual_network_address_space, 8, 5)]
   vm_private_ip_address           = cidrhost(local.vm_subnet_address_prefix[0], 4)
 
-
-
   ## AKS Cluster
-  aks_public_ssh_key_path  = "../public-keys/aks/id_rsa.pub"
   aks_node_pool_workload   = join("", ["aksnodepool", var.project])
   aks_internal_lb_workload = join("", ["aksinternallb", var.project])
 
   # Database
   private_dns_zone_name_postgres = "privatelink.postgres.database.azure.com"
-
-  # VM
-  vm_public_ssh_key_path = "../public-keys/vm/id_rsa.pub"
 }

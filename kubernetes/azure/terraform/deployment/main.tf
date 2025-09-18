@@ -76,7 +76,7 @@ module "aks-cluster" {
 
   # AKS Cluster configuration
   aks_admin_username              = var.aks_admin_username
-  aks_public_ssh_key_path         = local.aks_public_ssh_key_path
+  aks_public_ssh_key_path         = var.aks_public_ssh_key_path
   kubernetes_version              = var.kubernetes_version
   service_cidr                    = local.service_cidr
   dns_service_ip                  = local.dns_service_ip
@@ -218,7 +218,7 @@ module "vm-perf-runner" {
   admin_username            = "azureuser" #Do not change the admin username as it is used in the perf scripts.
   size                      = var.vm_size
   os_disk_size_gb           = var.vm_os_disk_size_gb
-  public_key_path           = local.vm_public_ssh_key_path
+  public_key_path           = var.vm_public_ssh_key_path
   subnet_id                 = module.vm-subnet.subnet_id
   private_ip_address        = local.vm_private_ip_address
   public_ip_address_id      = module.public-ip-vm-perf-runner.public_ip_id
