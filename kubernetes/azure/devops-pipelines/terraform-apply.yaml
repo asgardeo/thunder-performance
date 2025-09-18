@@ -25,11 +25,11 @@ parameters:
   - name: TERRAFORM_PERFORMANCE_REPO
     type: string
     displayName: "Terraform Performance Repository"
-    default: "asgardeo/thunder-performance"
+    default: "Lakshan-Banneheke/thunder-performance" #TODO Update
   - name: TERRAFORM_PERFORMANCE_REPO_BRANCH
     type: string
     displayName: "Terraform Performance Repository Branch"
-    default: "main"
+    default: "kubernetes-env-create" #TODO Update
 
 variables:
   - group: vg-thunder-perf
