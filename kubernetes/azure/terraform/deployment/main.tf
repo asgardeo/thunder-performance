@@ -39,7 +39,7 @@ module "virtual-network" {
       name      = join("-", [var.project, "postgres", var.environment, var.padding])
       zone_name = local.private_dns_zone_name_postgres
     }
-  ],
+  ]
   depends_on = [
     module.private-dns-postgres
   ]
@@ -105,6 +105,7 @@ module "aks-cluster" {
   default_node_pool_orchestrator_version         = var.kubernetes_version
   default_node_pool_only_critical_addons_enabled = false
   default_node_pool_os_disk_type                 = "Ephemeral"
+  default_node_pool_availability_zones           = null
 
   azure_policy_enabled = false
 }
@@ -151,9 +152,6 @@ module "postgres-server" {
   storage_size                     = var.postgres_server_storage_size
   sku_name                         = var.postgres_server_sku_name
   tags                             = local.default_tags
-  depends_on = [
-    module.private-dns-zone-vnet-link-postgres
-  ]
 }
 
 module "postgres-thunder-db" {
