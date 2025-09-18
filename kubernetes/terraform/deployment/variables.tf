@@ -27,16 +27,19 @@ variable "tenant_id" {
 variable "project" {
   description = "The project name"
   type        = string
+  default     = "thunder"
 }
 
 variable "environment" {
   description = "The deployment environment (e.g., dev, test, prod)"
   type        = string
+  default     = "perf"
 }
 
 variable "location" {
   description = "The Azure region where resources will be deployed"
   type        = string
+  default     = "eastus2"
 }
 
 variable "padding" {
@@ -48,6 +51,7 @@ variable "padding" {
 variable "virtual_network_address_space" {
   description = "The address space for the virtual network"
   type        = string
+  default     = "10.0.0.0/16"
 }
 
 variable "log_analytics_workspace_sku" {
@@ -81,15 +85,6 @@ variable "aks_sku_tier" {
   default     = "Free"
 }
 
-variable "aks_node_pool_subnet_cidr" {
-  description = "The CIDR for the AKS node pool subnet"
-  type        = string
-}
-
-variable "aks_load_balancer_subnet_cidr" {
-  description = "The CIDR for the AKS load balancer subnet"
-  type        = string
-}
 
 variable "aks_nodepool_subnet_allowed_service_endpoints" {
   description = "The service endpoints allowed for the AKS node pool subnet"
@@ -100,27 +95,19 @@ variable "aks_nodepool_subnet_allowed_service_endpoints" {
 variable "aks_admin_username" {
   description = "The admin username for the AKS cluster"
   type        = string
-  default     = "aksadmin"
+  default     = "admin"
 }
 
 variable "kubernetes_version" {
   description = "The Kubernetes version for the AKS cluster"
   type        = string
-}
-
-variable "service_cidr" {
-  description = "The CIDR for Kubernetes services"
-  type        = string
-}
-
-variable "dns_service_ip" {
-  description = "The IP address for Kubernetes DNS service"
-  type        = string
+  default     = "1.32.6"
 }
 
 variable "private_cluster_enabled" {
   description = "Whether to enable private cluster for AKS"
   type        = bool
+  default     = true
 }
 
 variable "api_server_authorized_ip_ranges" {
@@ -132,23 +119,25 @@ variable "api_server_authorized_ip_ranges" {
 variable "default_node_pool_name" {
   description = "The name of the default node pool"
   type        = string
+  default     = "default"
 }
 
 variable "default_node_pool_vm_size" {
   description = "The VM size for the default node pool"
   type        = string
+  default     = "Standard_F8s_v2"
 }
 
 variable "default_node_pool_count" {
   description = "The number of nodes in the default node pool"
   type        = number
-  default     = 3
+  default     = 2
 }
 
 variable "default_node_pool_os_disk_size" {
   description = "The OS disk size for the default node pool in GB"
   type        = number
-  default     = 128
+  default     = 64
 }
 
 variable "default_node_pool_max_pods" {
@@ -160,7 +149,7 @@ variable "default_node_pool_max_pods" {
 variable "default_node_pool_min_count" {
   description = "The minimum number of nodes in the default node pool for auto-scaling"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "default_node_pool_max_count" {
@@ -172,29 +161,20 @@ variable "default_node_pool_max_count" {
 variable "default_node_pool_availability_zones" {
   description = "The availability zones for the default node pool"
   type        = list(string)
-  default     = ["1", "2", "3"]
+  default     = ["2"]
 }
 
 # Database variables
-variable "postgres_subnet_address_prefix" {
-  description = "The address prefix for the PostgreSQL subnet"
-  type        = list(string)
-}
-
-variable "postgres_vm_subnet_subnet_service_endpoints" {
-  description = "The service endpoints allowed for the Postgres VM subnet"
-  type        = list(string)
-  default     = ["Microsoft.Storage"]
-}
-
 variable "postgres_server_version" {
   description = "The version of Postgres to use for the flexible server"
   type        = string
+  default     = "16"
 }
 
 variable "postgres_server_admin_username" {
   description = "The administrator username for the Postgres server"
   type        = string
+  default     = "pgadmin"
 }
 
 variable "postgres_server_admin_password" {
@@ -206,37 +186,32 @@ variable "postgres_server_admin_password" {
 variable "postgres_server_storage_size" {
   description = "The storage size in GB for the Postgres server"
   type        = number
+  default     = 32768
 }
 
 variable "postgres_server_sku_name" {
   description = "The SKU name for the Postgres server"
   type        = string
+  default     = "B_Standard_B2s"
 }
 
 # VM variables
-variable "vm_subnet_address_prefix" {
-  description = "The address prefix for the VM subnet"
-  type        = list(string)
-}
-
 variable "vm_perf_runner_name" {
   description = "The name of the performance runner VM"
   type        = string
+  default     = "perf-runner"
 }
 
 variable "vm_size" {
   description = "The size of the VM"
   type        = string
+  default     = "Standard_F8s_v2"
 }
 
 variable "vm_os_disk_size_gb" {
   description = "The size of the OS disk in GB"
   type        = string
-}
-
-variable "vm_private_ip_address" {
-  description = "The static private IP address for the VM"
-  type        = string
+  default     = "30"
 }
 
 variable "vm_image_id" {

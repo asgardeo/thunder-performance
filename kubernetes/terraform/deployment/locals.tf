@@ -21,6 +21,16 @@ locals {
     terraform   = "true"
   }
 
+  aks_node_pool_subnet_cidr       = cidrsubnet(var.virtual_network_address_space, 8, 1)
+  aks_load_balancer_subnet_cidr   = cidrsubnet(var.virtual_network_address_space, 8, 2)
+  service_cidr                    = cidrsubnet(var.virtual_network_address_space, 8, 3)
+  dns_service_ip                  = cidrhost(local.service_cidr, 10)
+  postgres_subnet_address_prefix  = [cidrsubnet(var.virtual_network_address_space, 8, 4)]
+  vm_subnet_address_prefix        = [cidrsubnet(var.virtual_network_address_space, 8, 5)]
+  vm_private_ip_address           = cidrhost(local.vm_subnet_address_prefix[0], 4)
+
+
+
   ## AKS Cluster
   aks_public_ssh_key_path  = "../public-keys/aks/id_rsa.pub"
   aks_node_pool_workload   = join("", ["aksnodepool", var.project])

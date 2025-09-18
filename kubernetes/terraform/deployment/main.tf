@@ -66,20 +66,20 @@ module "aks-cluster" {
   virtual_network_name                                 = module.virtual-network.virtual_network_name
   aks_node_pool_resource_group_name                    = join("-", [var.project, local.aks_node_pool_workload, var.environment, var.location, var.padding])
   aks_node_pool_subnet_name                            = join("-", [local.aks_node_pool_workload, var.padding])
-  aks_node_pool_subnet_address_prefix                  = var.aks_node_pool_subnet_cidr
+  aks_node_pool_subnet_address_prefix                  = local.aks_node_pool_subnet_cidr
   aks_node_pool_subnet_route_table_name                = join("-", [var.project, local.aks_node_pool_workload, var.environment, var.location, var.padding])
   aks_node_pool_subnet_network_security_group_name     = join("-", [var.project, local.aks_node_pool_workload, var.environment, var.location, var.padding])
   aks_nodepool_subnet_allowed_service_endpoints        = var.aks_nodepool_subnet_allowed_service_endpoints
   aks_load_balancer_subnet_name                        = join("-", [local.aks_internal_lb_workload, var.padding])
-  internal_loadbalancer_subnet_address_prefix          = var.aks_load_balancer_subnet_cidr
+  internal_loadbalancer_subnet_address_prefix          = local.aks_load_balancer_subnet_cidr
   aks_load_balancer_subnet_network_security_group_name = join("-", [var.project, local.aks_internal_lb_workload, var.environment, var.location, var.padding])
 
   # AKS Cluster configuration
   aks_admin_username              = var.aks_admin_username
   aks_public_ssh_key_path         = local.aks_public_ssh_key_path
   kubernetes_version              = var.kubernetes_version
-  service_cidr                    = var.service_cidr
-  dns_service_ip                  = var.dns_service_ip
+  service_cidr                    = local.service_cidr
+  dns_service_ip                  = local.dns_service_ip
   private_cluster_enabled         = var.private_cluster_enabled
   outbound_type                   = "loadBalancer"
   api_server_authorized_ip_ranges = var.api_server_authorized_ip_ranges
@@ -109,8 +109,8 @@ module "postgres-vm-subnet" {
   location                    = var.location
   virtual_network_name        = module.virtual-network.virtual_network_name
   network_security_group_name = join("-", [var.project, "postgres", var.environment, var.location, var.padding])
-  address_prefix              = var.postgres_subnet_address_prefix
-  service_endpoints           = var.postgres_vm_subnet_subnet_service_endpoints
+  address_prefix              = local.postgres_subnet_address_prefix
+  service_endpoints           = ["Microsoft.Storage"]
   delegation = [
     {
       delegation_name         = "postgre-sql-delegation",
@@ -179,7 +179,7 @@ module "vm-subnet" {
   location                    = var.location
   virtual_network_name        = module.virtual-network.virtual_network_name
   network_security_group_name = join("-", [var.project, "vm", var.environment, var.location, var.padding])
-  address_prefix              = var.vm_subnet_address_prefix
+  address_prefix              = local.vm_subnet_address_prefix
   tags                        = local.default_tags
 }
 
@@ -220,7 +220,7 @@ module "vm-perf-runner" {
   os_disk_size_gb           = var.vm_os_disk_size_gb
   public_key_path           = local.vm_public_ssh_key_path
   subnet_id                 = module.vm-subnet.subnet_id
-  private_ip_address        = var.vm_private_ip_address
+  private_ip_address        = local.vm_private_ip_address
   public_ip_address_id      = module.public-ip-vm-perf-runner.public_ip_id
   source_image_id           = var.vm_image_id
   tags                      = local.default_tags
