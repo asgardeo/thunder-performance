@@ -33,6 +33,7 @@ parameters:
 
 variables:
   - group: vg-thunder-perf
+  - group: vg-tf-secrets-thunder-perf
   - name: TERRAFORM_REPO_NAME
     value: ${{parameters.TERRAFORM_PERFORMANCE_REPO}}
   - name: TERRAFORM_REPO_BRANCH
@@ -146,16 +147,29 @@ stages:
             path: "thunder-performance-repo"
             displayName: "Checkout Terraform Deployment Repository"
 
-          # Get Terraform secrets file
-          - task: DownloadSecureFile@1
-            name: tfSecretsFile
-            displayName: 'Download TF Secrets File'
+          - task: Bash@3
+            displayName: "Construct Terraform Secrets"
             inputs:
-              secureFile: 'thunder.eastus2.conf.secrets.tfvars'
-
-          - script: |
-              sudo mv $(tfSecretsFile.secureFilePath) $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/conf/thunder.eastus2.conf.secrets.tfvars
-            displayName: 'Copy TF secrets file to config location'
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/conf
+              script: |
+                echo "Constructing Terraform secrets"
+                # Path to the secrets map JSON file
+                SECRETS_MAP="conf.secrets.map.json"
+                # Check if secrets map file exists
+                if [ ! -f "$SECRETS_MAP" ]; then
+                  echo "Secrets map file ($SECRETS_MAP) not found. Skipping secret construction."
+                  exit 0
+                fi
+                # Create the thunder.conf.secrets.tfvars file
+                printf "\n\n#Automatically generated secrets\n" > thunder.conf.secrets.tfvars
+                # Fetch and write each secret defined in the map
+                for key in $(jq -r 'keys[]' $SECRETS_MAP); do
+                  SECRET_NAME=$(jq -r --arg key "$key" '.[$key]' $SECRETS_MAP)
+                  SECRET_VALUE=$(SECRET_NAME)
+                  echo "$key = \"$SECRET_VALUE\"" >> thunder.conf.secrets.tfvars
+                done
+                
+                cat thunder.conf.secrets.tfvars
 
           - task: Bash@3
             displayName: "Download and Install Terraform"
@@ -221,8 +235,8 @@ stages:
               inlineScript: |
                 echo "Applying Terraform"
                 terraform apply \
-                  -var-file="../conf/thunder.eastus2.conf.secrets.tfvars" \
-                  -var-file="../conf/thunder.eastus2.conf.tfvars" \
+                  -var-file="../conf/thunder.conf.secrets.tfvars" \
+                  -var-file="../conf/thunder.conf.tfvars" \
                   -auto-approve
             env:
               ARM_CLIENT_ID: $(ARM_CLIENT_ID)
