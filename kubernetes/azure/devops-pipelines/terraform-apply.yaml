@@ -143,7 +143,7 @@ stages:
         steps:
           # Checkout Terraform deployment repository
           - checkout: thunder-performance-repo
-            path: "thunder-performance"
+            path: "thunder-performance-repo"
             displayName: "Checkout Terraform Deployment Repository"
 
           # Get Terraform secrets file
@@ -154,7 +154,7 @@ stages:
               secureFile: 'thunder.eastus2.conf.secrets.tfvars'
 
           - script: |
-              sudo mv $(tfSecretsFile.secureFilePath) $(Agent.BuildDirectory)/thunder-performance/kubernetes/terraform/conf/thunder.eastus2.conf.secrets.tfvars
+              sudo mv $(tfSecretsFile.secureFilePath) $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/conf/thunder.eastus2.conf.secrets.tfvars
             displayName: 'Copy TF secrets file to config location'
 
           - task: Bash@3
@@ -192,7 +192,7 @@ stages:
             inputs:
               addSpnToEnvironment: true
               azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
-              workingDirectory: $(Agent.BuildDirectory)/thunder-performance/kubernetes/terraform/deployment
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/deployment
               scriptType: "bash"
               scriptLocation: "inlineScript"
               inlineScript: |
@@ -214,7 +214,7 @@ stages:
             name: TerraformApply
             displayName: "Apply Terraform Deployment"
             inputs:
-              workingDirectory: $(Agent.BuildDirectory)/thunder-performance/kubernetes/terraform/deployment
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/deployment
               azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
               scriptType: "bash"
               scriptLocation: "inlineScript"
