@@ -164,12 +164,6 @@ variable "default_node_pool_max_count" {
   default     = 5
 }
 
-variable "default_node_pool_availability_zones" {
-  description = "The availability zones for the default node pool"
-  type        = list(string)
-  default     = ["2"]
-}
-
 # Database variables
 variable "postgres_server_version" {
   description = "The version of Postgres to use for the flexible server"
@@ -199,6 +193,19 @@ variable "postgres_server_sku_name" {
   description = "The SKU name for the Postgres server"
   type        = string
   default     = "B_Standard_B2s"
+}
+
+# Database name variables
+variable "thunder_db_name" {
+  description = "The name of the Thunder database"
+  type        = string
+  default     = "thunderdb"
+}
+
+variable "runtime_db_name" {
+  description = "The name of the Runtime database"
+  type        = string
+  default     = "runtimedb"
 }
 
 # VM variables

@@ -34,6 +34,15 @@ module "virtual-network" {
   location                      = var.location
   virtual_network_address_space = var.virtual_network_address_space
   tags                          = local.default_tags
+  private_dns_zones = [
+    {
+      name      = join("-", [var.project, "postgres", var.environment, var.padding])
+      zone_name = local.private_dns_zone_name_postgres
+    }
+  ],
+  depends_on = [
+    module.private-dns-postgres
+  ]
 }
 
 # Log Analytics Workspace
@@ -93,12 +102,11 @@ module "aks-cluster" {
   default_node_pool_max_pods                     = var.default_node_pool_max_pods
   default_node_pool_min_count                    = var.default_node_pool_min_count
   default_node_pool_max_count                    = var.default_node_pool_max_count
-  default_node_pool_availability_zones           = var.default_node_pool_availability_zones
   default_node_pool_orchestrator_version         = var.kubernetes_version
   default_node_pool_only_critical_addons_enabled = false
   default_node_pool_os_disk_type                 = "Ephemeral"
 
-  azure_policy_enabled = true
+  azure_policy_enabled = false
 }
 
 # Database
@@ -130,17 +138,6 @@ module "private-dns-postgres" {
   tags                  = local.default_tags
 }
 
-module "private-dns-zone-vnet-link-postgres" {
-  source                          = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Private-DNS-Zone-Vnet-Link?ref=v2.18.10"
-  private_dns_zone_vnet_link_name = join("-", [var.project, "postgres", var.environment, var.padding])
-  resource_group_name             = module.resource-group.resource_group_name
-  private_dns_zone_name           = local.private_dns_zone_name_postgres
-  virtual_network_id              = module.virtual-network.virtual_network_id
-  depends_on = [
-    module.private-dns-postgres
-  ]
-}
-
 module "postgres-server" {
   source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
   server_name                      = join("-", [var.project, var.environment, var.location, var.padding])
@@ -161,13 +158,13 @@ module "postgres-server" {
 
 module "postgres-thunder-db" {
   source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Database?ref=v2.18.10"
-  database_full_name = "thunderdb"
+  database_full_name = var.thunder_db_name
   server_id          = module.postgres-server.postgresql_server_id
 }
 
 module "postgres-runtime-db" {
   source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Database?ref=v2.18.10"
-  database_full_name = "runtimedb"
+  database_full_name = var.runtime_db_name
   server_id          = module.postgres-server.postgresql_server_id
 }
 
