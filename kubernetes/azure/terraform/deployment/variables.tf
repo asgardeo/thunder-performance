@@ -95,7 +95,7 @@ variable "aks_nodepool_subnet_allowed_service_endpoints" {
 variable "aks_admin_username" {
   description = "The admin username for the AKS cluster"
   type        = string
-  default     = "admin"
+  default     = "aksadmin"
 }
 
 variable "kubernetes_version" {
