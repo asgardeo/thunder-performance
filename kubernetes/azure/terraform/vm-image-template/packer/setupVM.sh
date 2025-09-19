@@ -33,7 +33,7 @@ function update_and_install_packages() {
 function install_docker() {
 
     echo "[INFO]: Installing Docker"
-    sudo apt-get install ca-certificates curl
+    sudo apt-get install -y ca-certificates curl > /dev/null
     sudo install -m 0755 -d /etc/apt/keyrings
     sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc

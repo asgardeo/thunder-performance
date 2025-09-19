@@ -22,14 +22,21 @@ pool:
   vmImage: 'ubuntu-latest'
 
 parameters:
+  - name: TERRAFORM_ACTION
+    type: string
+    displayName: "Terraform Action"
+    default: "create"
+    values:
+      - "create"
+      - "destroy"
   - name: TERRAFORM_PERFORMANCE_REPO
     type: string
     displayName: "Terraform Performance Repository"
-    default: "Lakshan-Banneheke/thunder-performance" #TODO Update
+    default: "asgardeo/thunder-performance"
   - name: TERRAFORM_PERFORMANCE_REPO_BRANCH
     type: string
     displayName: "Terraform Performance Repository Branch"
-    default: "kubernetes-env-create" #TODO Update
+    default: "main"
 
 variables:
   - group: vg-thunder-perf
@@ -135,11 +142,11 @@ stages:
                   exit 1
                 fi
 
-  - stage: Apply_Terraform
-    displayName: "Apply - Terraform"
+  - stage: Execute_Terraform
+    displayName: "Execute - Terraform"
     jobs:
-      - job: TerraformApplyJob
-        displayName: "Run Terraform Apply"
+      - job: TerraformExecuteJob
+        displayName: "Run Terraform Execute Job"
         steps:
           # Checkout Terraform deployment repository
           - checkout: thunder-performance-repo
@@ -178,7 +185,7 @@ stages:
                 echo "Constructing Terraform secrets"
                 # Azure Key Vault name
                 KEY_VAULT_NAME=$(PRE_KEYVAULT_NAME)
-            
+                
                 # Path to the secrets map JSON file
                 SECRETS_MAP="conf.secrets.map.json"
                 # Check if secrets map file exists
@@ -251,14 +258,37 @@ stages:
           - task: AzureCLI@2
             name: TerraformApply
             displayName: "Apply Terraform Deployment"
+            condition: eq('${{ parameters.TERRAFORM_ACTION }}', 'create')
             inputs:
               workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/deployment
               azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
               scriptType: "bash"
               scriptLocation: "inlineScript"
               inlineScript: |
-                echo "Applying Terraform"
+                echo "Running Terraform apply"
                 terraform apply \
+                  -var-file="../conf/thunder.conf.secrets.tfvars" \
+                  -var-file="../conf/thunder.conf.tfvars" \
+                  -auto-approve
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)
+              ARM_USE_CLI: true
+
+          # Destroy Terraform deployment
+          - task: AzureCLI@2
+            name: TerraformDestroy
+            displayName: "Destroy Terraform Deployment"
+            condition: eq('${{ parameters.TERRAFORM_ACTION }}', 'destroy')
+            inputs:
+              workingDirectory: $(Agent.BuildDirectory)/thunder-performance-repo/kubernetes/azure/terraform/deployment
+              azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Running Terraform destroy"
+                terraform destroy \
                   -var-file="../conf/thunder.conf.secrets.tfvars" \
                   -var-file="../conf/thunder.conf.tfvars" \
                   -auto-approve
