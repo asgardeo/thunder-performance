@@ -89,7 +89,6 @@ module "aks-cluster" {
   kubernetes_version              = var.kubernetes_version
   service_cidr                    = local.service_cidr
   dns_service_ip                  = local.dns_service_ip
-  private_cluster_enabled         = var.private_cluster_enabled
   outbound_type                   = "loadBalancer"
   api_server_authorized_ip_ranges = var.api_server_authorized_ip_ranges
   aks_azure_rbac_enabled          = true

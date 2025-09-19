@@ -110,12 +110,6 @@ variable "kubernetes_version" {
   default     = "1.32.6"
 }
 
-variable "private_cluster_enabled" {
-  description = "Whether to enable private cluster for AKS"
-  type        = bool
-  default     = true
-}
-
 variable "api_server_authorized_ip_ranges" {
   description = "The IP ranges authorized to access the Kubernetes API server"
   type        = list(string)
