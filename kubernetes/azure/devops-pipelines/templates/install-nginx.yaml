@@ -73,6 +73,7 @@ steps:
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
+        set -e
         echo "Installing Nginx Ingress Controller..."
         helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
         helm repo update

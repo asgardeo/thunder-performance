@@ -30,13 +30,14 @@ steps:
       secureFile: 'azureVMSSHKey'
 
   - task: AzureCLI@2
-    displayName: 'Populate Postgres Database'
+    displayName: 'Setup Database Schema'
     inputs:
       azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
       inlineScript: |
+        set -e
         BASTION_USER=${{ parameters.BASTION_USER }}
         BASTION_NODE_IP=$(BASTION_NODE_IP)
         sudo chmod 400 $(vmKey.secureFilePath)
@@ -48,7 +49,7 @@ steps:
         echo "Copying DB scripts to bastion VM"
         scp -r -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) dbscripts $BASTION_USER@$BASTION_NODE_IP:/home/$BASTION_USER/
 
-        echo "SSH into VM and execute database population commands"
+        echo "SSH into VM and execute database schema creation commands"
         POSTGRES_ADMIN_USERNAME=$(POSTGRES-ADMIN-USERNAME)
         POSTGRES_ADMIN_PASSWORD=$(POSTGRES-ADMIN-PASSWORD)
         RUNTIME_DB_NAME=$(RUNTIME_DB_NAME)

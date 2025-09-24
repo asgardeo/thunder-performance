@@ -15,6 +15,11 @@
 # under the License.
 
 parameters:
+  - name: WORKING_DIRECTORY
+    type: string
+  - name: RELEASE_NAME
+    type: string
+    default: 'thunder-perf'
   - name: NAMESPACE
     type: string
     default: 'default'
@@ -22,18 +27,25 @@ parameters:
 steps:
   - template: ./utils/set-aks-credentials.yaml
   - task: AzureCLI@2
-    displayName: 'Generate TLS Certificate and Create Kubernetes Secret'
+    displayName: 'Uninstall Thunder'
     inputs:
       azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
+      workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
       inlineScript: |
-        set -e
-        echo "Generating self-signed TLS certificate"
-        openssl genrsa -out thunder.local.key 2048
-        openssl req -new -x509 -key thunder.local.key -out thunder.local.crt -days 365 \
-          -subj "/CN=thunder.local" \
-          -addext "subjectAltName=DNS:thunder.local"
-        
-        echo "Creating or updating Kubernetes TLS secret"
-        kubectl create secret tls $(TLS_SECRET_NAME) --cert=thunder.local.crt --key=thunder.local.key -n ${{ parameters.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+        echo "Uninstalling Thunder Helm Chart"
+        if ! helm uninstall ${{ parameters.RELEASE_NAME }} \
+          --namespace ${{ parameters.NAMESPACE }}; then
+          echo "Error: Failed to uninstall Thunder Helm Chart"
+          exit 1
+        fi
+        echo "Waiting for 10 seconds to ensure complete uninstallation"
+        sleep 10
+        echo "Uninstallation completed"
+
+  - template: ./install-thunder.yaml
+    parameters:
+      WORKING_DIRECTORY: ${{ parameters.WORKING_DIRECTORY }}
+      RELEASE_NAME: ${{ parameters.RELEASE_NAME }}
+      NAMESPACE: ${{ parameters.NAMESPACE }}
