@@ -33,7 +33,7 @@ function update_and_install_packages() {
 function install_docker() {
 
     echo "[INFO]: Installing Docker"
-    sudo apt-get install ca-certificates curl
+    sudo apt-get install -y ca-certificates curl > /dev/null
     sudo install -m 0755 -d /etc/apt/keyrings
     sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -96,8 +96,30 @@ function install_java() {
 function download_jmeter() {
 
   echo "[INFO]: Downloading JMeter 3.3"
-  wget -P "$HOME" https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-3.3.tgz
+  JMETER_URL="https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-3.3.tgz"
+  JMETER_SHA_URL="https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-3.3.tgz.sha512"
+  wget -P "$HOME" "$JMETER_URL"
+  wget -P "$HOME" "$JMETER_SHA_URL"
+  echo "[INFO]: Verifying JMeter 3.3 checksum"
+  OLDPWD=$(pwd)
+  cd $HOME
+  sha512sum -c apache-jmeter-3.3.tgz.sha512
+  rm -f apache-jmeter-3.3.tgz.sha512
+  cd $OLDPWD
+  if [ $? -ne 0 ]; then
+    echo "[ERROR]: JMeter checksum verification failed!"
+    exit 1
+  fi
+  echo "[INFO]: JMeter download and verification completed."
+  # Optionally remove the checksum file
   echo "[INFO]: JMeter download completed."
+}
+
+function install_psql() {
+
+  echo "[INFO]: Installing psql client"
+  sudo apt install postgresql -y > /dev/null
+  echo "[INFO]: psql client installation completed."
 }
 
 echo "[INFO]: Starting VM setup."
@@ -108,4 +130,5 @@ install_helm
 install_az_cli
 install_java
 download_jmeter
+install_psql
 echo "[INFO]: VM setup completed."

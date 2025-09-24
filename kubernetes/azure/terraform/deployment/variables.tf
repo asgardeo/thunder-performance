@@ -69,7 +69,7 @@ variable "log_retention_in_days" {
 variable "log_analytics_workspace_internet_ingestion_enabled" {
   description = "Whether internet ingestion is enabled for the Log Analytics Workspace"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "log_analytics_workspace_internet_query_enabled" {
@@ -108,12 +108,6 @@ variable "kubernetes_version" {
   description = "The Kubernetes version for the AKS cluster"
   type        = string
   default     = "1.32.6"
-}
-
-variable "private_cluster_enabled" {
-  description = "Whether to enable private cluster for AKS"
-  type        = bool
-  default     = true
 }
 
 variable "api_server_authorized_ip_ranges" {
