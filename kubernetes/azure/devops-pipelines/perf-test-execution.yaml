@@ -37,22 +37,23 @@ parameters:
   - name: PERFORMANCE_REPO
     displayName: Performance repo name
     type: string
-    default: wso2/performance-is
+    default: asgardeo/thunder-performance
   - name: PERFORMANCE_REPO_BRANCH
     displayName: Performance repo branch name
     type: string
-    default: thunder
+    default: main
+  - name: THUNDER_HELM_REPO
+    type: string
+    displayName: "Thunder Helm Repository"
+    default: "asgardeo/thunder"
+  - name: THUNDER_HELM_REPO_BRANCH
+    type: string
+    displayName: "Thunder Helm Repository Branch"
+    default: "main"
   - name: CONCURRENCY
     displayName: Concurrency
-    type: string
-    default: 50-50
-    values:
-      - 50-50
-      - 50-500
-      - 50-1000
-      - 50-3000
-      - 500-3000
-      - 1000-3000
+    type: number
+    default: 200
   - name: BUILD_PURPOSE
     displayName: Perf-Test purpose
     type: string
@@ -74,22 +75,31 @@ parameters:
 
 variables:
   - group: vg-thunder-perf
+  - group: vg-thunder-perf-secrets
   - template: ./variables.yaml
   - name: PERFORMANCE_REPO
     value: ${{parameters.PERFORMANCE_REPO}}
   - name: PERFORMANCE_REPO_BRANCH
     value: ${{parameters.PERFORMANCE_REPO_BRANCH}}
+  - name: THUNDER_HELM_REPO
+    value: ${{parameters.THUNDER_HELM_REPO}}
+  - name: THUNDER_HELM_REPO_BRANCH
+    value: ${{parameters.THUNDER_HELM_REPO_BRANCH}}
   - name: PYTHON_VERSION
     value: 3.9
-
-
+    
 resources:
   repositories:
-    - repository: performance-is
+    - repository: thunder-performance
       type: github
       endpoint: thunder-performance
       name: $(PERFORMANCE_REPO)
       ref: $(PERFORMANCE_REPO_BRANCH)
+    - repository: thunder-helm-repo
+      type: github
+      endpoint: thunder-performance
+      name: $(THUNDER_HELM_REPO)
+      ref: $(THUNDER_HELM_REPO_BRANCH)
 
 jobs:
   - job: scale_up_env
@@ -104,33 +114,61 @@ jobs:
           scriptLocation: 'inlineScript'
           inlineScript: |
             echo "Starting Virtual Machine..."
-            az vm start --name $(VM_NAME) --resource-group $(RESOURCE_GROUP_NAME)
+            if ! az vm start --name $(VM_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to start Virtual Machine $(VM_NAME)"
+              echo "##vso[task.logissue type=error]Failed to start Virtual Machine $(VM_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
             echo "Virtual Machine started successfully"
       - task: AzureCLI@2
         displayName: 'Start AKS Cluster'
+        condition: always()
         inputs:
           azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
           scriptType: 'bash'
           scriptLocation: 'inlineScript'
           inlineScript: |
             echo "Starting AKS Cluster..."
-            az aks start --name $(AKS_CLUSTER_NAME) --resource-group $(RESOURCE_GROUP_NAME)
+            if ! az aks start --name $(AKS_CLUSTER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to start AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to start AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
             echo "AKS Cluster started successfully"
       - task: AzureCLI@2
         displayName: 'Start Postgres Server'
+        condition: always()
         inputs:
           azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
           scriptType: 'bash'
           scriptLocation: 'inlineScript'
           inlineScript: |
             echo "Starting Postgres Server..."
-            az postgres flexible-server start --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME)
+            if ! az postgres flexible-server start --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to start Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to start Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
             echo "Postgres Server started successfully"
+
+  - job: reinstall_thunder
+    displayName: Reinstall Thunder
+    dependsOn: scale_up_env
+    condition: always()  # Always run to ensure Thunder is reinstalled
+    steps:
+      - checkout: thunder-helm-repo
+        path: "thunder-helm-repo"
+      - template: './templates/reinstall-thunder.yaml'
+        parameters:
+          WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-helm-repo/install/helm
 
   - job: thunder_performance_test
     displayName: Thunder performance test
-    dependsOn: scale_up_env
-    condition: eq(${{ parameters.EXECUTE_PERF_TEST }}, True)
+    dependsOn: reinstall_thunder
+    condition: and(eq(${{ parameters.EXECUTE_PERF_TEST }}, True), succeeded('reinstall_thunder'))
     # Change the timeout as required when running tests with data population
     timeoutInMinutes: 1200
     cancelTimeoutInMinutes: 1
@@ -139,7 +177,7 @@ jobs:
     steps:
       - checkout: self
 
-      - checkout: performance-is
+      - checkout: thunder-performance
         persistCredentials: true
 
       - task: UsePythonVersion@0
@@ -169,7 +207,7 @@ jobs:
           scriptType: bash
           useGlobalConfig: true
           scriptLocation: scriptPath
-          scriptPath: '$(Agent.BuildDirectory)/s/performance-is/azure-pipeline/init_perf_run.sh'
+          scriptPath: '$(Agent.BuildDirectory)/s/thunder-performance/perf-scripts/init_perf_run.sh'
           addSpnToEnvironment: true
         env:
           BUILD_NUM: $(Build.BuildNumber)
@@ -185,6 +223,7 @@ jobs:
           RUN_MODE: ${{parameters.RUN_MODE}}
           CONCURRENCY: ${{parameters.CONCURRENCY}}
           BASTION_NODE_IP: $(BASTION_NODE_IP)
+          WORKSPACE: '$(Agent.BuildDirectory)/s/thunder-performance/perf-scripts'
 
       - task: PublishPipelineArtifact@1
         displayName: Publish pipeline artifacts
@@ -215,25 +254,42 @@ jobs:
           scriptLocation: 'inlineScript'
           inlineScript: |
             echo "Stopping Virtual Machine..."
-            az vm deallocate --name $(VM_NAME) --resource-group $(RESOURCE_GROUP_NAME)
+            if ! az vm deallocate --name $(VM_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to stop Virtual Machine $(VM_NAME)"
+              echo "##vso[task.logissue type=error]Failed to stop Virtual Machine $(VM_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
             echo "Virtual Machine stopped successfully"
       - task: AzureCLI@2
         displayName: 'Stop AKS Cluster'
+        condition: always()
         inputs:
           azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
           scriptType: 'bash'
           scriptLocation: 'inlineScript'
           inlineScript: |
             echo "Stopping AKS Cluster..."
-            az aks stop --name $(AKS_CLUSTER_NAME) --resource-group $(RESOURCE_GROUP_NAME)
+            if ! az aks stop --name $(AKS_CLUSTER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to stop AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to stop AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
             echo "AKS Cluster stopped successfully"
       - task: AzureCLI@2
         displayName: 'Stop Postgres Server'
+        condition: always()
         inputs:
           azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
           scriptType: 'bash'
           scriptLocation: 'inlineScript'
           inlineScript: |
             echo "Stopping Postgres Server..."
-            az postgres flexible-server stop --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME)
+            if ! az postgres flexible-server stop --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to stop Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to stop Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
             echo "Postgres Server stopped successfully"

@@ -1,3 +1,4 @@
+#!/bin/bash -e
 # Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
 #
 # WSO2 LLC. licenses this file to you under the Apache License,
@@ -13,13 +14,17 @@
 # KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations
 # under the License.
+#
+# ----------------------------------------------------------------------------
+# Run Ballerina Performance Tests
+# ----------------------------------------------------------------------------
 
-subscription_id = ""
-tenant_id       = ""
-
-postgres_server_admin_password = ""
-
-vm_image_id         = ""
-
-aks_admin_username             = ""
-postgres_server_admin_username = ""
+declare -A test_scenario0=(
+    [name]="00-thunder_oauth_client_credential_grant"
+    [display_name]="Client Credentials Grant Type"
+    [description]="Obtain an access token using the OAuth 2.0 client credential grant type."
+    [jmx]="oauth/Thunder_OAuth_Client_Credentials_Grant.jmx"
+    [tenantMode]=false
+    [skip]=false
+    [modes]="QUICK FULL PUBLISH"
+)

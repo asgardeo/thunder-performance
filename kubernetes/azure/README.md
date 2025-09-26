@@ -9,6 +9,11 @@ The Thunder Performance testing environment on Azure consists of:
 - AKS cluster for deploying Thunder
 - Associated infrastructure components (networking, storage, etc.)
 
+## Architecture Diagram
+The architecture diagram below illustrates the components and their interactions.
+
+![Architecture.png](diagrams/Architecture.png)
+
 ## Prerequisites
 
 ### Azure Resources
@@ -166,21 +171,21 @@ This pipeline deploys Thunder to the provisioned AKS cluster through a series of
 
 1. **Install Internal Nginx Ingress Controller** - Deploys an Nginx Ingress Controller in the AKS cluster configured as an internal load balancer
 2. **Create TLS Secret** - Generates and configures a self-signed TLS certificate as a Kubernetes Secret to be used by the Thunder ingress
-3. **Populate Database** - Populates the PostgreSQL databases with the required table schema for Thunder
+3. **Setup Database Schema** - Setup the databases with the required table schema for Thunder
 4. **Install Thunder** - Deploys the Thunder application using Helm
 5. **Add Hosts Entry to VM** - Adds an entry to the `/etc/hosts` file of the Perf Test Execution VM to resolve the Thunder Ingress URL
 
 **Pipeline Parameters:**
 
-| Parameter Name | Description | Accepted Values | Default Value |
-|----------------|-------------|-----------------|---------------|
-| Install Internal NGINX Ingress Controller | Enable/disable Nginx installation | `true`, `false` | `true` |
-| Create TLS Secret | Enable/disable TLS secret creation | `true`, `false` | `true` |
-| Populate Database | Enable/disable database initialization | `true`, `false` | `true` |
-| Install Thunder | Enable/disable Thunder deployment | `true`, `false` | `true` |
+| Parameter Name | Description                             | Accepted Values | Default Value |
+|----------------|-----------------------------------------|-----------------|---------------|
+| Install Internal NGINX Ingress Controller | Enable/disable Nginx installation       | `true`, `false` | `true` |
+| Create TLS Secret | Enable/disable TLS secret creation      | `true`, `false` | `true` |
+| Setup Database Schema | Enable/disable database schema creation | `true`, `false` | `true` |
+| Install Thunder | Enable/disable Thunder deployment       | `true`, `false` | `true` |
 | Add Hosts Entry to VM | Enable/disable hosts file configuration | `true`, `false` | `true` |
-| Terraform Repository | Repository containing Thunder | String          | asgardeo/thunder-performance |
-| Terraform Repository Branch | Branch of the repository to use | String          | main |
+| Terraform Repository | Repository containing Thunder           | String          | asgardeo/thunder-performance |
+| Terraform Repository Branch | Branch of the repository to use         | String          | main |
 
 ### Performance Test Execution Pipeline
 
@@ -194,17 +199,17 @@ This pipeline executes the performance tests against the deployed Thunder instan
 
 **Pipeline Parameters:**
 
-| Parameter Name | Description                                                                                                                                  | Accepted Values                                                  | Default Value                    |
-|----------------|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|----------------------------------|
-| Scale Up Perf Environment | Enable/disable environment scaling up                                                                                                        | `true`, `false`                                                  | `true`                           |
-| Execute Performance Test | Enable/disable test execution                                                                                                                | `true`, `false`                                                  | `true`                           |
-| Scale Down Perf Environment | Enable/disable environment scaling down                                                                                                      | `true`, `false`                                                  | `true`                           |
-| Performance repo name | Repository containing performance tests                                                                                                      | String                                                           | wso2/performance-is              |
-| Performance repo branch | Branch of the performance repository                                                                                                         | String                                                           | thunder                          |
-| Concurrency | User load configuration                                                                                                                      | `50-50`, `50-500`, `50-1000`, `50-3000`, `500-3000`, `1000-3000` | `50-50`                          |
-| Perf-Test purpose | Test run description for reporting                                                                                                           | Text string                                                      | Regular Thunder performance test |
-| Run Mode | Test execution scope                                                                                                                         | `QUICK`, `FULL`                                                  | `QUICK`                          |
-| Populate test data | Enable/disable test data population. This should be executed as true when the test is executed for the first time after environment creation | `true`, `false`                                                  | `false`                          |
+| Parameter Name | Description                                                                                                                                  | Accepted Values | Default Value                    |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------------------|-----------------|----------------------------------|
+| Scale Up Perf Environment | Enable/disable environment scaling up                                                                                                        | `true`, `false` | `true`                           |
+| Execute Performance Test | Enable/disable test execution                                                                                                                | `true`, `false` | `true`                           |
+| Scale Down Perf Environment | Enable/disable environment scaling down                                                                                                      | `true`, `false` | `true`                           |
+| Performance repo name | Repository containing performance tests                                                                                                      | String          | asgardeo/thunder-performance     |
+| Performance repo branch | Branch of the performance repository                                                                                                         | String          | thunder                          |
+| Concurrency | User load configuration                                                                                                                      | Number          | `200`                            |
+| Perf-Test purpose | Test run description for reporting                                                                                                           | String          | Regular Thunder performance test |
+| Run Mode | Test execution scope                                                                                                                         | `QUICK`, `FULL` | `QUICK`                          |
+| Populate test data | Enable/disable test data population. This should be executed as true when the test is executed for the first time after environment creation | `true`, `false` | `false`                          |
 
 
 ## Additional Resources

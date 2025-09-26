@@ -25,8 +25,8 @@ parameters:
     displayName: Create Nginx TLS Secret
     type: boolean
     default: true
-  - name: POPULATE_DATABASE
-    displayName: Populate Database
+  - name: SETUP_DB_SCHEMA
+    displayName: Setup Database Schema
     type: boolean
     default: true
   - name: INSTALL_THUNDER
@@ -66,7 +66,6 @@ resources:
       name: $(THUNDER_REPO)
       ref: $(THUNDER_REPO_BRANCH)
 
-
 jobs:
   - job: create_tls_secret
     condition: eq('${{ parameters.CREATE_TLS_SECRET }}', true)
@@ -83,19 +82,19 @@ jobs:
           LB_INTERNAL_IP: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP)
           LB_INTERNAL_SUBNET: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET)
 
-  - job: populate_db
-    displayName: Populate Database
-    condition: eq('${{ parameters.POPULATE_DATABASE }}', true)
+  - job: setup_db_schema
+    displayName: Setup Database Schema
+    condition: eq('${{ parameters.SETUP_DB_SCHEMA }}', true)
     steps:
       - checkout: thunder-repo
         path: "thunder-repo"
-      - template: './templates/populate-db.yaml'
+      - template: './templates/setup-db-schema.yaml'
         parameters:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/backend
 
   - job: install_thunder
     displayName: Install Thunder
-    dependsOn: populate_db
+    dependsOn: setup_db_schema
     condition: eq('${{ parameters.INSTALL_THUNDER }}', true)
     steps:
       - checkout: thunder-repo

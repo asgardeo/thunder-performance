@@ -34,8 +34,8 @@ steps:
       scriptLocation: 'inlineScript'
       workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
       inlineScript: |
+        set -e
         echo "Installing Thunder Helm Chart"
-        
         helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
           --namespace ${{ parameters.NAMESPACE }} \
           --set deployment.replicaCount=$(THUNDER_REPLICAS) \
@@ -63,5 +63,4 @@ steps:
           --set configuration.database.runtime.port=$(RUNTIME_DB_PORT) \
           --set configuration.database.runtime.username=$(POSTGRES-ADMIN-USERNAME) \
           --set configuration.database.runtime.password=$(POSTGRES-ADMIN-PASSWORD)
-        
         echo "Thunder Helm Chart installed successfully"
