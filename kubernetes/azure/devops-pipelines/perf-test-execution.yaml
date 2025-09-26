@@ -87,7 +87,7 @@ variables:
     value: ${{parameters.THUNDER_HELM_REPO_BRANCH}}
   - name: PYTHON_VERSION
     value: 3.9
-    
+
 resources:
   repositories:
     - repository: thunder-performance
