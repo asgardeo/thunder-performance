@@ -1,0 +1,57 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+variables:
+  PROJECT: "thunder"
+  ENVIRONMENT: "perf"
+  LOCATION: "eastus2"
+  PADDING: "001"
+  RESOURCE_GROUP_NAME: 'rg-$(PROJECT)-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
+  AKS_CLUSTER_NAME: 'aks-$(PROJECT)-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
+  VM_NAME: 'vm$(PROJECT)-$(ENVIRONMENT)-runner-$(LOCATION)-$(PADDING)'
+  POSTGRES_SERVER_NAME: 'postgresql-$(PROJECT)-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
+  INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP: "10.0.2.5"
+  INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET: "snet-aksinternallbthunder-$(PADDING)"
+  TLS_SECRET_NAME: "thunder-tls"
+  THUNDER_KUBERNETES_INGRESS: "thunder-perf-ingress"
+
+  # Thunder Image Configuration
+  THUNDER_IMAGE_REGISTRY: 'ghcr.io/asgardeo'
+  THUNDER_IMAGE_REPOSITORY: 'thunder'
+  THUNDER_IMAGE_TAG: '0.7.0'
+
+  # Thunder Deployment Configuration
+  THUNDER_REPLICAS: '2'
+  THUNDER_CPU_LIMITS: '1.5'
+  THUNDER_CPU_REQUESTS: '1'
+  THUNDER_MEMORY_LIMITS: '512Mi'
+  THUNDER_MEMORY_REQUESTS: '256Mi'
+  
+  # HPA and Cache Configuration
+  THUNDER_HPA_ENABLED: 'true'
+  THUNDER_HPA_MAX_REPLICAS: '10'
+  THUNDER_HPA_CPU_UTILIZATION: '65'
+  THUNDER_HPA_MEMORY_UTILIZATION: '75'
+
+  # Database Configuration
+  THUNDER_DB_TYPE: 'postgres'
+  THUNDER_DB_NAME: 'thunderdb'
+  THUNDER_DB_HOST: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
+  THUNDER_DB_PORT: '5432'
+  RUNTIME_DB_TYPE: 'postgres'
+  RUNTIME_DB_NAME: 'runtimedb'
+  RUNTIME_DB_HOST: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
+  RUNTIME_DB_PORT: '5432'

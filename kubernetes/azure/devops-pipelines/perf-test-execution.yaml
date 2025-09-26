@@ -1,0 +1,294 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+trigger: none
+
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: SCALE_UP_ENVIRONMENT
+    displayName: 'Scale up Perf environment'
+    type: boolean
+    default: false
+  - name: EXECUTE_PERF_TEST
+    displayName: 'Execute performance test'
+    type: boolean
+    default: true
+  - name: SCALE_DOWN_ENVIRONMENT
+    displayName: 'Scale down Perf environment'
+    type: boolean
+    default: false
+  - name: PERFORMANCE_REPO
+    displayName: Performance repo name
+    type: string
+    default: wso2/performance-is
+  - name: PERFORMANCE_REPO_BRANCH
+    displayName: Performance repo branch name
+    type: string
+    default: thunder
+  - name: THUNDER_HELM_REPO
+    type: string
+    displayName: "Thunder Helm Repository"
+    default: "asgardeo/thunder"
+  - name: THUNDER_HELM_REPO_BRANCH
+    type: string
+    displayName: "Thunder Helm Repository Branch"
+    default: "main"
+  - name: CONCURRENCY
+    displayName: Concurrency
+    type: number
+    default: 200
+  - name: BUILD_PURPOSE
+    displayName: Perf-Test purpose
+    type: string
+    default: Regular Thunder performance test
+  - name: RUN_MODE
+    displayName: Run Mode
+    type: string
+    default: QUICK
+    values:
+      - QUICK
+      - FULL
+  - name: POPULATE_TEST_DATA
+    displayName: Populate test data
+    type: string
+    default: false
+    values:
+      - true
+      - false
+
+variables:
+  - group: vg-thunder-perf
+  - group: vg-thunder-perf-secrets
+  - template: ./variables.yaml
+  - name: PERFORMANCE_REPO
+    value: ${{parameters.PERFORMANCE_REPO}}
+  - name: PERFORMANCE_REPO_BRANCH
+    value: ${{parameters.PERFORMANCE_REPO_BRANCH}}
+  - name: THUNDER_HELM_REPO
+    value: ${{parameters.THUNDER_HELM_REPO}}
+  - name: THUNDER_HELM_REPO_BRANCH
+    value: ${{parameters.THUNDER_HELM_REPO_BRANCH}}
+  - name: PYTHON_VERSION
+    value: 3.9
+
+resources:
+  repositories:
+    - repository: performance-is
+      type: github
+      endpoint: thunder-performance
+      name: $(PERFORMANCE_REPO)
+      ref: $(PERFORMANCE_REPO_BRANCH)
+    - repository: thunder-helm-repo
+      type: github
+      endpoint: thunder-performance
+      name: $(THUNDER_HELM_REPO)
+      ref: $(THUNDER_HELM_REPO_BRANCH)
+
+jobs:
+  - job: scale_up_env
+    displayName: 'Scale Up Environment'
+    condition: eq(${{ parameters.SCALE_UP_ENVIRONMENT }}, True)
+    steps:
+      - task: AzureCLI@2
+        displayName: 'Start Virtual Machine'
+        inputs:
+          azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Starting Virtual Machine..."
+            if ! az vm start --name $(VM_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to start Virtual Machine $(VM_NAME)"
+              echo "##vso[task.logissue type=error]Failed to start Virtual Machine $(VM_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
+            echo "Virtual Machine started successfully"
+      - task: AzureCLI@2
+        displayName: 'Start AKS Cluster'
+        condition: always()
+        inputs:
+          azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Starting AKS Cluster..."
+            if ! az aks start --name $(AKS_CLUSTER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to start AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to start AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
+            echo "AKS Cluster started successfully"
+      - task: AzureCLI@2
+        displayName: 'Start Postgres Server'
+        condition: always()
+        inputs:
+          azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Starting Postgres Server..."
+            if ! az postgres flexible-server start --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to start Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to start Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
+            echo "Postgres Server started successfully"
+
+  - job: reinstall_thunder
+    displayName: Reinstall Thunder
+    dependsOn: scale_up_env
+    condition: always()  # Always run to ensure Thunder is reinstalled
+    steps:
+      - checkout: thunder-helm-repo
+        path: "thunder-helm-repo"
+      - template: './templates/reinstall-thunder.yaml'
+        parameters:
+          WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-helm-repo/install/helm
+
+  - job: thunder_performance_test
+    displayName: Thunder performance test
+    dependsOn: reinstall_thunder
+    condition: and(eq(${{ parameters.EXECUTE_PERF_TEST }}, True), succeeded('reinstall_thunder'))
+    # Change the timeout as required when running tests with data population
+    timeoutInMinutes: 1200
+    cancelTimeoutInMinutes: 1
+    workspace:
+      clean: all
+    steps:
+      - checkout: self
+
+      - checkout: performance-is
+        persistCredentials: true
+
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec:  '$(PYTHON_VERSION)'
+        displayName: 'Use Python $(PYTHON_VERSION)'
+
+      - task: DownloadSecureFile@1
+        name: vmKey
+        displayName: 'Download VM Key'
+        inputs:
+          secureFile: 'azureVMSSHKey'
+
+      - script: |
+          echo "Copying the VM Key to ~/.ssh and setting permissions"
+          mkdir ~/.ssh
+          sudo mv $(vmKey.secureFilePath) ~/.ssh/azure_id_rsa
+          sudo chmod 400 ~/.ssh/azure_id_rsa
+        displayName: 'Setup VM SSH Key'
+
+      - template: ./templates/utils/get-bastion-node-ip.yaml
+
+      - task: AzureCLI@2
+        displayName: Initiate performance test run
+        inputs:
+          azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+          scriptType: bash
+          useGlobalConfig: true
+          scriptLocation: scriptPath
+          scriptPath: '$(Agent.BuildDirectory)/s/performance-is/azure-pipeline/init_perf_run.sh'
+          addSpnToEnvironment: true
+        env:
+          BUILD_NUM: $(Build.BuildNumber)
+          BUILD_PURPOSE: ${{parameters.BUILD_PURPOSE}}
+          BRANCH: ${{parameters.PERFORMANCE_REPO_BRANCH}}
+          GITHUB_USER_EMAIL: $(gitEmail)
+          GITHUB_USERNAME: $(gitUsername)
+          BUILD_TYPE: $(Build.Reason)
+          BUILD_PATH: $(Build.ArtifactStagingDirectory)
+          DATABASE_HOST_NAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
+          THUNDER_HOST_NAME: 'thunder.local'
+          POPULATE_TEST_DATA: ${{parameters.POPULATE_TEST_DATA}}
+          RUN_MODE: ${{parameters.RUN_MODE}}
+          CONCURRENCY: ${{parameters.CONCURRENCY}}
+          BASTION_NODE_IP: $(BASTION_NODE_IP)
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish pipeline artifacts
+        condition: always()
+        inputs:
+          targetPath: $(Build.ArtifactStagingDirectory)
+          artifactType: 'pipeline'
+          artifactName: 'PerformanceTestResults'
+
+      - task: DownloadPipelineArtifact@2
+        displayName: Download pipeline artifacts
+        condition: succeeded()
+        inputs:
+          source: 'current'
+          artifact: PerformanceTestResults
+          path: '$(Pipeline.Workspace)/PerformanceTestResults'
+
+  - job: scale_down_env
+    displayName: 'Scale Down Environment'
+    condition: eq(${{ parameters.SCALE_DOWN_ENVIRONMENT }}, True)
+    dependsOn: thunder_performance_test
+    steps:
+      - task: AzureCLI@2
+        displayName: 'Stop Virtual Machine'
+        inputs:
+          azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Stopping Virtual Machine..."
+            if ! az vm deallocate --name $(VM_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to stop Virtual Machine $(VM_NAME)"
+              echo "##vso[task.logissue type=error]Failed to stop Virtual Machine $(VM_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
+            echo "Virtual Machine stopped successfully"
+      - task: AzureCLI@2
+        displayName: 'Stop AKS Cluster'
+        condition: always()
+        inputs:
+          azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Stopping AKS Cluster..."
+            if ! az aks stop --name $(AKS_CLUSTER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to stop AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to stop AKS Cluster $(AKS_CLUSTER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
+            echo "AKS Cluster stopped successfully"
+      - task: AzureCLI@2
+        displayName: 'Stop Postgres Server'
+        condition: always()
+        inputs:
+          azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: |
+            echo "Stopping Postgres Server..."
+            if ! az postgres flexible-server stop --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
+              echo "Error: Failed to stop Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.logissue type=error]Failed to stop Postgres Server $(POSTGRES_SERVER_NAME)"
+              echo "##vso[task.complete result=Failed;]"
+              exit 1
+            fi
+            echo "Postgres Server stopped successfully"

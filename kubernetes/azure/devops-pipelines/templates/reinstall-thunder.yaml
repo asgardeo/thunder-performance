@@ -1,0 +1,51 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+parameters:
+  - name: WORKING_DIRECTORY
+    type: string
+  - name: RELEASE_NAME
+    type: string
+    default: 'thunder-perf'
+  - name: NAMESPACE
+    type: string
+    default: 'default'
+
+steps:
+  - template: ./utils/set-aks-credentials.yaml
+  - task: AzureCLI@2
+    displayName: 'Uninstall Thunder'
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
+      inlineScript: |
+        echo "Uninstalling Thunder Helm Chart"
+        if ! helm uninstall ${{ parameters.RELEASE_NAME }} \
+          --namespace ${{ parameters.NAMESPACE }}; then
+          echo "Error: Failed to uninstall Thunder Helm Chart"
+          exit 1
+        fi
+        echo "Waiting for 10 seconds to ensure complete uninstallation"
+        sleep 10
+        echo "Uninstallation completed"
+
+  - template: ./install-thunder.yaml
+    parameters:
+      WORKING_DIRECTORY: ${{ parameters.WORKING_DIRECTORY }}
+      RELEASE_NAME: ${{ parameters.RELEASE_NAME }}
+      NAMESPACE: ${{ parameters.NAMESPACE }}

@@ -1,0 +1,32 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+steps:
+  - task: AzureCLI@2
+    displayName: 'Get Bastion Node IP dynamically'
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        # Get the IP address of the bastion node
+        BASTION_IP=$(az vm show -g $(RESOURCE_GROUP_NAME) -n $(VM_NAME) --show-details --query publicIps -o tsv)
+        if [ -z "$BASTION_IP" ]; then
+          echo "##vso[task.logissue type=error]Failed to retrieve Bastion Node IP"
+          exit 1
+        fi
+        echo "Bastion Node IP: $BASTION_IP"
+        echo "##vso[task.setvariable variable=BASTION_NODE_IP]$BASTION_IP"
