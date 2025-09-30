@@ -37,11 +37,11 @@ parameters:
   - name: PERFORMANCE_REPO
     displayName: Performance repo name
     type: string
-    default: wso2/performance-is
+    default: asgardeo/thunder-performance
   - name: PERFORMANCE_REPO_BRANCH
     displayName: Performance repo branch name
     type: string
-    default: thunder
+    default: main
   - name: THUNDER_HELM_REPO
     type: string
     displayName: "Thunder Helm Repository"
@@ -90,7 +90,7 @@ variables:
 
 resources:
   repositories:
-    - repository: performance-is
+    - repository: thunder-performance
       type: github
       endpoint: thunder-performance
       name: $(PERFORMANCE_REPO)
@@ -177,7 +177,7 @@ jobs:
     steps:
       - checkout: self
 
-      - checkout: performance-is
+      - checkout: thunder-performance
         persistCredentials: true
 
       - task: UsePythonVersion@0
@@ -207,7 +207,7 @@ jobs:
           scriptType: bash
           useGlobalConfig: true
           scriptLocation: scriptPath
-          scriptPath: '$(Agent.BuildDirectory)/s/performance-is/azure-pipeline/init_perf_run.sh'
+          scriptPath: '$(Agent.BuildDirectory)/s/thunder-performance/perf-scripts/init_perf_run.sh'
           addSpnToEnvironment: true
         env:
           BUILD_NUM: $(Build.BuildNumber)
@@ -223,6 +223,7 @@ jobs:
           RUN_MODE: ${{parameters.RUN_MODE}}
           CONCURRENCY: ${{parameters.CONCURRENCY}}
           BASTION_NODE_IP: $(BASTION_NODE_IP)
+          WORKSPACE: '$(Agent.BuildDirectory)/s/thunder-performance/perf-scripts'
 
       - task: PublishPipelineArtifact@1
         displayName: Publish pipeline artifacts

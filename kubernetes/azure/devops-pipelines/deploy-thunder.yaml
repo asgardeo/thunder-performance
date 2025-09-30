@@ -16,6 +16,8 @@
 
 trigger: none
 
+pr: none
+
 parameters:
   - name: INSTALL_INTERNAL_NGINX_INGRESS
     displayName: Install Internal NGINX Ingress Controller
