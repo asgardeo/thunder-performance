@@ -1,0 +1,582 @@
+# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# 'suffix' in each component name will be replaced by a random value to enable multiple stacks at the same time.
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  WSO2 Thunder single node deployment
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Cluster Configuration
+        Parameters:
+          - KeyPairName
+          - WSO2InstanceType
+          - BastionInstanceType
+          - EnableHighConcurrencyMode
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - CertificateName
+      - Label:
+          default: Database Credentials
+        Parameters:
+          - DBUsername
+          - DBPassword
+          - DBInstanceType
+          - DBType
+      - Label:
+          default: Other Configuration
+        Parameters:
+          - UserTag
+    ParameterLabels:
+      CertificateName:
+        default: SSL Certificate Name
+      KeyPairName:
+        default: Key Pair Name
+      DBUsername:
+        default: Username
+      DBPassword:
+        default: Password
+      UserTag:
+        default: User Tag
+      WSO2InstanceType:
+        default: Instance Type
+      DBAllocationStorage:
+        default: Allocation Storage
+      DBIops:
+        default: Allocation IOPS
+      DBInstanceType:
+        default: DB Instance Type
+      DBType:
+        default: DB Type
+      BastionInstanceType:
+        default: Bastion Instance Type
+Resources:
+  # networking configurations
+  WSO2ThunderVPCsuffix:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+  WSO2ThunderPublicSubnet1suffix:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      CidrBlock: 10.0.254.0/24
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+  WSO2ThunderPublicSubnet2suffix:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      CidrBlock: 10.0.252.0/24
+      AvailabilityZone: !Select
+        - '1'
+        - !GetAZs ''
+  WSO2ThunderPublicInternetGatewaysuffix:
+    Type: 'AWS::EC2::InternetGateway'
+  WSO2ThunderPublicRouteTablesuffix:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+  WSO2ThunderPublicSubnet1RouteTableAssociationsuffix:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref WSO2ThunderPublicRouteTablesuffix
+      SubnetId: !Ref WSO2ThunderPublicSubnet1suffix
+  WSO2ThunderPublicSubnet2RouteTableAssociationsuffix:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref WSO2ThunderPublicRouteTablesuffix
+      SubnetId: !Ref WSO2ThunderPublicSubnet2suffix
+  WSO2ThunderPublicRoutesuffix:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref WSO2ThunderPublicRouteTablesuffix
+      GatewayId: !Ref WSO2ThunderPublicInternetGatewaysuffix
+      DestinationCidrBlock: 0.0.0.0/0
+    DependsOn: WSO2ThunderVPCInternetGatewayAttachmentsuffix
+  WSO2ThunderVPCInternetGatewayAttachmentsuffix:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref WSO2ThunderPublicInternetGatewaysuffix
+      VpcId: !Ref WSO2ThunderVPCsuffix
+  WSO2ThunderPrivateSubnet1suffix:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+  WSO2ThunderPrivateSubnet2suffix:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select
+        - '1'
+        - !GetAZs ''
+  WSO2ThunderPrivateSubnetRouteTablesuffix:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+  WSO2ThunderPrivateRoute2suffix:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref WSO2ThunderNATGatewaysuffix
+      RouteTableId: !Ref WSO2ThunderPrivateSubnetRouteTablesuffix
+  WSO2ThunderPrivateSubnet1RouteTableAssociationsuffix:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref WSO2ThunderPrivateSubnetRouteTablesuffix
+      SubnetId: !Ref WSO2ThunderPrivateSubnet1suffix
+  WSO2ThunderPrivateSubnet2RouteTableAssociationsuffix:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref WSO2ThunderPrivateSubnetRouteTablesuffix
+      SubnetId: !Ref WSO2ThunderPrivateSubnet2suffix
+  WSO2ThunderNATGatewaysuffix:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt
+        - WSO2ThunderEIPsuffix
+        - AllocationId
+      SubnetId: !Ref WSO2ThunderPublicSubnet1suffix
+  WSO2BastionEIPAssociationsuffix:
+    Type: 'AWS::EC2::EIPAssociation'
+    Properties:
+      AllocationId: !GetAtt WSO2BastionEIPsuffix.AllocationId
+      InstanceId: !Ref WSO2BastionInstancesuffix
+  WSO2ThunderEIPsuffix:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  WSO2BastionEIPsuffix:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  # database configurations
+  WSO2ThunderDBInstanceSecurityGroupsuffix:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      GroupDescription: DB Security Group2
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !FindInMap [DBTypeMap, !Ref DBType, FromPort]
+          ToPort: !FindInMap [DBTypeMap, !Ref DBType, ToPort]
+          CidrIp: 0.0.0.0/0
+  WSO2ThunderDBInstancesuffix:
+    Type: 'AWS::RDS::DBInstance'
+    DeletionPolicy: Delete
+    Properties:
+      VPCSecurityGroups:
+        - !Ref WSO2ThunderDBInstanceSecurityGroupsuffix
+      DBInstanceClass: !Ref DBInstanceType
+      AllocatedStorage: !FindInMap [HighConcurrencyModeMap, !Ref EnableHighConcurrencyMode, DBAllocationStorage]
+      BackupRetentionPeriod: '0'
+      DBInstanceIdentifier: WSO2ThunderDBInstancesuffix
+      EngineVersion: !FindInMap [DBTypeMap, !Ref DBType, Version]
+      Engine: !FindInMap [DBTypeMap, !Ref DBType, DBType]
+      EnablePerformanceInsights: 'false'
+      LicenseModel: !FindInMap [DBTypeMap, !Ref DBType, License]
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      MultiAZ: 'false'
+      Iops: !FindInMap [HighConcurrencyModeMap, !Ref EnableHighConcurrencyMode, DBIops]
+      StorageType: io1
+      DBParameterGroupName: !FindInMap [DBTypeMap, !Ref DBType, ParameterGroup]
+      DBSubnetGroupName: !Ref WSO2ThunderDBSubnetGroupsuffix
+  WSO2ThunderDBSubnetGroupsuffix:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: DB Subnet Group
+      SubnetIds:
+        - !Ref WSO2ThunderPrivateSubnet1suffix
+        - !Ref WSO2ThunderPrivateSubnet2suffix
+  # File system configurations
+  WSO2ThunderEFSSecurityGroupsuffix:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      GroupDescription: EFS Security Group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '2049'
+          ToPort: '2049'
+          CidrIp: 0.0.0.0/0
+  WSO2ThunderEFSFileSystemsuffix:
+    Type: 'AWS::EFS::FileSystem'
+    Properties:
+      PerformanceMode: generalPurpose
+  WSO2ThunderPrivateSubnet1EFSMountTargetsuffix:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      SubnetId: !Ref WSO2ThunderPrivateSubnet1suffix
+      FileSystemId: !Ref WSO2ThunderEFSFileSystemsuffix
+      SecurityGroups:
+        - !Ref WSO2ThunderEFSSecurityGroupsuffix
+  WSO2ThunderPrivateSubnet2EFSMountTargetsuffix:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      SubnetId: !Ref WSO2ThunderPrivateSubnet2suffix
+      FileSystemId: !Ref WSO2ThunderEFSFileSystemsuffix
+      SecurityGroups:
+        - !Ref WSO2ThunderEFSSecurityGroupsuffix
+  # Product configurations
+  BastionSecurityGroupsuffix:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      GroupDescription: WSO2 Bastion node Security Group for 5.3
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+  WSO2ThunderSecurityGroupsuffix:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref WSO2ThunderVPCsuffix
+      GroupDescription: WSO2 Identity Manager Security Group
+      GroupName: WSO2SecurityGroupsuffix
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8280'
+          ToPort: '8280'
+          SourceSecurityGroupId: !Ref BastionSecurityGroupsuffix
+        - IpProtocol: tcp
+          FromPort: '9763'
+          ToPort: '9763'
+          SourceSecurityGroupId: !Ref BastionSecurityGroupsuffix
+        - IpProtocol: tcp
+          FromPort: '8090'
+          ToPort: '8090'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8243'
+          ToPort: '8243'
+          SourceSecurityGroupId: !Ref BastionSecurityGroupsuffix
+        - IpProtocol: tcp
+          FromPort: '5672'
+          ToPort: '5672'
+          SourceSecurityGroupId: !Ref BastionSecurityGroupsuffix
+        - IpProtocol: tcp
+          FromPort: '5701'
+          ToPort: '5701'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8140'
+          ToPort: '8140'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '4000'
+          ToPort: '4000'
+          CidrIp: 0.0.0.0/0
+  WSO2BastionInstancesuffix:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      ImageId: !FindInMap
+        - WSO2ThunderAMIRegionMapsuffix
+        - !Ref 'AWS::Region'
+        - AMI
+      InstanceType: !Ref BastionInstanceType
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 50
+            VolumeType: gp2
+            DeleteOnTermination: 'true'
+      KeyName: !Ref KeyPairName
+      Monitoring: 'false'
+      Tags:
+        - Key: Name
+          Value: suffix_WSO2BastionInstance
+        - Key: User
+          Value: !Ref UserTag
+      NetworkInterfaces:
+        - DeleteOnTermination: 'true'
+          Description: Primary network interface
+          DeviceIndex: 0
+          SubnetId: !Ref WSO2ThunderPublicSubnet1suffix
+          GroupSet:
+            - !Ref BastionSecurityGroupsuffix
+      UserData: !Base64
+        'Fn::Sub':
+          - |+
+            #!/bin/bash
+            export PATH=~/.local/bin:$PATH
+            curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+            curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client
+            DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
+            echo "export PATH=$PATH" >>/etc/environment
+            curl -o jdk-setup.tar.gz https://performance-is-packs.s3.amazonaws.com/resources/jdk-11.0.15.1_linux-x64_bin.tar.gz
+            sudo mkdir /usr/lib/jvm
+            sudo tar -xvf jdk-setup.tar.gz -C /usr/lib/jvm
+            sudo mv /usr/lib/jvm/jdk* /usr/lib/jvm/jdk
+            sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk/bin/java" 1
+            sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk/bin/javac" 1
+            sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk/bin/javaws" 1
+            sudo chmod a+x /usr/bin/java
+            sudo chmod a+x /usr/bin/javac
+            sudo chmod a+x /usr/bin/javaws
+            export JAVA_HOME=/usr/lib/jvm/jdk
+            sudo su
+            echo "export JAVA_HOME=/usr/lib/jvm/jdk" >>/etc/environment
+            echo "export PGPASSWORD=${DBPassword}" >>/etc/environment
+            source /etc/environment
+            exit
+          - DBPassword: !Ref DBPassword
+
+  WSO2NGinxInstancesuffix:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      ImageId: !FindInMap
+        - WSO2ThunderAMIRegionMapsuffix
+        - !Ref 'AWS::Region'
+        - AMI
+      InstanceType: !Ref WSO2InstanceType
+      KeyName: !Ref KeyPairName
+      Monitoring: 'false'
+      Tags:
+        - Key: Name
+          Value: suffix_WSO2NGinxInstance
+        - Key: User
+          Value: !Ref UserTag
+      NetworkInterfaces:
+        - DeleteOnTermination: 'true'
+          Description: Primary network interface
+          DeviceIndex: 0
+          # Uncomment public subnet to assign a public IP to the Thunder instance.
+          # SubnetId: !Ref WSO2ThunderPublicSubnet1suffix
+          SubnetId: !Ref WSO2ThunderPrivateSubnet1suffix
+          GroupSet:
+            - !Ref BastionSecurityGroupsuffix
+      UserData: !Base64
+        'Fn::Join':
+          - |+
+
+          - - '#!/bin/bash'
+            - 'export PATH=~/.local/bin:$PATH'
+            - apt-get update
+            - DEBIAN_FRONTEND=noninteractive apt-get install -yq nginx
+            - mkdir -p /etc/nginx/ssl/thunder
+
+  WSO2ThunderNodeLaunchConfigurationsuffix:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      # Uncomment below to assign a public IP to the Thunder instance.
+      # AssociatePublicIpAddress: true
+      ImageId: !FindInMap
+        - WSO2ThunderAMIRegionMapsuffix
+        - !Ref 'AWS::Region'
+        - AMI
+      InstanceType: !Ref WSO2InstanceType
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: '20'
+            VolumeType: gp2
+            DeleteOnTermination: 'true'
+      KeyName: !Ref KeyPairName
+      SecurityGroups:
+        - !Ref WSO2ThunderSecurityGroupsuffix
+      UserData: !Base64
+        'Fn::Sub':
+          - |+
+            #!/bin/bash
+            export PATH=~/.local/bin:$PATH
+            curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+            curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client
+            DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
+            echo "export PATH=$PATH" >>/etc/environment
+            curl -o go-setup.tar.gz https://performance-is-packs.s3.amazonaws.com/resources/go1.25.0.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go-setup.tar.gz
+            sudo su
+            echo "export PATH=$PATH:/usr/local/go/bin" >>/etc/environment
+            echo "export PGPASSWORD=${DBPassword}" >>/etc/environment
+            source /etc/environment
+            exit
+          - DBPassword: !Ref DBPassword
+    DependsOn:
+      - WSO2ThunderSecurityGroupsuffix
+      - WSO2ThunderVPCInternetGatewayAttachmentsuffix
+      - WSO2ThunderDBInstancesuffix
+  WSO2ThunderNode1AutoScalingGroupsuffix:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      LaunchConfigurationName: !Ref WSO2ThunderNodeLaunchConfigurationsuffix
+      DesiredCapacity: 1
+      MinSize: 1
+      MaxSize: 1
+      VPCZoneIdentifier:
+        # Use public subnet to assign a public IP to the Thunder instance.
+        # - !Ref WSO2ThunderPublicSubnet1
+        - !Ref WSO2ThunderPrivateSubnet1suffix
+      Tags:
+        - Key: Name
+          Value: suffix_WSO2ThunderInstance
+          PropagateAtLaunch: 'true'
+        - Key: cluster
+          Value: is
+          PropagateAtLaunch: 'true'
+        - Key: User
+          Value: !Ref UserTag
+          PropagateAtLaunch: 'true'
+    DependsOn:
+      - WSO2ThunderNodeLaunchConfigurationsuffix
+
+Outputs:
+  InstanceID:
+    Description: The Bastion ID
+    Value: !Ref WSO2BastionInstancesuffix
+
+Parameters:
+  KeyPairName:
+    Description: >-
+      The private key used to log in to instances through SSH
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  CertificateName:
+    Description: A valid SSL certificate used for HTTPS
+    Type: String
+    MinLength: 1
+  WSO2InstanceType:
+    Type: String
+    Default: c6i.xlarge
+    AllowedValues:
+      - t2.micro
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - c4.large
+      - c4.xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c6i.large
+      - c6i.xlarge
+      - c6i.2xlarge
+    ConstraintDescription: Must be a valid EC2 instance type
+  DBUsername:
+    Type: String
+    MinLength: 4
+    AllowedPattern: '[A-Za-z0-9\-]+'
+  DBPassword:
+    Type: String
+    MinLength: 8
+    NoEcho: true
+  EnableHighConcurrencyMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  DBInstanceType:
+    Type: String
+    Default: db.m6i.2xlarge
+    AllowedValues:
+      - db.t2.medium
+      - db.t2.large
+      - db.t2.xlarge
+      - db.t2.2xlarge
+      - db.m4.large
+      - db.m4.xlarge
+      - db.m4.2xlarge
+      - db.m5.xlarge
+      - db.m5.2xlarge
+      - db.m6i.large
+      - db.m6i.xlarge
+      - db.m6i.2xlarge
+      - db.m6i.4xlarge
+  DBType:
+    Type: String
+    AllowedValues:
+      - postgres
+    Default: postgres
+  UserTag:
+    Description: User tag to be used for tagging AWS resources
+    Type: String
+    Default: user@wso2.com
+  BastionInstanceType:
+    Type: String
+    Default: c6i.xlarge
+    AllowedValues:
+      - t2.micro
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m4.large
+      - m4.xlarge
+      - c4.large
+      - c4.xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c6i.large
+      - c6i.xlarge
+      - c6i.2xlarge
+    ConstraintDescription: Must be a valid EC2 instance type
+Mappings:
+  WSO2ThunderAMIRegionMapsuffix:
+    us-east-1:
+      AMI: ami-0b86cfbff176b7d3a
+    us-east-2:
+      AMI: ami-0125a7e5b2489477a
+    us-west-1:
+      AMI: ami-0e81aa4c57820bb57
+    us-west-2:
+      AMI: ami-03fa1f014b48fa6bd
+  DBTypeMap:
+    postgres:
+      Version: '14.19'
+      License: 'postgresql-license'
+      ParameterGroup: 'perf-test-param-group-postgres'
+      FromPort: '5432'
+      ToPort: '5432'
+      DBType: 'postgres'
+  HighConcurrencyModeMap:
+    "true":
+      DBIops: 5000
+      DBAllocationStorage: 100
+    "false":
+      DBIops: 1000
+      DBAllocationStorage: 100
