@@ -70,12 +70,12 @@ python --version
 echo "Run mode: $mode"
 
 run_performance_tests_options="$@"
-echo $run_performance_tests_options
+echo "$run_performance_tests_options"
 
 echo "Bastion IP address: $bastion_node_ip"
 
 run_performance_tests_options+=(" -l $cloud_host_name -v $mode")
-echo $run_performance_tests_options
+echo "$run_performance_tests_options"
 
 mkdir "$results_dir"
 echo ""
@@ -138,7 +138,6 @@ if [[ ! -f $results_dir/results.zip ]]; then
 fi
 
 echo "Installing required Python packages..."
-# sudo apt install -y python-pip
 pip install numpy
 echo "============================================"
 

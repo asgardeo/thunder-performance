@@ -533,7 +533,7 @@ function test_scenarios() {
 
             jmeter_command+=" -l $report_location/results.jtl"
 
-            echo $jmeter_command
+            echo "$jmeter_command"
 
             echo ""
             echo "Starting JMeter Client with JVM_ARGS=$JVM_ARGS"
