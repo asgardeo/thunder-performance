@@ -43,87 +43,9 @@ burst_keyword = "Burst"  # Keyword to identify burst scenarios
 
 # Define the dictionary {Scenario_Name: Critical_Request_Name}
 scenarios = {
-    "Auth Code Grant Redirect With Consent": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Send Consent Approve Request",
-        "5 Get tokens"],
-    "Password Grant Type": [
-        "1 GetToken_Password_Grant"],
     "Client Credentials Grant Type": [
-        "1 Get Token Client Credential Grant"],
-    "OIDC Auth Code Grant Redirect With Consent": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Send Consent Approve Request",
-        "5 Get tokens"],
-    "OIDC Auth Code Grant Redirect With Consent Retrieve User Attributes": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Send Consent Approve Request",
-        "5 Get tokens"],
-    "OIDC Auth Code Grant Redirect With Consent Retrieve User Attributes and Groups": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Send Consent Approve Request",
-        "5 Get tokens"],
-    "OIDC Auth Code Grant Redirect With Consent Retrieve User Attributes Groups and Roles": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Send Consent Approve Request",
-        "5 Get tokens"],
-    "OIDC Auth Code Grant Redirect Without Consent": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Get tokens"],
-    "OIDC Auth Code Grant Redirect Without Consent Retrieve User Attributes":[
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Get tokens"],
-    "OIDC Auth Code Grant Redirect Without Consent Retrieve User Attributes and Groups": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Get tokens"],
-    "OIDC Auth Code Grant Redirect Without Consent Retrieve User Attributes Groups and Roles": [
-        "1 Send request to authorize end point",
-        "2 Common Auth Login HTTP Request",
-        "3 Authorize call",
-        "4 Get tokens"],
-    "OIDC Password Grant Type": [
-        "1 GetToken_Password_Grant"],
-    "OIDC Password Grant Type Retrieve User Attributes": [
-        "1 GetToken_Password_Grant"],
-    "OIDC Password Grant Type Retrieve User Attributes and Groups": [
-        "1 GetToken_Password_Grant"],
-    "OIDC Password Grant Type Retrieve User Attributes Groups and Roles": [
-        "1 GetToken_Password_Grant"],
-    "SAML2 SSO Redirect Binding": [
-        "1 Initial SAML Request",
-        "2 Identity Provider Login"],
-    "Token Exchange Grant": [
-        "1 GetToken_Token_Exchange_Grant"],
-    "B2B OIDC Auth Code Grant Redirect With Consent": [
-        "1. Send Authorize Request to Parent App Org",
-        "2. Select Sub Org Request",
-        "3. Send Authorize Request to Sub Org",
-        "4. Common Auth Login Request to Sub Org",
-        "5. Post Authentication Redirect call to Sub Org",
-        "6. Common Auth Redirect call to the Parent Org",
-        "7. Post Authentication Redirect call to Parent Org",
-        "8. Send Consent Approve Request",
-        "9. Get tokens Request"],
-    "App Native Authentication": [
-        "1 Send request to authorize end point",
-        "2 Submit username and password",
-        "3 Get tokens"]}
+        "1 Get Token Client Credential Grant"]
+}
 
 scenarios_critical_requests = scenarios.copy()
 

@@ -103,7 +103,7 @@ elif [[ $no_of_nodes -eq 1 ]]; then
                 -c /home/ubuntu \
                 -f /home/ubuntu/apache-jmeter-*.tgz \
                 -a $wso2thunder_1_host_alias -n "$wso2_thunder_1_ip" \
-                -a $lb_alias -n "$lb_host"\
+                -a $lb_alias -n "$lb_host" \
                 -a rds -n "$rds_host"
 else
     echo "Invalid value for no_of_nodes. Please provide a valid number."

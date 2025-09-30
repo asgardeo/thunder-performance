@@ -48,7 +48,7 @@ while getopts "n:i:h" opts; do
         ;;
     esac
 done
-I
+
 echo ""
 echo "Copying files..."
 echo "============================================"
