@@ -92,12 +92,12 @@ resources:
   repositories:
     - repository: thunder-performance
       type: github
-      endpoint: thunder-performance
+      endpoint: $(GITHUB_SERVICE_CONNECTION)
       name: $(PERFORMANCE_REPO)
       ref: $(PERFORMANCE_REPO_BRANCH)
     - repository: thunder-helm-repo
       type: github
-      endpoint: thunder-performance
+      endpoint: $(GITHUB_SERVICE_CONNECTION)
       name: $(THUNDER_HELM_REPO)
       ref: $(THUNDER_HELM_REPO_BRANCH)
 
