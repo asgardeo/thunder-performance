@@ -125,6 +125,7 @@ Add the following secrets to the previously created Key Vault:
         - `TF_STATE_STORAGE_ACCOUNT_NAME`: Name of the storage account
         - `TF_STATE_CONTAINER_NAME`: Name of the container (e.g., `terraform`)
         - `TF_STATE_NAME`: Name of the Terraform state file (e.g., `thunder-perf.terraform.tfstate`)
+        - `GITHUB_SERVICE_CONNECTION`: Name of the GitHub service connection
 
 3. **Add Secure Files to Library**
     - `azureVMSSHKey`: SSH private key for the VM (created in Step 2)

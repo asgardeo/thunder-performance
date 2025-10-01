@@ -64,7 +64,7 @@ resources:
   repositories:
     - repository: thunder-repo
       type: github
-      endpoint: thunder-performance
+      endpoint: $(GITHUB_SERVICE_CONNECTION)
       name: $(THUNDER_REPO)
       ref: $(THUNDER_REPO_BRANCH)
 
