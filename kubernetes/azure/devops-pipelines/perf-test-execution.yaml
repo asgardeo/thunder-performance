@@ -212,7 +212,6 @@ jobs:
         env:
           BUILD_NUM: $(Build.BuildNumber)
           BUILD_PURPOSE: ${{parameters.BUILD_PURPOSE}}
-          BRANCH: ${{parameters.PERFORMANCE_REPO_BRANCH}}
           GITHUB_USER_EMAIL: $(gitEmail)
           GITHUB_USERNAME: $(gitUsername)
           BUILD_TYPE: $(Build.Reason)

@@ -32,7 +32,6 @@ echo "=========================================================="
 echo "Thunder Perf Environment - Status: "
 curl -s -i https://thunder.local/health/liveness | head -1
 
-echo "Changing Directory to Thunder Product Repository | Branch: $BRANCH"
 cd $WORKSPACE
 
 cd pre-provisioned

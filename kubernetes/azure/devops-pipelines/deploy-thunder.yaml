@@ -39,6 +39,10 @@ parameters:
     displayName: Add Hosts Entry to VM
     type: boolean
     default: true
+  - name: POPULATE_TEST_DATA
+    displayName: Populate Test Data
+    type: boolean
+    default: true
   - name: THUNDER_REPO
     type: string
     displayName: "Thunder Repository"
@@ -46,6 +50,14 @@ parameters:
   - name: THUNDER_REPO_BRANCH
     type: string
     displayName: "Thunder Repository Branch"
+    default: "main"
+  - name: PERFORMANCE_REPO
+    displayName: Performance repo name
+    type: string
+    default: "asgardeo/thunder-performance"
+  - name: PERFORMANCE_REPO_BRANCH
+    displayName: Performance repo branch name
+    type: string
     default: "main"
 
 pool:
@@ -59,6 +71,10 @@ variables:
     value: ${{parameters.THUNDER_REPO}}
   - name: THUNDER_REPO_BRANCH
     value: ${{parameters.THUNDER_REPO_BRANCH}}
+  - name: PERFORMANCE_REPO
+    value: ${{parameters.PERFORMANCE_REPO}}
+  - name: PERFORMANCE_REPO_BRANCH
+    value: ${{parameters.PERFORMANCE_REPO_BRANCH}}
 
 resources:
   repositories:
@@ -67,6 +83,11 @@ resources:
       endpoint: asgardeo
       name: $(THUNDER_REPO)
       ref: $(THUNDER_REPO_BRANCH)
+    - repository: thunder-performance
+      type: github
+      endpoint: asgardeo
+      name: $(PERFORMANCE_REPO)
+      ref: $(PERFORMANCE_REPO_BRANCH)
 
 jobs:
   - job: create_tls_secret
@@ -111,3 +132,18 @@ jobs:
     condition: eq('${{ parameters.ADD_HOSTS_ENTRY }}', true)
     steps:
       - template: './templates/add-hosts-entry-to-vm.yaml'
+
+  - job: populate_test_data
+    displayName: Populate Test Data
+    dependsOn:
+      - install_thunder
+      - install_nginx
+      - create_tls_secret
+      - add_hosts_entry_to_vm
+    condition: eq('${{ parameters.POPULATE_TEST_DATA }}', true)
+    steps:
+      - checkout: thunder-performance
+        path: "thunder-performance"
+      - template: './templates/populate-test-data.yaml'
+        parameters:
+          WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-performance/perf-scripts
