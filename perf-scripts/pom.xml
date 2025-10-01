@@ -34,7 +34,7 @@
         <module>pre-provisioned</module>
     </modules>
 
-    <name>IS - Artifacts for WSO2 Identity Server Performance Tests</name>
+    <name>Thunder - Artifacts for WSO2 Thunder Performance Tests</name>
     <inceptionYear>2018</inceptionYear>
     <url>https://wso2.com/identity-and-access-management</url>
 

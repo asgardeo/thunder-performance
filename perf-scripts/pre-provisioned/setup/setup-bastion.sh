@@ -99,7 +99,7 @@ echo "============================================"
 cd /home/$bastion_user || exit 0
 # Creates a temporary empty key
 touch temp.pem
-workspace/setup/setup-jmeter-client-is.sh -g -k ./temp.pem \
+workspace/setup/setup-jmeter-client-thunder.sh -g -k ./temp.pem \
             -i /home/$bastion_user \
             -c /home/$bastion_user \
             -f /home/$bastion_user/apache-jmeter-*.tgz \
