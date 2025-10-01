@@ -64,7 +64,7 @@ resources:
   repositories:
     - repository: thunder-repo
       type: github
-      endpoint: $(GITHUB_SERVICE_CONNECTION)
+      endpoint: asgardeo
       name: $(THUNDER_REPO)
       ref: $(THUNDER_REPO_BRANCH)
 
