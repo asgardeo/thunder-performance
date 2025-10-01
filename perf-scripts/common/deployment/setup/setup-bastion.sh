@@ -128,4 +128,3 @@ echo "============================================"
 if [[ $no_of_nodes -eq 1 ]]; then
     sudo -u ubuntu ssh $lb_alias ./setup-nginx.sh -n "$no_of_nodes" -i "$wso2_thunder_1_ip"
 fi
-

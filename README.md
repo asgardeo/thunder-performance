@@ -17,7 +17,9 @@ thunder-performance/
 │       └── terraform/           # Terraform scripts for Azure infrastructure
 ├── perf-scripts/                # Performance testing scripts
 │   ├── common/                  # Common utilities for performance testing
-│   └── pre-provisioned/         # Scripts for pre-provisioned test environments
+│   ├── pre-provisioned/         # Scripts for pre-provisioned test environments
+│   └── single-node/             # Scripts for single-node test environments
+
 ```
 
 ## Key Components
