@@ -27,7 +27,7 @@ steps:
 
   - script: |
       echo "Copying the VM Key to ~/.ssh and setting permissions"
-      mkdir ~/.ssh
+      mkdir -p ~/.ssh
       sudo mv $(vmKey.secureFilePath) ~/.ssh/azure_id_rsa
       sudo chmod 400 ~/.ssh/azure_id_rsa
     displayName: 'Setup VM SSH Key'
@@ -50,8 +50,8 @@ steps:
       GITHUB_USERNAME: $(gitUsername)
       BUILD_TYPE: $(Build.Reason)
       BUILD_PATH: $(Build.ArtifactStagingDirectory)
-      DATABASE_HOST_NAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
-      THUNDER_HOST_NAME: 'thunder.local'
+      DATABASE_HOST_NAME: $(DATABASE_HOSTNAME)
+      THUNDER_HOST_NAME: $(THUNDER_HOSTNAME)
       POPULATE_TEST_DATA: "true"
       RUN_MODE: "NONE"
       CONCURRENCY: 10

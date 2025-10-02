@@ -65,13 +65,6 @@ parameters:
     values:
       - QUICK
       - FULL
-  - name: POPULATE_TEST_DATA
-    displayName: Populate test data
-    type: string
-    default: false
-    values:
-      - true
-      - false
 
 variables:
   - group: vg-thunder-perf
@@ -214,9 +207,9 @@ jobs:
           GITHUB_USERNAME: $(gitUsername)
           BUILD_TYPE: $(Build.Reason)
           BUILD_PATH: $(Build.ArtifactStagingDirectory)
-          DATABASE_HOST_NAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
-          THUNDER_HOST_NAME: 'thunder.local'
-          POPULATE_TEST_DATA: ${{parameters.POPULATE_TEST_DATA}}
+          DATABASE_HOST_NAME: $(DATABASE_HOSTNAME)
+          THUNDER_HOST_NAME: $(THUNDER_HOSTNAME)
+          POPULATE_TEST_DATA: "false"
           RUN_MODE: ${{parameters.RUN_MODE}}
           CONCURRENCY: ${{parameters.CONCURRENCY}}
           BASTION_NODE_IP: $(BASTION_NODE_IP)
