@@ -47,6 +47,54 @@ parameters:
     type: string
     displayName: "Thunder Repository Branch"
     default: "main"
+  - name: THUNDER_IMAGE_REGISTRY
+    type: string
+    displayName: "Thunder Image Registry"
+    default: "ghcr.io/asgardeo"
+  - name: THUNDER_IMAGE_REPOSITORY
+    type: string
+    displayName: "Thunder Image Repository"
+    default: "thunder"
+  - name: THUNDER_IMAGE_TAG
+    type: string
+    displayName: "Thunder Image Tag"
+    default: "0.7.0"
+  - name: THUNDER_REPLICAS
+    type: string
+    displayName: "Thunder Replicas"
+    default: "2"
+  - name: THUNDER_CPU_LIMITS
+    type: string
+    displayName: "Thunder CPU Limits"
+    default: "1.5"
+  - name: THUNDER_CPU_REQUESTS
+    type: string
+    displayName: "Thunder CPU Requests"
+    default: "1"
+  - name: THUNDER_MEMORY_LIMITS
+    type: string
+    displayName: "Thunder Memory Limits"
+    default: "512Mi"
+  - name: THUNDER_MEMORY_REQUESTS
+    type: string
+    displayName: "Thunder Memory Requests"
+    default: "256Mi"
+  - name: THUNDER_HPA_ENABLED
+    type: string
+    displayName: "Thunder HPA Enabled"
+    default: "true"
+  - name: THUNDER_HPA_MAX_REPLICAS
+    type: string
+    displayName: "Thunder HPA Max Replicas"
+    default: "10"
+  - name: THUNDER_HPA_CPU_UTILIZATION
+    type: string
+    displayName: "Thunder HPA CPU Utilization"
+    default: "65"
+  - name: THUNDER_HPA_MEMORY_UTILIZATION
+    type: string
+    displayName: "Thunder HPA Memory Utilization"
+    default: "75"
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -59,6 +107,30 @@ variables:
     value: ${{parameters.THUNDER_REPO}}
   - name: THUNDER_REPO_BRANCH
     value: ${{parameters.THUNDER_REPO_BRANCH}}
+  - name: THUNDER_IMAGE_REGISTRY
+    value: ${{parameters.THUNDER_IMAGE_REGISTRY}}
+  - name: THUNDER_IMAGE_REPOSITORY
+    value: ${{parameters.THUNDER_IMAGE_REPOSITORY}}
+  - name: THUNDER_IMAGE_TAG
+    value: ${{parameters.THUNDER_IMAGE_TAG}}
+  - name: THUNDER_REPLICAS
+    value: ${{parameters.THUNDER_REPLICAS}}
+  - name: THUNDER_CPU_LIMITS
+    value: ${{parameters.THUNDER_CPU_LIMITS}}
+  - name: THUNDER_CPU_REQUESTS
+    value: ${{parameters.THUNDER_CPU_REQUESTS}}
+  - name: THUNDER_MEMORY_LIMITS
+    value: ${{parameters.THUNDER_MEMORY_LIMITS}}
+  - name: THUNDER_MEMORY_REQUESTS
+    value: ${{parameters.THUNDER_MEMORY_REQUESTS}}
+  - name: THUNDER_HPA_ENABLED
+    value: ${{parameters.THUNDER_HPA_ENABLED}}
+  - name: THUNDER_HPA_MAX_REPLICAS
+    value: ${{parameters.THUNDER_HPA_MAX_REPLICAS}}
+  - name: THUNDER_HPA_CPU_UTILIZATION
+    value: ${{parameters.THUNDER_HPA_CPU_UTILIZATION}}
+  - name: THUNDER_HPA_MEMORY_UTILIZATION
+    value: ${{parameters.THUNDER_HPA_MEMORY_UTILIZATION}}
 
 resources:
   repositories:
