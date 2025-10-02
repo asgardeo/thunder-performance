@@ -65,13 +65,6 @@ parameters:
     values:
       - QUICK
       - FULL
-  - name: POPULATE_TEST_DATA
-    displayName: Populate test data
-    type: string
-    default: false
-    values:
-      - true
-      - false
 
 variables:
   - group: vg-thunder-perf
@@ -175,9 +168,8 @@ jobs:
     workspace:
       clean: all
     steps:
-      - checkout: self
-
       - checkout: thunder-performance
+        path: "thunder-performance-repo"
         persistCredentials: true
 
       - task: UsePythonVersion@0
@@ -207,23 +199,22 @@ jobs:
           scriptType: bash
           useGlobalConfig: true
           scriptLocation: scriptPath
-          scriptPath: '$(Agent.BuildDirectory)/s/thunder-performance/perf-scripts/init_perf_run.sh'
+          scriptPath: '$(Agent.BuildDirectory)/thunder-performance-repo/perf-scripts/init_perf_run.sh'
           addSpnToEnvironment: true
         env:
           BUILD_NUM: $(Build.BuildNumber)
           BUILD_PURPOSE: ${{parameters.BUILD_PURPOSE}}
-          BRANCH: ${{parameters.PERFORMANCE_REPO_BRANCH}}
           GITHUB_USER_EMAIL: $(gitEmail)
           GITHUB_USERNAME: $(gitUsername)
           BUILD_TYPE: $(Build.Reason)
           BUILD_PATH: $(Build.ArtifactStagingDirectory)
-          DATABASE_HOST_NAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
-          THUNDER_HOST_NAME: 'thunder.local'
-          POPULATE_TEST_DATA: ${{parameters.POPULATE_TEST_DATA}}
+          DATABASE_HOST_NAME: $(DATABASE_HOSTNAME)
+          THUNDER_HOST_NAME: $(THUNDER_HOSTNAME)
+          POPULATE_TEST_DATA: "false"
           RUN_MODE: ${{parameters.RUN_MODE}}
           CONCURRENCY: ${{parameters.CONCURRENCY}}
           BASTION_NODE_IP: $(BASTION_NODE_IP)
-          WORKSPACE: '$(Agent.BuildDirectory)/s/thunder-performance/perf-scripts'
+          WORKSPACE: '$(Agent.BuildDirectory)/thunder-performance-repo/perf-scripts'
 
       - task: PublishPipelineArtifact@1
         displayName: Publish pipeline artifacts

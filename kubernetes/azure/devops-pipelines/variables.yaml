@@ -27,6 +27,8 @@ variables:
   INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET: "snet-aksinternallbthunder-$(PADDING)"
   TLS_SECRET_NAME: "thunder-tls"
   THUNDER_KUBERNETES_INGRESS: "thunder-perf-ingress"
+  THUNDER_HOSTNAME: "thunder.local"
+  DATABASE_HOSTNAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
 
   # Thunder Image Configuration
   THUNDER_IMAGE_REGISTRY: 'ghcr.io/asgardeo'
@@ -49,9 +51,9 @@ variables:
   # Database Configuration
   THUNDER_DB_TYPE: 'postgres'
   THUNDER_DB_NAME: 'thunderdb'
-  THUNDER_DB_HOST: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
+  THUNDER_DB_HOST: $(DATABASE_HOSTNAME)
   THUNDER_DB_PORT: '5432'
   RUNTIME_DB_TYPE: 'postgres'
   RUNTIME_DB_NAME: 'runtimedb'
-  RUNTIME_DB_HOST: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
+  RUNTIME_DB_HOST: $(DATABASE_HOSTNAME)
   RUNTIME_DB_PORT: '5432'
