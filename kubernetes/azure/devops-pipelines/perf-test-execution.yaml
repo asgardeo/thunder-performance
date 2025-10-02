@@ -175,8 +175,6 @@ jobs:
     workspace:
       clean: all
     steps:
-      - checkout: self
-
       - checkout: thunder-performance
         persistCredentials: true
 
