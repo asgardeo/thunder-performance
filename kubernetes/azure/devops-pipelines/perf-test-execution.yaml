@@ -65,6 +65,18 @@ parameters:
     values:
       - QUICK
       - FULL
+  - name: THUNDER_IMAGE_REGISTRY
+    displayName: Thunder Image Registry
+    type: string
+    default: "ghcr.io/asgardeo"
+  - name: THUNDER_IMAGE_REPOSITORY
+    displayName: Thunder Image Repository
+    type: string
+    default: "thunder"
+  - name: THUNDER_IMAGE_TAG
+    displayName: Thunder Image Tag
+    type: string
+    default: "0.7.0"
 
 variables:
   - group: vg-thunder-perf
@@ -157,6 +169,9 @@ jobs:
       - template: './templates/reinstall-thunder.yaml'
         parameters:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-helm-repo/install/helm
+          THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
+          THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
+          THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
 
   - job: thunder_performance_test
     displayName: Thunder performance test

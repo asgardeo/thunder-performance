@@ -23,6 +23,15 @@ parameters:
   - name: NAMESPACE
     type: string
     default: 'default'
+  - name: THUNDER_IMAGE_REGISTRY
+    type: string
+    default: 'ghcr.io/asgardeo'
+  - name: THUNDER_IMAGE_REPOSITORY
+    type: string
+    default: 'thunder'
+  - name: THUNDER_IMAGE_TAG
+    type: string
+    default: '0.7.0'
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -39,9 +48,9 @@ steps:
         helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
           --namespace ${{ parameters.NAMESPACE }} \
           --set deployment.replicaCount=$(THUNDER_REPLICAS) \
-          --set deployment.image.registry=$(THUNDER_IMAGE_REGISTRY) \
-          --set deployment.image.repository=$(THUNDER_IMAGE_REPOSITORY) \
-          --set deployment.image.tag=$(THUNDER_IMAGE_TAG) \
+          --set deployment.image.registry=${{ parameters.THUNDER_IMAGE_REGISTRY }} \
+          --set deployment.image.repository=${{ parameters.THUNDER_IMAGE_REPOSITORY }} \
+          --set deployment.image.tag=${{ parameters.THUNDER_IMAGE_TAG }} \
           --set deployment.resources.limits.cpu=$(THUNDER_CPU_LIMITS) \
           --set deployment.resources.requests.cpu=$(THUNDER_CPU_REQUESTS) \
           --set deployment.resources.limits.memory=$(THUNDER_MEMORY_LIMITS) \

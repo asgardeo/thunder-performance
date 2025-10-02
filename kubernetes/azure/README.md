@@ -186,6 +186,9 @@ This pipeline deploys Thunder to the provisioned AKS cluster through a series of
 | Add Hosts Entry to VM | Enable/disable hosts file configuration | `true`, `false` | `true` |
 | Terraform Repository | Repository containing Thunder           | String          | asgardeo/thunder-performance |
 | Terraform Repository Branch | Branch of the repository to use         | String          | main |
+| Thunder Image Registry | Docker registry for Thunder image       | String          | ghcr.io/asgardeo |
+| Thunder Image Repository | Docker repository for Thunder image     | String          | thunder |
+| Thunder Image Tag | Docker image tag for Thunder            | String          | 0.7.0 |
 
 ### Performance Test Execution Pipeline
 
@@ -210,6 +213,9 @@ This pipeline executes the performance tests against the deployed Thunder instan
 | Perf-Test purpose | Test run description for reporting                                                                                                           | String          | Regular Thunder performance test |
 | Run Mode | Test execution scope                                                                                                                         | `QUICK`, `FULL` | `QUICK`                          |
 | Populate test data | Enable/disable test data population. This should be executed as true when the test is executed for the first time after environment creation | `true`, `false` | `false`                          |
+| Thunder Image Registry | Docker registry for Thunder image       | String          | ghcr.io/asgardeo |
+| Thunder Image Repository | Docker repository for Thunder image     | String          | thunder |
+| Thunder Image Tag | Docker image tag for Thunder            | String          | 0.7.0 |
 
 
 ## Additional Resources
