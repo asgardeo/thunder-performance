@@ -23,33 +23,6 @@ parameters:
   - name: NAMESPACE
     type: string
     default: 'default'
-  - name: THUNDER_REPLICAS
-    type: string
-    default: '2'
-  - name: THUNDER_CPU_LIMITS
-    type: string
-    default: '1.5'
-  - name: THUNDER_CPU_REQUESTS
-    type: string
-    default: '1'
-  - name: THUNDER_MEMORY_LIMITS
-    type: string
-    default: '512Mi'
-  - name: THUNDER_MEMORY_REQUESTS
-    type: string
-    default: '256Mi'
-  - name: THUNDER_HPA_ENABLED
-    type: string
-    default: 'true'
-  - name: THUNDER_HPA_MAX_REPLICAS
-    type: string
-    default: '10'
-  - name: THUNDER_HPA_CPU_UTILIZATION
-    type: string
-    default: '65'
-  - name: THUNDER_HPA_MEMORY_UTILIZATION
-    type: string
-    default: '75'
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -76,12 +49,3 @@ steps:
       WORKING_DIRECTORY: ${{ parameters.WORKING_DIRECTORY }}
       RELEASE_NAME: ${{ parameters.RELEASE_NAME }}
       NAMESPACE: ${{ parameters.NAMESPACE }}
-      THUNDER_REPLICAS: ${{ parameters.THUNDER_REPLICAS }}
-      THUNDER_CPU_LIMITS: ${{ parameters.THUNDER_CPU_LIMITS }}
-      THUNDER_CPU_REQUESTS: ${{ parameters.THUNDER_CPU_REQUESTS }}
-      THUNDER_MEMORY_LIMITS: ${{ parameters.THUNDER_MEMORY_LIMITS }}
-      THUNDER_MEMORY_REQUESTS: ${{ parameters.THUNDER_MEMORY_REQUESTS }}
-      THUNDER_HPA_ENABLED: ${{ parameters.THUNDER_HPA_ENABLED }}
-      THUNDER_HPA_MAX_REPLICAS: ${{ parameters.THUNDER_HPA_MAX_REPLICAS }}
-      THUNDER_HPA_CPU_UTILIZATION: ${{ parameters.THUNDER_HPA_CPU_UTILIZATION }}
-      THUNDER_HPA_MEMORY_UTILIZATION: ${{ parameters.THUNDER_HPA_MEMORY_UTILIZATION }}

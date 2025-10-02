@@ -30,6 +30,19 @@ variables:
   THUNDER_HOSTNAME: "thunder.local"
   DATABASE_HOSTNAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
 
+  # Thunder Deployment Configuration
+  THUNDER_REPLICAS: '2'
+  THUNDER_CPU_LIMITS: '1.5'
+  THUNDER_CPU_REQUESTS: '1'
+  THUNDER_MEMORY_LIMITS: '512Mi'
+  THUNDER_MEMORY_REQUESTS: '256Mi'
+
+  # HPA and Cache Configuration
+  THUNDER_HPA_ENABLED: 'true'
+  THUNDER_HPA_MAX_REPLICAS: '10'
+  THUNDER_HPA_CPU_UTILIZATION: '65'
+  THUNDER_HPA_MEMORY_UTILIZATION: '75'
+
   # Database Configuration
   THUNDER_DB_TYPE: 'postgres'
   THUNDER_DB_NAME: 'thunderdb'

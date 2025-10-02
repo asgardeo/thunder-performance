@@ -23,33 +23,6 @@ parameters:
   - name: NAMESPACE
     type: string
     default: 'default'
-  - name: THUNDER_REPLICAS
-    type: string
-    default: '2'
-  - name: THUNDER_CPU_LIMITS
-    type: string
-    default: '1.5'
-  - name: THUNDER_CPU_REQUESTS
-    type: string
-    default: '1'
-  - name: THUNDER_MEMORY_LIMITS
-    type: string
-    default: '512Mi'
-  - name: THUNDER_MEMORY_REQUESTS
-    type: string
-    default: '256Mi'
-  - name: THUNDER_HPA_ENABLED
-    type: string
-    default: 'true'
-  - name: THUNDER_HPA_MAX_REPLICAS
-    type: string
-    default: '10'
-  - name: THUNDER_HPA_CPU_UTILIZATION
-    type: string
-    default: '65'
-  - name: THUNDER_HPA_MEMORY_UTILIZATION
-    type: string
-    default: '75'
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -65,18 +38,18 @@ steps:
         echo "Installing Thunder Helm Chart"
         helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
           --namespace ${{ parameters.NAMESPACE }} \
-          --set deployment.replicaCount=${{ parameters.THUNDER_REPLICAS }} \
+          --set deployment.replicaCount=$(THUNDER_REPLICAS) \
           --set deployment.image.registry=$(THUNDER_IMAGE_REGISTRY) \
           --set deployment.image.repository=$(THUNDER_IMAGE_REPOSITORY) \
           --set deployment.image.tag=$(THUNDER_IMAGE_TAG) \
-          --set deployment.resources.limits.cpu=${{ parameters.THUNDER_CPU_LIMITS }} \
-          --set deployment.resources.requests.cpu=${{ parameters.THUNDER_CPU_REQUESTS }} \
-          --set deployment.resources.limits.memory=${{ parameters.THUNDER_MEMORY_LIMITS }} \
-          --set deployment.resources.requests.memory=${{ parameters.THUNDER_MEMORY_REQUESTS }} \
-          --set hpa.enabled=${{ parameters.THUNDER_HPA_ENABLED }} \
-          --set hpa.maxReplicas=${{ parameters.THUNDER_HPA_MAX_REPLICAS }} \
-          --set hpa.averageUtilizationCPU=${{ parameters.THUNDER_HPA_CPU_UTILIZATION }} \
-          --set hpa.averageUtilizationMemory=${{ parameters.THUNDER_HPA_MEMORY_UTILIZATION }} \
+          --set deployment.resources.limits.cpu=$(THUNDER_CPU_LIMITS) \
+          --set deployment.resources.requests.cpu=$(THUNDER_CPU_REQUESTS) \
+          --set deployment.resources.limits.memory=$(THUNDER_MEMORY_LIMITS) \
+          --set deployment.resources.requests.memory=$(THUNDER_MEMORY_REQUESTS) \
+          --set hpa.enabled=$(THUNDER_HPA_ENABLED) \
+          --set hpa.maxReplicas=$(THUNDER_HPA_MAX_REPLICAS) \
+          --set hpa.averageUtilizationCPU=$(THUNDER_HPA_CPU_UTILIZATION) \
+          --set hpa.averageUtilizationMemory=$(THUNDER_HPA_MEMORY_UTILIZATION) \
           --set ingress.tlsSecretsName=$(TLS_SECRET_NAME) \
           --set configuration.database.identity.type=$(THUNDER_DB_TYPE) \
           --set configuration.database.identity.name=$(THUNDER_DB_NAME) \
