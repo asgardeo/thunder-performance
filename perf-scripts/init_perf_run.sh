@@ -25,14 +25,13 @@ MODE=$RUN_MODE
 
 echo ""
 echo "Starting performance test with params:"
-echo "    CONCURRENT_USERS: $CONCURRENT_USERS"
+echo "    CONCURRENCY: $CONCURRENCY"
 echo "    MODE: $MODE"
 echo "    PURPOSE: $BUILD_PURPOSE"
 echo "=========================================================="
 echo "Thunder Perf Environment - Status: "
-curl -s -i https://thunder.local/health/liveness | head -1
+curl -s -i https://$THUNDER_HOST_NAME/health/liveness | head -1
 
-echo "Changing Directory to Thunder Product Repository | Branch: $BRANCH"
 cd $WORKSPACE
 
 cd pre-provisioned
