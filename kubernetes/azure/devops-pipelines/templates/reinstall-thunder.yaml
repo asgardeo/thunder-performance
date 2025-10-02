@@ -23,6 +23,15 @@ parameters:
   - name: NAMESPACE
     type: string
     default: 'default'
+  - name: THUNDER_IMAGE_REGISTRY
+    type: string
+    default: 'ghcr.io/asgardeo'
+  - name: THUNDER_IMAGE_REPOSITORY
+    type: string
+    default: 'thunder'
+  - name: THUNDER_IMAGE_TAG
+    type: string
+    default: '0.7.0'
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -49,3 +58,6 @@ steps:
       WORKING_DIRECTORY: ${{ parameters.WORKING_DIRECTORY }}
       RELEASE_NAME: ${{ parameters.RELEASE_NAME }}
       NAMESPACE: ${{ parameters.NAMESPACE }}
+      THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
+      THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
+      THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
