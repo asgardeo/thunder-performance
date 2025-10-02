@@ -63,6 +63,42 @@ parameters:
     type: string
     displayName: "Thunder Image Tag"
     default: "0.7.0"
+  - name: THUNDER_REPLICAS
+    type: string
+    displayName: "Thunder Replicas"
+    default: "2"
+  - name: THUNDER_CPU_LIMITS
+    type: string
+    displayName: "Thunder CPU Limits"
+    default: "1.5"
+  - name: THUNDER_CPU_REQUESTS
+    type: string
+    displayName: "Thunder CPU Requests"
+    default: "1"
+  - name: THUNDER_MEMORY_LIMITS
+    type: string
+    displayName: "Thunder Memory Limits"
+    default: "512Mi"
+  - name: THUNDER_MEMORY_REQUESTS
+    type: string
+    displayName: "Thunder Memory Requests"
+    default: "256Mi"
+  - name: THUNDER_HPA_ENABLED
+    type: string
+    displayName: "Thunder HPA Enabled"
+    default: "true"
+  - name: THUNDER_HPA_MAX_REPLICAS
+    type: string
+    displayName: "Thunder HPA Max Replicas"
+    default: "10"
+  - name: THUNDER_HPA_CPU_UTILIZATION
+    type: string
+    displayName: "Thunder HPA CPU Utilization"
+    default: "65"
+  - name: THUNDER_HPA_MEMORY_UTILIZATION
+    type: string
+    displayName: "Thunder HPA Memory Utilization"
+    default: "75"
   - name: PERFORMANCE_REPO
     displayName: Performance repo name
     type: string
@@ -140,12 +176,18 @@ jobs:
     steps:
       - checkout: thunder-repo
         path: "thunder-repo"
-      - checkout: thunder-performance
-        path: "thunder-performance"
       - template: './templates/install-thunder.yaml'
         parameters:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/install/helm
-          CONFIG_SCRIPT_PATH: $(Agent.BuildDirectory)/thunder-performance/kubernetes/azure/devops-pipelines/scripts/thunder-deployment-config.sh
+          THUNDER_REPLICAS: ${{ parameters.THUNDER_REPLICAS }}
+          THUNDER_CPU_LIMITS: ${{ parameters.THUNDER_CPU_LIMITS }}
+          THUNDER_CPU_REQUESTS: ${{ parameters.THUNDER_CPU_REQUESTS }}
+          THUNDER_MEMORY_LIMITS: ${{ parameters.THUNDER_MEMORY_LIMITS }}
+          THUNDER_MEMORY_REQUESTS: ${{ parameters.THUNDER_MEMORY_REQUESTS }}
+          THUNDER_HPA_ENABLED: ${{ parameters.THUNDER_HPA_ENABLED }}
+          THUNDER_HPA_MAX_REPLICAS: ${{ parameters.THUNDER_HPA_MAX_REPLICAS }}
+          THUNDER_HPA_CPU_UTILIZATION: ${{ parameters.THUNDER_HPA_CPU_UTILIZATION }}
+          THUNDER_HPA_MEMORY_UTILIZATION: ${{ parameters.THUNDER_HPA_MEMORY_UTILIZATION }}
 
   - job: add_hosts_entry_to_vm
     displayName: Add Hosts Entry to VM
