@@ -34,6 +34,18 @@ parameters:
     displayName: 'Scale down Perf environment'
     type: boolean
     default: false
+  - name: THUNDER_IMAGE_REGISTRY
+    displayName: Thunder Image Registry
+    type: string
+    default: "ghcr.io/asgardeo"
+  - name: THUNDER_IMAGE_REPOSITORY
+    displayName: Thunder Image Repository
+    type: string
+    default: "thunder"
+  - name: THUNDER_IMAGE_TAG
+    displayName: Thunder Image Tag
+    type: string
+    default: "0.7.0"
   - name: PERFORMANCE_REPO
     displayName: Performance repo name
     type: string
@@ -65,18 +77,6 @@ parameters:
     values:
       - QUICK
       - FULL
-  - name: THUNDER_IMAGE_REGISTRY
-    displayName: Thunder Image Registry
-    type: string
-    default: "ghcr.io/asgardeo"
-  - name: THUNDER_IMAGE_REPOSITORY
-    displayName: Thunder Image Repository
-    type: string
-    default: "thunder"
-  - name: THUNDER_IMAGE_TAG
-    displayName: Thunder Image Tag
-    type: string
-    default: "0.7.0"
 
 variables:
   - group: vg-thunder-perf
