@@ -17,6 +17,9 @@
 parameters:
   - name: WORKING_DIRECTORY
     type: string
+  - name: CONFIG_SCRIPT_PATH
+    type: string
+    default: ''
   - name: RELEASE_NAME
     type: string
     default: 'thunder-perf'
@@ -47,5 +50,6 @@ steps:
   - template: ./install-thunder.yaml
     parameters:
       WORKING_DIRECTORY: ${{ parameters.WORKING_DIRECTORY }}
+      CONFIG_SCRIPT_PATH: ${{ parameters.CONFIG_SCRIPT_PATH }}
       RELEASE_NAME: ${{ parameters.RELEASE_NAME }}
       NAMESPACE: ${{ parameters.NAMESPACE }}
