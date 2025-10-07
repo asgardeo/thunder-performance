@@ -338,8 +338,10 @@ Resources:
             export PATH=~/.local/bin:$PATH
             curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
             curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+            sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
             apt-get update
-            DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client
+            DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client-17
             DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
             echo "export PATH=$PATH" >>/etc/environment
             curl -o jdk-setup.tar.gz https://performance-thunder-resources.s3.us-west-1.amazonaws.com/OpenJDK17U-jdk_x64_linux_hotspot_17.0.16_8.tar.gz
@@ -426,8 +428,10 @@ Resources:
               export PATH=~/.local/bin:$PATH
               curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
               curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+              sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+              wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
               apt-get update
-              DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client
+              DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client-17
               DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
               echo "export PATH=$PATH" >>/etc/environment
               curl -o go-setup.tar.gz https://performance-thunder-resources.s3.us-west-1.amazonaws.com/go1.25.0.linux-amd64.tar.gz
