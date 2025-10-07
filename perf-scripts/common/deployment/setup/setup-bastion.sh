@@ -112,7 +112,6 @@ fi
 
 sudo chown -R ubuntu:ubuntu workspace
 sudo chown -R ubuntu:ubuntu apache-jmeter-*
-sudo chown -R ubuntu:ubuntu /tmp/jmeter.log
 sudo chown -R ubuntu:ubuntu jmeter.log
 
 echo ""

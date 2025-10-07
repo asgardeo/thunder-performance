@@ -23,8 +23,6 @@ default_carbon_home=$(realpath ~/thunder)
 carbon_home=$default_carbon_home
 default_waiting_time=30
 waiting_time=$default_waiting_time
-default_heap_size="4g"
-heap_size="$default_heap_size"
 
 function usage() {
     echo ""
@@ -33,21 +31,17 @@ function usage() {
     echo ""
     echo "-c: The Thunder path."
     echo "-w: The waiting time in seconds until the server restart.."
-    echo "-m: The heap memory size of Ballerina VM. Default: $default_heap_size."
     echo "-h: Display this help and exit."
     echo ""
 }
 
-while getopts "c:w:m:h" opts; do
+while getopts "c:w:h" opts; do
     case $opts in
     c)
         carbon_home=${OPTARG}
         ;;
     w)
         waiting_time=${OPTARG}
-        ;;
-    m)
-        heap_size=${OPTARG}
         ;;
     h)
         usage
@@ -67,11 +61,6 @@ fi
 
 if [[ -z $waiting_time ]]; then
     echo "Please provide the waiting time."
-    exit 1
-fi
-
-if [[ -z $heap_size ]]; then
-    echo "Please provide the heap size for the Thunder."
     exit 1
 fi
 

@@ -67,10 +67,10 @@ for row in rows[1:]:
     if scenario == row[0]:
         if row[3] in scenarios.get(scenario) or row[3] in [burst_keyword + " " + request for request in scenarios.get(scenario)]:
             if concurrency == row[2]:
-                scenario_concurrency_sum += int(row[14])
+                scenario_concurrency_sum += float(row[14])
             else:
                 scenarios_critical_requests[scenario].append(scenario_concurrency_sum)
-                scenario_concurrency_sum = int(row[14])
+                scenario_concurrency_sum = float(row[14])
                 concurrency = row[2]
         count += 1  # Increase the count when the same scenario appears
     else:
@@ -80,7 +80,7 @@ for row in rows[1:]:
         scenario_concurrency_sum = 0
         concurrency = row[2]
         if row[3] in scenarios.get(scenario) or row[3] in [burst_keyword + " " + request for request in scenarios.get(scenario)]:
-            scenario_concurrency_sum += int(row[14])
+            scenario_concurrency_sum += float(row[14])
         count = 1
 scenarioCount.append(count)  # Append the count of the last scenario
 scenarios_critical_requests[scenario].append(scenario_concurrency_sum)
