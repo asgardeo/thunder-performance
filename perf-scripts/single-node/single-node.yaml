@@ -348,10 +348,8 @@ Resources:
             sudo mv /usr/lib/jvm/jdk* /usr/lib/jvm/jdk
             sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk/bin/java" 1
             sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk/bin/javac" 1
-            sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk/bin/javaws" 1
             sudo chmod a+x /usr/bin/java
             sudo chmod a+x /usr/bin/javac
-            sudo chmod a+x /usr/bin/javaws
             export JAVA_HOME=/usr/lib/jvm/jdk
             sudo su
             echo "export JAVA_HOME=/usr/lib/jvm/jdk" >>/etc/environment

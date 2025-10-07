@@ -446,7 +446,7 @@ function run_test_data_scripts() {
     run_jmeter_scripts "${scripts[@]}"
 }
 
-function initiailize_test() {
+function initialize_test() {
 
     # Filter scenarios
     if [[ ${#include_scenario_names[@]} -gt 0 ]] || [[ ${#exclude_scenario_names[@]} -gt 0 ]]; then
@@ -552,7 +552,7 @@ trap exit_handler EXIT
 
 function test_scenarios() {
 
-    initiailize_test
+    initialize_test
     declare -ng scenario
     for scenario in ${!test_scenario@}; do
         local skip=${scenario[skip]}
@@ -589,7 +589,7 @@ function test_scenarios() {
 
             before_execute_test_scenario "$db_type"
 
-            export JVM_ARGS="-Xms$jmeter_client_heap_size -Xmx$jmeter_client_heap_size  -Xlog:gc:$report_location/jmeter_gc.log $JMETER_JVM_ARGS"
+            export JVM_ARGS="-Xms$jmeter_client_heap_size -Xmx$jmeter_client_heap_size -Xlog:gc:$report_location/jmeter_gc.log $JMETER_JVM_ARGS"
 
             local jmeter_command="jmeter -n -t $script_dir/$jmx_file"
             for param in "${jmeter_params[@]}"; do

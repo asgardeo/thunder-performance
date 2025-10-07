@@ -388,7 +388,7 @@ execute_db_command "$rds_host" "/home/ubuntu/workspace/setup/resources/$db_type/
 echo ""
 echo "Running Thunder node 1 setup script..."
 echo "============================================"
-ssh_bastion_cmd "./setup/setup-thunder.sh -n $no_of_nodes -m $db_type -a thunder1 -i $wso2_thunder_1_ip -r $rds_host"
+ssh_bastion_cmd "./setup/setup-thunder.sh -n $no_of_nodes -m $db_type -a wso2thunder -i $wso2_thunder_1_ip -r $rds_host"
 
 echo ""
 echo "Running performance tests..."
