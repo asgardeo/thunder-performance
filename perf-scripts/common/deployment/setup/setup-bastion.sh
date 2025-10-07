@@ -23,7 +23,7 @@ no_of_nodes=""
 wso2_thunder_1_ip=""
 lb_host=""
 rds_host=""
-wso2thunder_1_host_alias=thunder1
+wso2thunder_1_host_alias=wso2thunder
 lb_alias=loadbalancer
 
 function usage() {
@@ -112,7 +112,6 @@ fi
 
 sudo chown -R ubuntu:ubuntu workspace
 sudo chown -R ubuntu:ubuntu apache-jmeter-*
-sudo chown -R ubuntu:ubuntu /tmp/jmeter.log
 sudo chown -R ubuntu:ubuntu jmeter.log
 
 echo ""

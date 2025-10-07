@@ -1,0 +1,123 @@
+name: VM Performance Test on AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      THUNDER_PACK_URL:
+        description: 'URL to download Thunder pack'
+        required: true
+        default: 'https://github.com/asgardeo/thunder/releases/download/v0.7.0/thunder-v0.7.0-linux-x64.zip'
+        type: string
+      DEPLOYMENT:
+        description: 'Deployment type'
+        required: false
+        default: 'single-node'
+        type: choice
+        options:
+          - single-node
+      CPU_CORES:
+        description: 'Number of CPU cores'
+        required: false
+        default: '4'
+        type: choice
+        options:
+          - '2'
+          - '4'
+          - '8'
+      ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
+        description: 'Additional parameters for performance script'
+        required: false
+        default: '-d 15 -w 5 -x false -y JWT'
+        type: string
+      PERFORMANCE_REPO:
+        description: 'Performance repository URL'
+        required: false
+        default: 'https://github.com/asgardeo/thunder-performance'
+        type: string
+      BRANCH:
+        description: 'Branch to use from performance repository'
+        required: false
+        default: 'main'
+        type: string
+      MODE:
+        description: 'Testing mode'
+        required: false
+        default: 'FULL'
+        type: choice
+        options:
+          - FULL
+          - QUICK
+      USE_DELAYS:
+        description: 'Enable delays in testing'
+        required: false
+        default: true
+        type: boolean
+      CONCURRENCY:
+        description: 'Concurrency pattern'
+        required: false
+        default: '50-50'
+        type: choice
+        options:
+          - '50-500'
+          - '500-3000'
+          - '1000-3000'
+          - '50-3000'
+          - '50-50'
+          - '50-1000'
+          - '50-1500'
+      DB_TYPE:
+        description: 'Database type'
+        required: false
+        default: 'postgres'
+        type: choice
+        options:
+          - postgres
+
+jobs:
+  vm-performance-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Execute VM Performance Test
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          CPU_CORES: ${{ inputs.CPU_CORES }}
+          ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
+          PERFORMANCE_REPO: ${{ inputs.PERFORMANCE_REPO }}
+          BRANCH: ${{ inputs.BRANCH }}
+          MODE: ${{ inputs.MODE }}
+          USE_DELAYS: ${{ inputs.USE_DELAYS }}
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          DB_TYPE: ${{ inputs.DB_TYPE }}
+          BUILD_USER_EMAIL: ${{ github.actor }}@github.com
+          BUILD_CAUSE: ${{ github.event_name }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          chmod +x .github/scripts/vm-perf-workflow-script.sh
+          bash .github/scripts/vm-perf-workflow-script.sh
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results-${{ github.run_number }}
+          path: ${{ github.workspace }}/workspace/results-*
+          retention-days: 30

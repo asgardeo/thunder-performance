@@ -316,7 +316,12 @@ sleep "${minimum_stack_creation_wait_time}"m
 
 echo ""
 echo "Polling till the stack creation completes..."
-aws cloudformation wait stack-create-complete --stack-name "$stack_id"
+aws cloudformation wait stack-create-complete --stack-name "$stack_id" || {
+  echo "Stack creation failed!"
+  aws cloudformation describe-stack-events --stack-name "$stack_id" | jq '.StackEvents[] | select(.ResourceStatus | contains("FAILED")) | {LogicalResourceId: .LogicalResourceId, ResourceStatusReason: .ResourceStatusReason}'
+  echo "Exiting due to stack creation failure."
+  exit 1
+}
 printf "Stack creation time: %s\n" "$(format_time "$(measure_time "$stack_create_start_time")")"
 
 echo ""
@@ -368,7 +373,6 @@ scp_bastion_cmd "target/performance-thunder-*.tar.gz" "/home/ubuntu"
 scp_bastion_cmd "$jmeter_setup" "/home/ubuntu/"
 scp_bastion_cmd "$thunder_setup" "/home/ubuntu/thunder.zip"
 scp_bastion_cmd "$key_file" "/home/ubuntu/private_key.pem"
-scp_r_bastion_cmd "$results_dir/lib/*" "/home/ubuntu/"
 
 echo ""
 echo "Running Bastion Node setup script..."
@@ -384,7 +388,7 @@ execute_db_command "$rds_host" "/home/ubuntu/workspace/setup/resources/$db_type/
 echo ""
 echo "Running Thunder node 1 setup script..."
 echo "============================================"
-ssh_bastion_cmd "./setup/setup-thunder.sh -n $no_of_nodes -m $db_type -a thunder1 -i $wso2_thunder_1_ip -r $rds_host"
+ssh_bastion_cmd "./setup/setup-thunder.sh -n $no_of_nodes -m $db_type -a wso2thunder -i $wso2_thunder_1_ip -r $rds_host"
 
 echo ""
 echo "Running performance tests..."
@@ -422,7 +426,7 @@ echo "Creating summary results markdown file..."
 ./jmeter/create-summary-markdown.py --json-files cf-test-metadata.json results/test-metadata.json --column-names \
     "Concurrent Users" "95th Percentile of Response Time (ms)"
 
-rm -rf cf-test-metadata.json cloudformation/ common/ gcviewer.jar is/ jmeter/ jtl-splitter/ netty-service/ payloads/ results/ sar/ setup/ restart-thunder.sh
+rm -rf cf-test-metadata.json cloudformation/ common/ gcviewer.jar is/ jmeter/ jtl-splitter/ netty-service/ payloads/ sar/ setup/ results/ thunder/restart-thunder.sh summary/
 
 echo ""
 echo "Done."

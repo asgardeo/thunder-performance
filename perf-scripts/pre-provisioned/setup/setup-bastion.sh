@@ -107,5 +107,4 @@ workspace/setup/setup-jmeter-client-thunder.sh -g -k ./temp.pem \
             -a rds -n "$rds_host"
 sudo chown -R $bastion_user:$bastion_user workspace
 sudo chown -R $bastion_user:$bastion_user apache-jmeter-*
-sudo chown -R $bastion_user:$bastion_user /tmp/jmeter.log
 sudo chown -R $bastion_user:$bastion_user jmeter.log

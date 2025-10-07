@@ -21,7 +21,7 @@
 
 script_dir=$(dirname "$0")
 
-wso2thunder_host_alias=thunder1
+wso2thunder_host_alias=wso2thunder
 lb_ssh_host_alias=loadbalancer
 rds_ssh_host_alias=rds
 
@@ -33,7 +33,7 @@ source $script_dir/test_scenarios.sh
 
 function before_execute_test_scenario() {
 
-    ssh $wso2thunder_host_alias "./restart-thunder.sh -m $heap"
+    ssh $wso2thunder_host_alias "./restart-thunder.sh"
 
     # Skipping Cleaning DBs as that is not required in Thunder
     # echo "Cleaning databases..."
@@ -43,11 +43,13 @@ function before_execute_test_scenario() {
 
 function after_execute_test_scenario() {
 
-    is_home="/home/ubuntu/thunder"
+    thunder_home="/home/ubuntu/thunder"
     write_server_metrics $wso2thunder_host_alias $wso2thunder_host_alias
-    download_file "$wso2thunder_host_alias" $is_home/repository/logs/wso2carbon.log "$wso2thunder_host_alias.log"
-    download_file "$wso2thunder_host_alias" $is_home/repository/logs/gc.log $wso2thunder_host_alias"_gc.log"
-    download_file "$wso2thunder_host_alias" $is_home/repository/logs/heap-dump.hprof "$wso2thunder_host_alias-heap-dump.hprof"
+    # Download all thunder*.log files
+    ssh $wso2thunder_host_alias "find $thunder_home -name 'thunder*.log'" | while read -r log_file; do
+        base_name=$(basename "$log_file")
+        download_file "$wso2thunder_host_alias" "$log_file" "$wso2thunder_host_alias-$base_name"
+    done
 }
 
 test_scenarios

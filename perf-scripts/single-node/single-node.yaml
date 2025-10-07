@@ -337,21 +337,21 @@ Resources:
             #!/bin/bash
             export PATH=~/.local/bin:$PATH
             curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-            curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+            curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+            sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
             apt-get update
-            DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client
+            DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client-17
             DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
             echo "export PATH=$PATH" >>/etc/environment
-            curl -o jdk-setup.tar.gz https://performance-is-packs.s3.amazonaws.com/resources/jdk-11.0.15.1_linux-x64_bin.tar.gz
+            curl -o jdk-setup.tar.gz https://performance-thunder-resources.s3.us-west-1.amazonaws.com/OpenJDK17U-jdk_x64_linux_hotspot_17.0.16_8.tar.gz
             sudo mkdir /usr/lib/jvm
             sudo tar -xvf jdk-setup.tar.gz -C /usr/lib/jvm
             sudo mv /usr/lib/jvm/jdk* /usr/lib/jvm/jdk
             sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk/bin/java" 1
             sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk/bin/javac" 1
-            sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk/bin/javaws" 1
             sudo chmod a+x /usr/bin/java
             sudo chmod a+x /usr/bin/javac
-            sudo chmod a+x /usr/bin/javaws
             export JAVA_HOME=/usr/lib/jvm/jdk
             sudo su
             echo "export JAVA_HOME=/usr/lib/jvm/jdk" >>/etc/environment
@@ -396,44 +396,52 @@ Resources:
             - DEBIAN_FRONTEND=noninteractive apt-get install -yq nginx
             - mkdir -p /etc/nginx/ssl/thunder
 
-  WSO2ThunderNodeLaunchConfigurationsuffix:
-    Type: 'AWS::AutoScaling::LaunchConfiguration'
+  WSO2ThunderNodeLaunchTemplatesuffix:
+    Type: 'AWS::EC2::LaunchTemplate'
     Properties:
-      # Uncomment below to assign a public IP to the Thunder instance.
-      # AssociatePublicIpAddress: true
-      ImageId: !FindInMap
-        - WSO2ThunderAMIRegionMapsuffix
-        - !Ref 'AWS::Region'
-        - AMI
-      InstanceType: !Ref WSO2InstanceType
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeSize: '20'
-            VolumeType: gp2
-            DeleteOnTermination: 'true'
-      KeyName: !Ref KeyPairName
-      SecurityGroups:
-        - !Ref WSO2ThunderSecurityGroupsuffix
-      UserData: !Base64
-        'Fn::Sub':
-          - |+
-            #!/bin/bash
-            export PATH=~/.local/bin:$PATH
-            curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-            curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
-            apt-get update
-            DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client
-            DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
-            echo "export PATH=$PATH" >>/etc/environment
-            curl -o go-setup.tar.gz https://performance-is-packs.s3.amazonaws.com/resources/go1.25.0.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go-setup.tar.gz
-            sudo su
-            echo "export PATH=$PATH:/usr/local/go/bin" >>/etc/environment
-            echo "export PGPASSWORD=${DBPassword}" >>/etc/environment
-            source /etc/environment
-            exit
-          - DBPassword: !Ref DBPassword
+      LaunchTemplateName: !Sub 'WSO2ThunderNodeLaunchTemplate-${AWS::StackName}'
+      LaunchTemplateData:
+        # Uncomment below to assign a public IP to the Thunder instance.
+        # NetworkInterfaces:
+        #  - AssociatePublicIpAddress: true
+        #    DeviceIndex: 0
+        #    Groups:
+        #      - !Ref WSO2ThunderSecurityGroupsuffix
+        ImageId: !FindInMap
+          - WSO2ThunderAMIRegionMapsuffix
+          - !Ref 'AWS::Region'
+          - AMI
+        InstanceType: !Ref WSO2InstanceType
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: '20'
+              VolumeType: gp2
+              DeleteOnTermination: 'true'
+        KeyName: !Ref KeyPairName
+        SecurityGroupIds:
+          - !Ref WSO2ThunderSecurityGroupsuffix
+        UserData: !Base64
+          'Fn::Sub':
+            - |+
+              #!/bin/bash
+              export PATH=~/.local/bin:$PATH
+              curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+              curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+              sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+              wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client-17
+              DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
+              echo "export PATH=$PATH" >>/etc/environment
+              curl -o go-setup.tar.gz https://performance-thunder-resources.s3.us-west-1.amazonaws.com/go1.25.0.linux-amd64.tar.gz
+              sudo tar -C /usr/local -xzf go-setup.tar.gz
+              sudo su
+              echo "export PATH=$PATH:/usr/local/go/bin" >>/etc/environment
+              echo "export PGPASSWORD=${DBPassword}" >>/etc/environment
+              source /etc/environment
+              exit
+            - DBPassword: !Ref DBPassword
     DependsOn:
       - WSO2ThunderSecurityGroupsuffix
       - WSO2ThunderVPCInternetGatewayAttachmentsuffix
@@ -441,7 +449,9 @@ Resources:
   WSO2ThunderNode1AutoScalingGroupsuffix:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
-      LaunchConfigurationName: !Ref WSO2ThunderNodeLaunchConfigurationsuffix
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WSO2ThunderNodeLaunchTemplatesuffix
+        Version: !GetAtt WSO2ThunderNodeLaunchTemplatesuffix.LatestVersionNumber
       DesiredCapacity: 1
       MinSize: 1
       MaxSize: 1
@@ -460,7 +470,7 @@ Resources:
           Value: !Ref UserTag
           PropagateAtLaunch: 'true'
     DependsOn:
-      - WSO2ThunderNodeLaunchConfigurationsuffix
+      - WSO2ThunderNodeLaunchTemplatesuffix
 
 Outputs:
   InstanceID:
@@ -558,18 +568,18 @@ Parameters:
 Mappings:
   WSO2ThunderAMIRegionMapsuffix:
     us-east-1:
-      AMI: ami-0b86cfbff176b7d3a
+      AMI: ami-07a3add10195338ad # Ubuntu 22.04
     us-east-2:
-      AMI: ami-0125a7e5b2489477a
+      AMI: ami-07e7b4e1174e7d3ba
     us-west-1:
-      AMI: ami-0e81aa4c57820bb57
+      AMI: ami-0bf9b0963bad93e5f
     us-west-2:
-      AMI: ami-03fa1f014b48fa6bd
+      AMI: ami-08f083c12f82733f6
   DBTypeMap:
     postgres:
-      Version: '14.19'
+      Version: '17.6'
       License: 'postgresql-license'
-      ParameterGroup: 'perf-test-param-group-postgres'
+      ParameterGroup: 'perf-test-param-group-postgres17'
       FromPort: '5432'
       ToPort: '5432'
       DBType: 'postgres'

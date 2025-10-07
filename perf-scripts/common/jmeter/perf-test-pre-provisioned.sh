@@ -378,7 +378,7 @@ function run_test_data_scripts() {
     done
 }
 
-function initiailize_test() {
+function initialize_test() {
 
     # Filter scenarios
     if [[ ${#include_scenario_names[@]} -gt 0 ]] || [[ ${#exclude_scenario_names[@]} -gt 0 ]]; then
@@ -489,7 +489,7 @@ trap exit_handler EXIT
 function test_scenarios() {
     
     echo "Concurrent Users: ${concurrent_users_array[@]}"
-    initiailize_test
+    initialize_test
     declare -ng scenario
     for scenario in ${!test_scenario@}; do
         local skip=${scenario[skip]}

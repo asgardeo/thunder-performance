@@ -84,12 +84,6 @@
                                 <include>**/target</include>
                             </includes>
                         </fileSet>
-                        <fileSet>
-                            <directory>lib</directory>
-                            <includes>
-                                <include>**/target</include>
-                            </includes>
-                        </fileSet>
                     </filesets>
                 </configuration>
             </plugin>
