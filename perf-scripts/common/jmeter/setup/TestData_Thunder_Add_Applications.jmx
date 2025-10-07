@@ -24,7 +24,7 @@
         </collectionProp>
       </Arguments>
       <hashTree/>
-      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Test Variables">
+      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Test Variables" enabled="true">
         <collectionProp name="Arguments.arguments">
           <elementProp name="applicationNamePrefix" elementType="Argument">
             <stringProp name="Argument.name">applicationNamePrefix</stringProp>
@@ -163,7 +163,11 @@ if (y == 0) {
                     &quot;https://localhost:3000&quot;&#xd;
                 ],&#xd;
                 &quot;grant_types&quot;: [&#xd;
+                	&quot;authorization_code&quot;,&#xd;
                     &quot;client_credentials&quot;&#xd;
+                ],&#xd;
+                &quot;response_types&quot;: [&#xd;
+                    &quot;code&quot;&#xd;
                 ],&#xd;
                 &quot;token_endpoint_auth_methods&quot;: [&#xd;
                     &quot;client_secret_basic&quot;,&#xd;
