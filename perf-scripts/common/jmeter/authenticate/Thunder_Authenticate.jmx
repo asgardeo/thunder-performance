@@ -87,7 +87,7 @@
         <longProp name="ThreadGroup.delay">0</longProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
         <boolProp name="ThreadGroup.scheduler">true</boolProp>
-        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
           <intProp name="LoopController.loops">-1</intProp>
           <boolProp name="LoopController.continue_forever">false</boolProp>
@@ -169,7 +169,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.test_field">Assertion.response_headers</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
-            <stringProp name="Assertion.custom_message">Test failed - common auth login</stringProp>
+            <stringProp name="Assertion.custom_message">Test failed - authenticate</stringProp>
           </ResponseAssertion>
           <hashTree/>
           <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Assert User Id is Present">

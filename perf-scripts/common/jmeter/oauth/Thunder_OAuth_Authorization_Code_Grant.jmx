@@ -112,7 +112,7 @@
         <longProp name="ThreadGroup.delay">0</longProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
         <boolProp name="ThreadGroup.scheduler">true</boolProp>
-        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
           <intProp name="LoopController.loops">-1</intProp>
           <boolProp name="LoopController.continue_forever">false</boolProp>
@@ -245,7 +245,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.test_field">Assertion.response_headers</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
-            <stringProp name="Assertion.custom_message">Test failed - authorize end poiont</stringProp>
+            <stringProp name="Assertion.custom_message">Test failed - send request to authorize endpoint</stringProp>
           </ResponseAssertion>
           <hashTree/>
           <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - applicationId">
@@ -303,7 +303,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.test_field">Assertion.response_headers</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
-            <stringProp name="Assertion.custom_message">Test failed - common auth login</stringProp>
+            <stringProp name="Assertion.custom_message">Test failed - perform authnetication</stringProp>
           </ResponseAssertion>
           <hashTree/>
           <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Flow Status Complete Assertion">
@@ -315,7 +315,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <boolProp name="ISREGEX">false</boolProp>
           </JSONPathAssertion>
           <hashTree/>
-          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor - assertion">
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor - assertion" enabled="true">
             <stringProp name="JSONPostProcessor.referenceNames">assertion</stringProp>
             <stringProp name="JSONPostProcessor.jsonPathExprs">assertion</stringProp>
             <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
@@ -353,10 +353,10 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.test_field">Assertion.response_headers</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
-            <stringProp name="Assertion.custom_message">Test failed - common auth redirect</stringProp>
+            <stringProp name="Assertion.custom_message">Test failed - obtain authorization code</stringProp>
           </ResponseAssertion>
           <hashTree/>
-          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - code">
+          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - code" enabled="true">
             <stringProp name="RegexExtractor.useHeaders">false</stringProp>
             <stringProp name="RegexExtractor.refname">code</stringProp>
             <stringProp name="RegexExtractor.regex">[\?&amp;]code=([0-9a-fA-F\-]+)</stringProp>
@@ -367,7 +367,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           </RegexExtractor>
           <hashTree/>
         </hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="4-Get access token">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="4-Get access token" enabled="true">
           <stringProp name="HTTPSampler.domain">${thunder_host}</stringProp>
           <stringProp name="HTTPSampler.port">${thunder_port}</stringProp>
           <stringProp name="HTTPSampler.protocol">https</stringProp>
@@ -425,7 +425,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.test_field">Assertion.response_headers</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
-            <stringProp name="Assertion.custom_message">Test failed - get token</stringProp>
+            <stringProp name="Assertion.custom_message">Test failed - get access token</stringProp>
           </ResponseAssertion>
           <hashTree/>
           <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Assertion - access token">
@@ -435,11 +435,11 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
             <boolProp name="Assertion.assume_success">true</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
-            <stringProp name="Assertion.custom_message">Test failed - get token</stringProp>
+            <stringProp name="Assertion.custom_message">Test failed - get access token</stringProp>
           </ResponseAssertion>
           <hashTree/>
         </hashTree>
-        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Constant Throughput">
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Constant Throughput" enabled="true">
           <intProp name="calcMode">1</intProp>
           <stringProp name="throughput">${constantTPS}</stringProp>
         </ConstantThroughputTimer>

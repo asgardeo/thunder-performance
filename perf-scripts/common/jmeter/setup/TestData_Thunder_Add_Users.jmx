@@ -71,7 +71,7 @@
         <stringProp name="ThreadGroup.num_threads">${noOfThreads}</stringProp>
         <stringProp name="ThreadGroup.ramp_time">${rampUpPeriod}</stringProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
-        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
           <stringProp name="LoopController.loops">${noOfUsersPerThread}</stringProp>
           <boolProp name="LoopController.continue_forever">false</boolProp>
@@ -146,7 +146,7 @@ if (y == 0) {
           </elementProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="201 HTTP Code Response Assertion" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="201 HTTP Code Response Assertion">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="103171776">HTTP/1.1 201</stringProp>
             </collectionProp>
