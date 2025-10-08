@@ -135,17 +135,17 @@ Add the following secrets to the previously created Key Vault:
 
 Create the following pipelines in Azure DevOps:
 
-| Pipeline Name | Source File | Purpose |
-|---------------|-------------|---------|
-| Terraform Execution | `kubernetes/azure/devops-pipelines/execute-terraform.yaml` | Provisions the infrastructure |
-| Deploy Thunder | `kubernetes/azure/devops-pipelines/deploy-thunder.yaml` | Deploys Thunder to the AKS cluster |
-| Performance Test Execution | `kubernetes/azure/devops-pipelines/perf-test-execution.yaml` | Runs performance tests |
+| Pipeline Name                 | Source File | Purpose |
+|-------------------------------|-------------|---------|
+| Execute Terraform             | `kubernetes/azure/devops-pipelines/execute-terraform.yaml` | Provisions the infrastructure |
+| Deploy Thunder                | `kubernetes/azure/devops-pipelines/deploy-thunder.yaml` | Deploys Thunder to the AKS cluster |
+| Run Performance Test | `kubernetes/azure/devops-pipelines/perf-test-execution.yaml` | Runs performance tests |
 
 ## Usage
 
 This section details the three primary pipelines used for Thunder performance testing on Azure. Each pipeline serves a specific purpose in the overall workflow.
 
-### Terraform Execution Pipeline
+### Execute Terraform  Pipeline
 
 This pipeline manages the infrastructure provisioning and teardown, offering two primary functions:
 
@@ -190,7 +190,7 @@ This pipeline deploys Thunder to the provisioned AKS cluster through a series of
 | Thunder Image Repository | Docker repository for Thunder image     | String          | thunder |
 | Thunder Image Tag | Docker image tag for Thunder            | String          | 0.7.0 |
 
-### Performance Test Execution Pipeline
+### Run Performance Test Pipeline
 
 This pipeline executes the performance tests against the deployed Thunder instance, managing environment scaling for optimal resource utilization.
 

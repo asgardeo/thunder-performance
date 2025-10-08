@@ -76,17 +76,16 @@ function install_az_cli() {
 
 function install_java() {
 
-  echo "[INFO]: Installing Java 8"
-  curl -o jdk-setup.tar.gz https://s3.amazonaws.com/is-performance-test/java-setup/jdk-8u212-linux-x64.tar.gz
+  echo "[INFO]: Installing Java 17"
+  wget -O jdk-setup.tar.gz  https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.16+8/OpenJDK17U-jdk_x64_linux_hotspot_17.0.16_8.tar.gz
+  sudo rm -rf /usr/lib/jvm
   sudo mkdir /usr/lib/jvm
   sudo tar -xvf jdk-setup.tar.gz -C /usr/lib/jvm
   sudo mv /usr/lib/jvm/jdk* /usr/lib/jvm/jdk
   sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk/bin/java" 1
   sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk/bin/javac" 1
-  sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk/bin/javaws" 1
   sudo chmod a+x /usr/bin/java
   sudo chmod a+x /usr/bin/javac
-  sudo chmod a+x /usr/bin/javaws
   export JAVA_HOME=/usr/lib/jvm/jdk
   sudo sh -c 'echo "export JAVA_HOME=/usr/lib/jvm/jdk" >> /etc/environment'
   source /etc/environment
@@ -95,23 +94,22 @@ function install_java() {
 
 function download_jmeter() {
 
-  echo "[INFO]: Downloading JMeter 3.3"
-  JMETER_URL="https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-3.3.tgz"
-  JMETER_SHA_URL="https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-3.3.tgz.sha512"
+  echo "[INFO]: Downloading JMeter 5.6.3"
+  JMETER_URL="https://dlcdn.apache.org//jmeter/binaries/apache-jmeter-5.6.3.tgz"
+  JMETER_SHA_URL="https://www.apache.org/dist/jmeter/source/apache-jmeter-5.6.3_src.tgz.sha512"
   wget -P "$HOME" "$JMETER_URL"
   wget -P "$HOME" "$JMETER_SHA_URL"
-  echo "[INFO]: Verifying JMeter 3.3 checksum"
+  echo "[INFO]: Verifying JMeter checksum"
   OLDPWD=$(pwd)
   cd $HOME
-  sha512sum -c apache-jmeter-3.3.tgz.sha512
-  rm -f apache-jmeter-3.3.tgz.sha512
+  sha512sum -c apache-jmeter-5.6.3.tgz.sha512
+  rm -f apache-jmeter-5.6.3.tgz.sha512
   cd $OLDPWD
   if [ $? -ne 0 ]; then
     echo "[ERROR]: JMeter checksum verification failed!"
     exit 1
   fi
   echo "[INFO]: JMeter download and verification completed."
-  # Optionally remove the checksum file
   echo "[INFO]: JMeter download completed."
 }
 
