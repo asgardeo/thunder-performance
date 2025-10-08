@@ -162,7 +162,7 @@ variable "default_node_pool_max_count" {
 variable "postgres_server_version" {
   description = "The version of Postgres to use for the flexible server"
   type        = string
-  default     = "17"
+  default     = "16"
 }
 
 variable "postgres_server_admin_username" {
