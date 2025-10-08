@@ -19,7 +19,8 @@ thunder-performance/
 │   ├── common/                  # Common utilities for performance testing
 │   ├── pre-provisioned/         # Scripts for pre-provisioned test environments
 │   └── single-node/             # Scripts for single-node test environments
-
+└── .github/                     # GitHub specific configurations and workflows
+    └── workflows/               # GitHub Actions workflow definitions
 ```
 
 ## Key Components
@@ -29,6 +30,14 @@ thunder-performance/
 The `kubernetes/azure/` directory contains the infrastructure definitions and deployment pipelines for Azure. 
 
 For detailed information about the Kubernetes deployment, please refer to the [Kubernetes Azure README](https://github.com/asgardeo/thunder-performance/blob/main/kubernetes/azure/README.md).
+
+
+#### VM Performance Test Workflow
+
+The repository includes GitHub Actions workflows for automated performance testing:
+Located at `.github/workflows/vm-perf-workflow.yml`, this workflow automates performance testing on AWS virtual machines.
+
+For detailed information, please refer to the [VM Performance Test Workflow README](https://github.com/asgardeo/thunder-performance/blob/main/.github/workflows/README.md)
 
 ### Performance Scripts
 
