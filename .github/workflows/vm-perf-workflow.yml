@@ -10,14 +10,14 @@ on:
         type: string
       DEPLOYMENT:
         description: 'Deployment type'
-        required: false
+        required: true
         default: 'single-node'
         type: choice
         options:
           - single-node
       CPU_CORES:
         description: 'Number of CPU cores'
-        required: false
+        required: true
         default: '4'
         type: choice
         options:
@@ -26,22 +26,22 @@ on:
           - '8'
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
-        required: false
+        required: true
         default: '-d 15 -w 5 -x false -y JWT'
         type: string
       PERFORMANCE_REPO:
         description: 'Performance repository URL'
-        required: false
+        required: true
         default: 'https://github.com/asgardeo/thunder-performance'
         type: string
       BRANCH:
         description: 'Branch to use from performance repository'
-        required: false
+        required: true
         default: 'main'
         type: string
       MODE:
         description: 'Testing mode'
-        required: false
+        required: true
         default: 'FULL'
         type: choice
         options:
@@ -49,12 +49,12 @@ on:
           - QUICK
       USE_DELAYS:
         description: 'Enable delays in testing'
-        required: false
+        required: true
         default: true
         type: boolean
       CONCURRENCY:
         description: 'Concurrency pattern'
-        required: false
+        required: true
         default: '50-50'
         type: choice
         options:
@@ -67,7 +67,7 @@ on:
           - '50-1500'
       DB_TYPE:
         description: 'Database type'
-        required: false
+        required: true
         default: 'postgres'
         type: choice
         options:
