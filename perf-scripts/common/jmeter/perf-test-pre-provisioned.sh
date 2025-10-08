@@ -365,7 +365,7 @@ function run_test_data_scripts() {
 
     echo "Running test data setup scripts"
     echo "=========================================================================================="
-    declare -a scripts=("TestData_Thunder_Add_Applications.jmx")
+    declare -a scripts=("TestData_Thunder_Add_Applications.jmx" "TestData_Thunder_Add_Users.jmx")
     setup_dir="$script_dir/setup"
 
     for script in "${scripts[@]}"; do
