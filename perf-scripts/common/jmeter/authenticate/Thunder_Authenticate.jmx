@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Authenticate Endpoint">
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+    </TestPlan>
+    <hashTree>
+      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Server Variables">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="thunder_host" elementType="Argument">
+            <stringProp name="Argument.name">thunder_host</stringProp>
+            <stringProp name="Argument.value">${__P(host,localhost)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="thunder_port" elementType="Argument">
+            <stringProp name="Argument.name">thunder_port</stringProp>
+            <stringProp name="Argument.value">${__P(port,8090)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </Arguments>
+      <hashTree/>
+      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Test Variables" enabled="true">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="usernamePrefix" elementType="Argument">
+            <stringProp name="Argument.name">usernamePrefix</stringProp>
+            <stringProp name="Argument.value">testUser_</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="password" elementType="Argument">
+            <stringProp name="Argument.name">password</stringProp>
+            <stringProp name="Argument.value">j55lIvck7w*R</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </Arguments>
+      <hashTree/>
+      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="noOfThreads" elementType="Argument">
+            <stringProp name="Argument.name">noOfThreads</stringProp>
+            <stringProp name="Argument.value">${__P(concurrency,1)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="noOfUsers" elementType="Argument">
+            <stringProp name="Argument.name">noOfUsers</stringProp>
+            <stringProp name="Argument.value">${__P(userCount,1000)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="timeToRun" elementType="Argument">
+            <stringProp name="Argument.name">timeToRun</stringProp>
+            <stringProp name="Argument.value">${__P(time,10)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+            <stringProp name="Argument.desc"></stringProp>
+          </elementProp>
+          <elementProp name="rampUpPeriod" elementType="Argument">
+            <stringProp name="Argument.name">rampUpPeriod</stringProp>
+            <stringProp name="Argument.value">${__P(rampUpPeriod,10)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="constantTPS" elementType="Argument">
+            <stringProp name="Argument.name">constantTPS</stringProp>
+            <stringProp name="Argument.value">${__P(constantTPS,10000000)}</stringProp>
+            <stringProp name="Argument.desc">samples per minute.</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="deployment" elementType="Argument">
+            <stringProp name="Argument.name">deployment</stringProp>
+            <stringProp name="Argument.value">${__P(deployment,&quot;active-passive&quot;)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="noOfNodes" elementType="Argument">
+            <stringProp name="Argument.name">noOfNodes</stringProp>
+            <stringProp name="Argument.value">${__P(noOfNodes,1)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </Arguments>
+      <hashTree/>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Authenticate">
+        <boolProp name="ThreadGroup.delayedStart">true</boolProp>
+        <stringProp name="ThreadGroup.num_threads">${noOfThreads}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${rampUpPeriod}</stringProp>
+        <stringProp name="ThreadGroup.duration">${timeToRun}</stringProp>
+        <longProp name="ThreadGroup.delay">0</longProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <RandomVariableConfig guiclass="TestBeanGUI" testclass="RandomVariableConfig" testname="Random User Counter" enabled="true">
+          <stringProp name="maximumValue">${noOfUsers}</stringProp>
+          <stringProp name="minimumValue">1</stringProp>
+          <stringProp name="outputFormat"></stringProp>
+          <boolProp name="perThread">true</boolProp>
+          <stringProp name="randomSeed"></stringProp>
+          <stringProp name="variableName">user_count_id</stringProp>
+        </RandomVariableConfig>
+        <hashTree/>
+        <BeanShellPreProcessor guiclass="TestBeanGUI" testclass="BeanShellPreProcessor" testname="Set Requesting Node" enabled="true">
+          <stringProp name="filename"></stringProp>
+          <stringProp name="parameters"></stringProp>
+          <boolProp name="resetInterpreter">false</boolProp>
+          <stringProp name="script">String deploymentType = vars.get(&quot;deployment&quot;);
+int numOfNodes = Integer.parseInt(vars.get(&quot;noOfNodes&quot;));
+int x = Integer.parseInt(vars.get(&quot;user_count_id&quot;));
+int y = x - (x/numOfNodes)*numOfNodes;
+
+if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
+    vars.put(&quot;serverNode&quot;, &quot;node1&quot;);
+} else if (y == 1) {
+    vars.put(&quot;serverNode&quot;, &quot;node2&quot;);
+} else if (y == 2) {
+    vars.put(&quot;serverNode&quot;, &quot;node3&quot;);
+} else {
+    vars.put(&quot;serverNode&quot;, &quot;node4&quot;);
+}
+</stringProp>
+        </BeanShellPreProcessor>
+        <hashTree/>
+        <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager" enabled="true">
+          <collectionProp name="CookieManager.cookies"/>
+          <boolProp name="CookieManager.clearEachIteration">true</boolProp>
+          <boolProp name="CookieManager.controlledByThreadGroup">false</boolProp>
+        </CookieManager>
+        <hashTree/>
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">X-Server-Select</stringProp>
+              <stringProp name="Header.value">${serverNode}</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Perform Authentication" enabled="true">
+          <stringProp name="HTTPSampler.domain">${thunder_host}</stringProp>
+          <stringProp name="HTTPSampler.port">${thunder_port}</stringProp>
+          <stringProp name="HTTPSampler.protocol">https</stringProp>
+          <stringProp name="HTTPSampler.path">/users/authenticate</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{&#xd;
+  &quot;username&quot;: &quot;${usernamePrefix}${user_count_id}&quot;,&#xd;
+  &quot;password&quot;: &quot;${password}&quot;&#xd;
+}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 200 Response Assertion" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="103171775">HTTP/1.1 200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_headers</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">2</intProp>
+            <stringProp name="Assertion.custom_message">Test failed - authenticate</stringProp>
+          </ResponseAssertion>
+          <hashTree/>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Assert User Id is Present" enabled="true">
+            <stringProp name="JSON_PATH">id</stringProp>
+            <stringProp name="EXPECTED_VALUE"></stringProp>
+            <boolProp name="JSONVALIDATION">false</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">true</boolProp>
+          </JSONPathAssertion>
+          <hashTree/>
+        </hashTree>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Constant Throughput" enabled="true">
+          <intProp name="calcMode">1</intProp>
+          <stringProp name="throughput">${constantTPS}</stringProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

@@ -33,7 +33,24 @@ declare -A test_scenario0=(
     [skip]=false
     [modes]="QUICK FULL"
 )
-
+declare -A test_scenario1=(
+    [name]="01-thunder_oauth_authorization_code_grant"
+    [display_name]="Authorization Code Grant Type"
+    [description]="Obtain an access token using the OAuth 2.0 authorization code grant type."
+    [jmx]="oauth/Thunder_OAuth_Authorization_Code_Grant.jmx"
+    [tenantMode]=false
+    [skip]=false
+    [modes]="QUICK FULL PUBLISH"
+)
+declare -A test_scenario2=(
+    [name]="02-thunder_authenticate"
+    [display_name]="Authentication"
+    [description]="Authenticate a user."
+    [jmx]="authenticate/Thunder_Authenticate.jmx"
+    [tenantMode]=false
+    [skip]=false
+    [modes]="QUICK FULL PUBLISH"
+)
 
 function before_execute_test_scenario() {
 
