@@ -252,7 +252,7 @@ module "container_insights_data_collection_rule" {
 
 module "container_insights_data_collection_rule_association" {
   source                                = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Monitor-Data-Collection-Rule-Association?ref=v2.19.0"
-  data_collection_rule_association_name = "containerinsightsextension"
+  data_collection_rule_association_name = join("-", [var.project, "container-insights-extension", var.environment])
   data_collection_rule_id               = module.container_insights_data_collection_rule.data_collection_rule_id
   target_resource_id                    = module.aks-cluster.aks_cluster_id
 }
