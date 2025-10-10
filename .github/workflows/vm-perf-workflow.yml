@@ -65,13 +65,14 @@ on:
           - '50-50'
           - '50-1000'
           - '50-1500'
-      DB_TYPE:
-        description: 'Database type'
-        required: true
-        default: 'postgres'
-        type: choice
-        options:
-          - postgres
+      PUSH_BENCHMARKS_TO_GITHUB:
+        description: 'Push benchmark results to GitHub'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
 
 jobs:
   vm-performance-test:
@@ -80,6 +81,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -106,10 +109,12 @@ jobs:
           MODE: ${{ inputs.MODE }}
           USE_DELAYS: ${{ inputs.USE_DELAYS }}
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
-          DB_TYPE: ${{ inputs.DB_TYPE }}
+          DB_TYPE: 'postgres'
           BUILD_USER_EMAIL: ${{ github.actor }}@github.com
           BUILD_CAUSE: ${{ github.event_name }}
           BUILD_NUMBER: ${{ github.run_number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUSH_BENCHMARKS_TO_GITHUB: ${{ inputs.PUSH_BENCHMARKS_TO_GITHUB }}
         run: |
           chmod +x .github/scripts/vm-perf-workflow-script.sh
           bash .github/scripts/vm-perf-workflow-script.sh
