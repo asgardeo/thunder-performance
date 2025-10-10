@@ -61,7 +61,7 @@ module "log-analytics-workspace" {
 
 # AKS cluster
 module "aks-cluster" {
-  source                     = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/AKS-Generic?ref=v2.18.10"
+  source                     = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/AKS-Generic?ref=v2.19.0"
   aks_cluster_name           = join("-", [var.project, var.environment, var.location, var.padding])
   aks_cluster_dns_prefix     = join("-", [var.project, var.environment, var.location, var.padding])
   location                   = var.location
@@ -92,6 +92,7 @@ module "aks-cluster" {
   outbound_type                   = "loadBalancer"
   api_server_authorized_ip_ranges = var.api_server_authorized_ip_ranges
   aks_azure_rbac_enabled          = true
+  msi_auth_for_monitoring_enabled = true
 
   # Default node pool configuration
   default_node_pool_name                         = var.default_node_pool_name
@@ -219,4 +220,39 @@ module "vm-perf-runner" {
   source_image_id           = var.vm_image_id
   tags                      = local.default_tags
   depends_on                = [module.vm-subnet]
+}
+
+module "container_insights_data_collection_rule" {
+  source                               = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Monitor-Data-Collection-Rule?ref=v2.19.0"
+  data_collection_rule_name            = join("-", ["MSCI", "aks", var.project, var.environment, var.location, var.padding])
+  location                             = var.location
+  resource_group_name                  = module.resource-group.resource_group_name
+  kind                                 = "Linux"
+  tags                                 = local.default_tags
+  data_flow_destinations               = ["workspace"]
+  data_flow_streams                    = ["Microsoft-ContainerInsights-Group-Default"]
+  destination_la_name                  = "workspace"
+  destination_la_workspace_resource_id = module.log-analytics-workspace.log_analytics_workspace_id
+
+  # Add extension data source for ContainerInsights
+  data_sources_extensions = [{
+    name           = "ContainerInsightsExtension"
+    extension_name = "ContainerInsights"
+    extension_json = jsonencode({
+      dataCollectionSettings = {
+        enableContainerLogV2   = true
+        interval               = "1m"
+        namespaceFilteringMode = "Off"
+      }
+    })
+    streams            = ["Microsoft-ContainerInsights-Group-Default"]
+    input_data_sources = []
+  }]
+}
+
+module "container_insights_data_collection_rule_association" {
+  source                                = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Monitor-Data-Collection-Rule-Association?ref=v2.19.0"
+  data_collection_rule_association_name = "containerinsightsextension"
+  data_collection_rule_id               = module.container_insights_data_collection_rule.data_collection_rule_id
+  target_resource_id                    = module.aks-cluster.aks_cluster_id
 }
