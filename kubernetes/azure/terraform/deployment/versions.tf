@@ -20,6 +20,6 @@ terraform {
   }
 
   required_providers {
-    azurerm = "= 4.44.0"
+    azurerm = "= 4.47.0"
   }
 }
