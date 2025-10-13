@@ -39,7 +39,7 @@ declare -A test_scenario1=(
 )
 declare -A test_scenario2=(
     [name]="02-thunder_authenticate"
-    [display_name]="Authentication"
+    [display_name]="User Authentication"
     [description]="Authenticate a user."
     [jmx]="authenticate/Thunder_Authenticate.jmx"
     [tenantMode]=false
