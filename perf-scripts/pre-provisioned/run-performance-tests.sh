@@ -31,7 +31,7 @@ declare -A test_scenario0=(
     [jmx]="oauth/Thunder_OAuth_Client_Credentials_Grant.jmx"
     [tenantMode]=false
     [skip]=false
-    [modes]="QUICK FULL"
+    [modes]="FULL"
 )
 declare -A test_scenario1=(
     [name]="01-thunder_oauth_authorization_code_grant"
@@ -49,7 +49,7 @@ declare -A test_scenario2=(
     [jmx]="authenticate/Thunder_Authenticate.jmx"
     [tenantMode]=false
     [skip]=false
-    [modes]="QUICK FULL"
+    [modes]="FULL"
 )
 
 function before_execute_test_scenario() {
