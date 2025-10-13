@@ -186,7 +186,7 @@ variable "postgres_server_storage_size" {
 variable "postgres_server_sku_name" {
   description = "The SKU name for the Postgres server"
   type        = string
-  default     = "B_Standard_B2s"
+  default     = "GP_Standard_D2s_v3"
 }
 
 # Database name variables
