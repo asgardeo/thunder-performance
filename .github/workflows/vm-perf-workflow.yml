@@ -113,7 +113,7 @@ jobs:
           BUILD_USER_EMAIL: ${{ github.actor }}@github.com
           BUILD_CAUSE: ${{ github.event_name }}
           BUILD_NUMBER: ${{ github.run_number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
           PUSH_BENCHMARKS_TO_GITHUB: ${{ inputs.PUSH_BENCHMARKS_TO_GITHUB }}
         run: |
           chmod +x .github/scripts/vm-perf-workflow-script.sh
