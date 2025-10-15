@@ -44,7 +44,17 @@ burst_keyword = "Burst"  # Keyword to identify burst scenarios
 # Define the dictionary {Scenario_Name: Critical_Request_Name}
 scenarios = {
     "Client Credentials Grant Type": [
-        "1 Get Token Client Credential Grant"]
+        "1 Get access token"
+    ],
+    "Authorization Code Grant Type": [
+        "1 Send request to authorize endpoint",
+        "2 Perform authentication",
+        "3 Obtain authorization code",
+        "4 Get access token"
+    ],
+    "User Authentication": [
+        "1 Perform user authentication"
+    ]
 }
 
 scenarios_critical_requests = scenarios.copy()
