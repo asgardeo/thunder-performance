@@ -434,7 +434,7 @@ Resources:
           - !Ref 'AWS::Region'
           - AMI
         InstanceType: !Ref WSO2InstanceType
-        IamInstanceProfile: !GetAtt CloudWatchAgentServerInstanceProfile.Arn
+        IamInstanceProfile: !Ref CloudWatchAgentServerInstanceProfile
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
