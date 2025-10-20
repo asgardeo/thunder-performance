@@ -243,6 +243,28 @@ Resources:
       FileSystemId: !Ref WSO2ThunderEFSFileSystemsuffix
       SecurityGroups:
         - !Ref WSO2ThunderEFSSecurityGroupsuffix
+  # CloudWatch IAM Role for EC2 instances to publish memory metrics
+  CloudWatchAgentServerRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
+      Path: /
+
+  CloudWatchAgentServerInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref CloudWatchAgentServerRole
+
   # Product configurations
   BastionSecurityGroupsuffix:
     Type: 'AWS::EC2::SecurityGroup'
@@ -412,6 +434,7 @@ Resources:
           - !Ref 'AWS::Region'
           - AMI
         InstanceType: !Ref WSO2InstanceType
+        IamInstanceProfile: !GetAtt CloudWatchAgentServerInstanceProfile.Arn
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
@@ -434,6 +457,54 @@ Resources:
               DEBIAN_FRONTEND=noninteractive apt install -y postgresql-client-17
               DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
               echo "export PATH=$PATH" >>/etc/environment
+              
+              # Install CloudWatch Agent
+              cd /tmp
+              sudo wget -q https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+              sudo dpkg -i amazon-cloudwatch-agent.deb || true
+              sudo apt-get install -f -y
+              
+              # Create CloudWatch Agent configuration - MEMORY ONLY
+              sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc/
+              sudo tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json > /dev/null << 'EOF'
+              {
+                "agent": {
+                  "metrics_collection_interval": 60,
+                  "run_as_user": "cwagent"
+                },
+                "metrics": {
+                  "namespace": "WSO2Thunder/Performance",
+                  "metrics_collected": {
+                    "mem": {
+                      "measurement": [
+                        "mem_used_percent",
+                        "mem_available_percent",
+                        "mem_used",
+                        "mem_cached",
+                        "mem_total",
+                        "mem_available"
+                      ],
+                      "metrics_collection_interval": 60
+                    }
+                  }
+                }
+              }
+              EOF
+              
+              # Set proper permissions
+              sudo chmod 644 /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+              
+              # Start CloudWatch Agent
+              sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+                -a fetch-config \
+                -m ec2 \
+                -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+                -s
+              
+              # Enable agent to start on boot
+              sudo systemctl enable amazon-cloudwatch-agent
+
+              # Install Go and other tools
               curl -o go-setup.tar.gz https://performance-thunder-resources.s3.us-west-1.amazonaws.com/go1.25.0.linux-amd64.tar.gz
               sudo tar -C /usr/local -xzf go-setup.tar.gz
               sudo su
@@ -476,6 +547,9 @@ Outputs:
   InstanceID:
     Description: The Bastion ID
     Value: !Ref WSO2BastionInstancesuffix
+  MemoryMonitoringNamespaces:
+    Description: CloudWatch namespaces for memory metrics
+    Value: 'WSO2Thunder/Application (Thunder instances)'
 
 Parameters:
   KeyPairName:
