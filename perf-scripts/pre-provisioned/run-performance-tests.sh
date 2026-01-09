@@ -31,7 +31,7 @@ declare -A test_scenario0=(
     [jmx]="oauth/Thunder_OAuth_Client_Credentials_Grant.jmx"
     [tenantMode]=false
     [skip]=false
-    [modes]="FULL"
+    [modes]="QUICK FULL"
 )
 declare -A test_scenario1=(
     [name]="01-thunder_oauth_authorization_code_grant"

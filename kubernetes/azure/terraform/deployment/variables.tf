@@ -202,6 +202,12 @@ variable "runtime_db_name" {
   default     = "runtimedb"
 }
 
+variable "user_db_name" {
+  description = "The name of the User database"
+  type        = string
+  default     = "userdb"
+}
+
 # VM variables
 variable "vm_perf_runner_name" {
   description = "The name of the performance runner VM"

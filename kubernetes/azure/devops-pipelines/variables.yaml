@@ -29,6 +29,7 @@ variables:
   THUNDER_KUBERNETES_INGRESS: "thunder-perf-ingress"
   THUNDER_HOSTNAME: "thunder.local"
   DATABASE_HOSTNAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
+  THUNDER_SKIP_SECURITY: 'true'
 
   # Thunder Deployment Configuration
   THUNDER_REPLICAS: '2'
@@ -52,3 +53,7 @@ variables:
   RUNTIME_DB_NAME: 'runtimedb'
   RUNTIME_DB_HOST: $(DATABASE_HOSTNAME)
   RUNTIME_DB_PORT: '5432'
+  USER_DB_TYPE: 'postgres'
+  USER_DB_NAME: 'userdb'
+  USER_DB_HOST: $(DATABASE_HOSTNAME)
+  USER_DB_PORT: '5432'

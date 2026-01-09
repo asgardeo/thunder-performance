@@ -32,6 +32,12 @@ parameters:
   - name: THUNDER_IMAGE_TAG
     type: string
     default: '0.7.0'
+  - name: SKIP_SECURITY
+    type: string
+    default: 'false'
+  - name: RUN_SETUP_SCRIPT
+    type: boolean
+    default: false
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -43,6 +49,10 @@ steps:
       scriptLocation: 'inlineScript'
       workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
       inlineScript: |
+        if ! helm list -n ${{ parameters.NAMESPACE }} -q --filter "^${{ parameters.RELEASE_NAME }}$" | grep -q "^${{ parameters.RELEASE_NAME }}$"; then
+          echo "Release ${{ parameters.RELEASE_NAME }} not found. Skipping uninstallation."
+          exit 0
+        fi
         echo "Uninstalling Thunder Helm Chart"
         if ! helm uninstall ${{ parameters.RELEASE_NAME }} \
           --namespace ${{ parameters.NAMESPACE }}; then
@@ -61,3 +71,5 @@ steps:
       THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
       THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
       THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
+      SKIP_SECURITY: ${{ parameters.SKIP_SECURITY }}
+      RUN_SETUP_SCRIPT: ${{ parameters.RUN_SETUP_SCRIPT }}
