@@ -49,7 +49,7 @@
         </collectionProp>
       </Arguments>
       <hashTree/>
-      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+      <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
         <collectionProp name="Arguments.arguments">
           <elementProp name="noOfThreads" elementType="Argument">
             <stringProp name="Argument.name">noOfThreads</stringProp>
@@ -84,7 +84,7 @@
         </collectionProp>
       </Arguments>
       <hashTree/>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Create Application">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Create Application" enabled="true">
         <stringProp name="ThreadGroup.num_threads">${noOfThreads}</stringProp>
         <stringProp name="ThreadGroup.ramp_time">${rampUpPeriod}</stringProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -152,7 +152,6 @@ if (y == 0) {
                 <stringProp name="Argument.value">{&#xd;
     &quot;name&quot;: &quot;${applicationNamePrefix}${application_count_id}&quot;,&#xd;
     &quot;description&quot;: &quot;Initial testing App&quot;,&#xd;
-    &quot;auth_flow_graph_id&quot;: &quot;auth_flow_config_basic&quot;,&#xd;
     &quot;inbound_auth_config&quot;: [&#xd;
         {&#xd;
             &quot;type&quot;: &quot;oauth2&quot;,&#xd;
