@@ -140,6 +140,7 @@ jobs:
           THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
+          SKIP_SECURITY: 'true'
 
   - job: add_hosts_entry_to_vm
     displayName: Add Hosts Entry to VM

@@ -26,7 +26,7 @@ declare -A test_scenario0=(
     [jmx]="oauth/Thunder_OAuth_Client_Credentials_Grant.jmx"
     [tenantMode]=false
     [skip]=false
-    [modes]="FULL"
+    [modes]="QUICK FULL"
 )
 declare -A test_scenario1=(
     [name]="01-thunder_oauth_authorization_code_grant"
@@ -38,10 +38,10 @@ declare -A test_scenario1=(
     [modes]="QUICK FULL"
 )
 declare -A test_scenario2=(
-    [name]="02-thunder_authenticate"
-    [display_name]="User Authentication"
-    [description]="Authenticate a user."
-    [jmx]="authenticate/Thunder_Authenticate.jmx"
+    [name]="02-thunder_authenticate_with_credentials"
+    [display_name]="User Authentication with Credentials"
+    [description]="Authenticate a user using credentials."
+    [jmx]="authenticate/Authenticate_With_Credentials.jmx"
     [tenantMode]=false
     [skip]=false
     [modes]="FULL"

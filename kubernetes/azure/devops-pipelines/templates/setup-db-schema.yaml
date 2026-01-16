@@ -54,11 +54,15 @@ steps:
         POSTGRES_ADMIN_PASSWORD=$(POSTGRES-ADMIN-PASSWORD)
         RUNTIME_DB_NAME=$(RUNTIME_DB_NAME)
         THUNDER_DB_NAME=$(THUNDER_DB_NAME)
+        USER_DB_NAME=$(USER_DB_NAME)
         RUNTIME_DB_HOST=$(RUNTIME_DB_HOST)
         THUNDER_DB_HOST=$(THUNDER_DB_HOST)
+        USER_DB_HOST=$(USER_DB_HOST)
         RUNTIME_DB_PORT=$(RUNTIME_DB_PORT)
         THUNDER_DB_PORT=$(THUNDER_DB_PORT)
+        USER_DB_PORT=$(USER_DB_PORT)
         ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP "export PGPASSWORD=$POSTGRES_ADMIN_PASSWORD && \
         cd /home/$BASTION_USER/dbscripts/ && \
         psql -h $RUNTIME_DB_HOST -p $RUNTIME_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $RUNTIME_DB_NAME -f runtimedb/postgres.sql && \
-        psql -h $THUNDER_DB_HOST -p $THUNDER_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $THUNDER_DB_NAME -f thunderdb/postgres.sql"
+        psql -h $THUNDER_DB_HOST -p $THUNDER_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $THUNDER_DB_NAME -f thunderdb/postgres.sql && \
+        psql -h $USER_DB_HOST -p $USER_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $USER_DB_NAME -f userdb/postgres.sql"
