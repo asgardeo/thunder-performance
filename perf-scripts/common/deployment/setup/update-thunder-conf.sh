@@ -98,13 +98,25 @@ echo "-------------------------------------------"
 sudo bash -c "echo '0.0.0.0 thunder.wso2.com' >> /etc/hosts"
 
 echo ""
+echo "Running thunder setup script..."
+echo "-------------------------------------------"
+
+cd "$carbon_home"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+LOG_FILE="thunder_setup_${TIMESTAMP}.log"
+bash setup.sh > "$LOG_FILE" 2>&1 &
+cd "../"
+echo "Waiting 60s for Thunder server setup to complete..."
+sleep 60s
+
+echo ""
 echo "Starting Thunder server..."
 echo "-------------------------------------------"
 
 cd "$carbon_home"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="thunder_${TIMESTAMP}.log"
-bash start.sh > "$LOG_FILE" 2>&1 &
+THUNDER_SKIP_SECURITY=true bash start.sh > "$LOG_FILE" 2>&1 &
 cd "../"
 echo "Waiting 30s for Thunder server to start..."
 sleep 30s

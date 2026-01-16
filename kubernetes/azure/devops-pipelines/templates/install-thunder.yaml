@@ -32,6 +32,12 @@ parameters:
   - name: THUNDER_IMAGE_TAG
     type: string
     default: '0.7.0'
+  - name: SKIP_SECURITY
+    type: string
+    default: 'false'
+  - name: RUN_SETUP_SCRIPT
+    type: boolean
+    default: true
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -71,5 +77,13 @@ steps:
           --set configuration.database.runtime.host=$(RUNTIME_DB_HOST) \
           --set configuration.database.runtime.port=$(RUNTIME_DB_PORT) \
           --set configuration.database.runtime.username=$(POSTGRES-ADMIN-USERNAME) \
-          --set configuration.database.runtime.password=$(POSTGRES-ADMIN-PASSWORD)
+          --set configuration.database.runtime.password=$(POSTGRES-ADMIN-PASSWORD) \
+          --set configuration.database.user.type=$(USER_DB_TYPE) \
+          --set configuration.database.user.name=$(USER_DB_NAME) \
+          --set configuration.database.user.host=$(USER_DB_HOST) \
+          --set configuration.database.user.port=$(USER_DB_PORT) \
+          --set configuration.database.user.username=$(POSTGRES-ADMIN-USERNAME) \
+          --set configuration.database.user.password=$(POSTGRES-ADMIN-PASSWORD) \
+          --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
+          --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }}
         echo "Thunder Helm Chart installed successfully"
