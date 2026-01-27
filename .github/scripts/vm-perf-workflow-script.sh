@@ -47,7 +47,11 @@ cd workspace
 echo ""
 echo "Downloading Thunder Pack..."
 echo "=========================================================="
-wget -q -O "$WORKSPACE"/thunder.zip "$THUNDER_PACK_URL"
+if [ -f "$WORKSPACE/thunder.zip" ]; then
+    echo "Thunder pack found locally at $WORKSPACE/thunder.zip. Skipping download."
+else
+    wget -q -O "$WORKSPACE"/thunder.zip "$THUNDER_PACK_URL"
+fi
 
 sudo rm -rf thunder-performance
 echo ""

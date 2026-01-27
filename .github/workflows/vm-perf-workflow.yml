@@ -71,6 +71,70 @@ on:
         default: false
         type: boolean
 
+  workflow_call:
+    inputs:
+      THUNDER_PACK_URL:
+        description: 'URL to download Thunder pack'
+        required: false
+        default: 'https://github.com/asgardeo/thunder/releases/download/v0.7.0/thunder-v0.7.0-linux-x64.zip'
+        type: string
+      DEPLOYMENT:
+        description: 'Deployment type'
+        required: false
+        default: 'single-node'
+        type: string
+      CPU_CORES:
+        description: 'Number of CPU cores'
+        required: false
+        default: '4'
+        type: string
+      ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
+        description: 'Additional parameters for performance script'
+        required: false
+        default: '-d 15 -w 5 -x false -y JWT'
+        type: string
+      PERFORMANCE_REPO:
+        description: 'Performance repository URL'
+        required: false
+        default: 'https://github.com/asgardeo/thunder-performance'
+        type: string
+      BRANCH:
+        description: 'Branch to use from performance repository'
+        required: false
+        default: 'main'
+        type: string
+      MODE:
+        description: 'Testing mode'
+        required: false
+        default: 'FULL'
+        type: string
+      USE_DELAYS:
+        description: 'Enable delays in testing'
+        required: false
+        default: true
+        type: boolean
+      CONCURRENCY:
+        description: 'Concurrency pattern'
+        required: false
+        default: '50-50'
+        type: string
+      PUSH_BENCHMARKS_TO_GITHUB:
+        description: 'Push benchmark results to GitHub'
+        required: false
+        default: false
+        type: boolean
+      THUNDER_ARTIFACT_NAME:
+        description: 'Name of the artifact to download'
+        required: false
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN:
+        required: true
+
 permissions:
   contents: write
 
@@ -96,6 +160,13 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Download Thunder Artifact
+        if: ${{ inputs.THUNDER_ARTIFACT_NAME != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.THUNDER_ARTIFACT_NAME }}
+          path: ${{ github.workspace }}
 
       - name: Execute VM Performance Test
         env:
