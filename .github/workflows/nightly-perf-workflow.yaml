@@ -1,0 +1,48 @@
+name: Nightly Performance Test
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout asgardeo/thunder
+        uses: actions/checkout@v4
+        with:
+          repository: asgardeo/thunder
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Build Backend
+        run: |
+          make build_backend
+          mv target/dist/*.zip target/dist/thunder.zip
+
+      - name: Publish Thunder Nightly Build
+        id: upload-thunder
+        uses: actions/upload-artifact@v4
+        with:
+          name: thunder
+          path: target/dist/thunder.zip
+
+  trigger-vm-perf:
+    needs: build
+    uses: ./.github/workflows/vm-perf-workflow.yml
+    with:
+      THUNDER_PACK_URL: 'LOCAL'
+      THUNDER_ARTIFACT_NAME: 'thunder'
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
