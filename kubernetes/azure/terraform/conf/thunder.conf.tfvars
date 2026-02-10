@@ -33,7 +33,7 @@ default_node_pool_max_count    = 5
 # Postgres configuration
 postgres_server_version        = "17"
 postgres_server_storage_size   = 32768
-postgres_server_sku_name       = "GP_Standard_D2s_v3"
+postgres_server_sku_name       = "B_Standard_B1ms"
 
 # VM configuration
 vm_size             = "Standard_F8s_v2"
