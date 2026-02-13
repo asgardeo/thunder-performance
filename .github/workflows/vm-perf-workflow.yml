@@ -58,13 +58,11 @@ on:
         default: '50-50'
         type: choice
         options:
+          - '50-50'
           - '50-500'
+          - '50-1000'
           - '500-3000'
           - '1000-3000'
-          - '50-3000'
-          - '50-50'
-          - '50-1000'
-          - '50-1500'
       PUSH_BENCHMARKS_TO_GITHUB:
         description: 'Push benchmark results to GitHub'
         required: false
