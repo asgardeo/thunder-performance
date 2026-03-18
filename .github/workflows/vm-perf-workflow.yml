@@ -15,15 +15,22 @@ on:
         type: choice
         options:
           - single-node
-      CPU_CORES:
-        description: 'Number of CPU cores'
+      THUNDER_INSTANCE_TYPE:
+        description: 'Thunder VM instance type. Specs - t2.nano: 1 vCPU/0.5 GB/Low-Moderate | t2.micro: 1 vCPU/1 GB/Low-Moderate | t2.small: 1 vCPU/2 GB/Low-Moderate | t3a.nano: 2 vCPU/0.5 GB/Up to 5 Gbps | t3a.micro: 2 vCPU/1 GB/Up to 5 Gbps | t3a.small: 2 vCPU/2 GB/Up to 5 Gbps | t3a.medium: 2 vCPU/4 GB/Up to 5 Gbps | t3a.large: 2 vCPU/8 GB/Up to 5 Gbps | t3a.xlarge: 4 vCPU/16 GB/Up to 5 Gbps | t3a.2xlarge: 8 vCPU/32 GB/Up to 5 Gbps'
         required: true
-        default: '4'
+        default: 't3a.medium'
         type: choice
         options:
-          - '2'
-          - '4'
-          - '8'
+          - t2.nano
+          - t2.micro
+          - t2.small
+          - t3a.nano
+          - t3a.micro
+          - t3a.small
+          - t3a.medium
+          - t3a.large
+          - t3a.xlarge
+          - t3a.2xlarge
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
         required: true
@@ -63,6 +70,18 @@ on:
           - '50-1000'
           - '500-3000'
           - '1000-3000'
+      DB_INSTANCE_TYPE:
+        description: 'RDS DB instance type. Specs - db.t3.medium: 2 vCPU/4 GB | db.t3.large: 2 vCPU/8 GB | db.t3.xlarge: 4 vCPU/16 GB | db.m6i.large: 2 vCPU/8 GB | db.m6i.xlarge: 4 vCPU/16 GB | db.m6i.2xlarge: 8 vCPU/32 GB'
+        required: true
+        default: 'db.t3.medium'
+        type: choice
+        options:
+          - db.t3.medium
+          - db.t3.large
+          - db.t3.xlarge
+          - db.m6i.large
+          - db.m6i.xlarge
+          - db.m6i.2xlarge
       PUSH_BENCHMARKS_TO_GITHUB:
         description: 'Push benchmark results to GitHub'
         required: false
@@ -81,10 +100,10 @@ on:
         required: false
         default: 'single-node'
         type: string
-      CPU_CORES:
-        description: 'Number of CPU cores'
+      THUNDER_INSTANCE_TYPE:
+        description: 'Thunder VM instance type'
         required: false
-        default: '4'
+        default: 't3a.medium'
         type: string
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
@@ -115,6 +134,11 @@ on:
         description: 'Concurrency pattern'
         required: false
         default: '50-50'
+        type: string
+      DB_INSTANCE_TYPE:
+        description: 'RDS DB instance type'
+        required: false
+        default: 'db.t3.medium'
         type: string
       PUSH_BENCHMARKS_TO_GITHUB:
         description: 'Push benchmark results to GitHub'
@@ -171,7 +195,8 @@ jobs:
           WORKSPACE: ${{ github.workspace }}
           THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
-          CPU_CORES: ${{ inputs.CPU_CORES }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
           ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
           PERFORMANCE_REPO: ${{ inputs.PERFORMANCE_REPO }}
           BRANCH: ${{ inputs.BRANCH }}

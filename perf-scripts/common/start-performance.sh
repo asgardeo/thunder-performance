@@ -33,12 +33,14 @@ default_db_username="asgthunder"
 db_username="$default_db_username"
 default_db_password="asgthunder"
 db_password="$default_db_password"
-default_db_instance_type=db.m6i.2xlarge
+default_db_instance_type=db.t3.medium
 db_instance_type=$default_db_instance_type
-default_is_instance_type=c5.xlarge
+default_is_instance_type=t3a.medium
 wso2_thunder_instance_type="$default_is_instance_type"
-default_bastion_instance_type=c6i.2xlarge
+default_bastion_instance_type=t3a.large
 bastion_instance_type="$default_bastion_instance_type"
+default_nginx_instance_type=t3a.medium
+nginx_instance_type="$default_nginx_instance_type"
 db_type="postgres"
 enable_high_concurrency=false
 
@@ -51,7 +53,7 @@ function usage() {
     echo "Usage: "
     echo "$0 -k <key_file> -c <certificate_name> -j <jmeter_setup_path> -n <IS_zip_file_path>"
     echo "   [-u <db_username>] [-p <db_password>] [-e <db_instance_type>] [-r <concurrency>]"
-    echo "   [-i <wso2_thunder_instance_type>] [-b <bastion_instance_type>] [-m <db_type>]"
+    echo "   [-i <wso2_thunder_instance_type>] [-b <bastion_instance_type>] [-l <nginx_instance_type>] [-m <db_type>]"
     echo "   [-q <user_tag>]"
     echo "   [-w <minimum_stack_creation_wait_time>] [-g <number_of_nodes>] [-v <testing_mode>] [-h]"
     echo ""
@@ -68,6 +70,7 @@ function usage() {
     echo "-e: The database instance type. Default: $default_db_instance_type."
     echo "-i: The instance type used for Thunder nodes. Default: $default_is_instance_type."
     echo "-b: The instance type used for the bastion node. Default: $default_bastion_instance_type."
+    echo "-l: The instance type used for the Nginx node. Default: $default_nginx_instance_type."
     echo "-w: The minimum time to wait in minutes before polling for cloudformation stack's CREATE_COMPLETE status."
     echo "    Default: $default_minimum_stack_creation_wait_time minutes."
     echo "-v: The required testing mode [FULL/QUICK]"
@@ -92,7 +95,7 @@ function execute_db_command() {
     ssh_bastion_cmd "$db_command"
 }
 
-while getopts "q:k:c:j:n:u:p:e:i:b:w:g:m:r:h" opts; do
+while getopts "q:k:c:j:n:u:p:e:i:b:l:w:g:m:r:h" opts; do
     case $opts in
     q)
         user_tag=${OPTARG}
@@ -126,6 +129,9 @@ while getopts "q:k:c:j:n:u:p:e:i:b:w:g:m:r:h" opts; do
         ;;
     b)
         bastion_instance_type=${OPTARG}
+        ;;
+    l)
+        nginx_instance_type=${OPTARG}
         ;;
     w)
         minimum_stack_creation_wait_time=${OPTARG}
@@ -275,9 +281,11 @@ aws cloudformation validate-template --template-body "file://$template_file_name
 test_parameters_json='.'
 test_parameters_json+=' | .["thunder_nodes_ec2_instance_type"]=$thunder_nodes_ec2_instance_type'
 test_parameters_json+=' | .["bastion_node_ec2_instance_type"]=$bastion_node_ec2_instance_type'
+test_parameters_json+=' | .["nginx_ec2_instance_type"]=$nginx_ec2_instance_type'
 jq -n \
     --arg thunder_nodes_ec2_instance_type "$wso2_thunder_instance_type" \
     --arg bastion_node_ec2_instance_type "$bastion_instance_type" \
+    --arg nginx_ec2_instance_type "$nginx_instance_type" \
     "$test_parameters_json" > "$results_dir"/cf-test-metadata.json
 
 stack_create_start_time=$(date +%s)
@@ -291,6 +299,7 @@ create_stack_command="aws cloudformation create-stack --stack-name $stack_name \
         ParameterKey=DBInstanceType,ParameterValue=$db_instance_type \
         ParameterKey=DBType,ParameterValue=$db_type \
         ParameterKey=WSO2InstanceType,ParameterValue=$wso2_thunder_instance_type \
+        ParameterKey=NginxInstanceType,ParameterValue=$nginx_instance_type \
         ParameterKey=BastionInstanceType,ParameterValue=$bastion_instance_type \
         ParameterKey=EnableHighConcurrencyMode,ParameterValue=$enable_high_concurrency \
         ParameterKey=UserTag,ParameterValue=$user_tag \

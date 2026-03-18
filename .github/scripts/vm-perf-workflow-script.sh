@@ -28,7 +28,8 @@ echo ""
 echo "Starting performance test with params:"
 echo "    THUNDER_PACK_URL: $THUNDER_PACK_URL"
 echo "    DEPLOYMENT: $DEPLOYMENT"
-echo "    CPU_CORES: $CPU_CORES"
+echo "    THUNDER_INSTANCE_TYPE: $THUNDER_INSTANCE_TYPE"
+echo "    DB_INSTANCE_TYPE: $DB_INSTANCE_TYPE"
 echo "    CONCURRENCY: $CONCURRENCY"
 echo "    PERFORMANCE_REPO: $PERFORMANCE_REPO"
 echo "    BRANCH: $BRANCH"
@@ -69,21 +70,6 @@ mv thunder-perf-test.pem $RESOURCES_DIR
 aws s3 cp s3://performance-thunder-resources/apache-jmeter-5.6.3.tgz apache-jmeter-5.6.3.tgz
 mv apache-jmeter-5.6.3.tgz $RESOURCES_DIR
 
-# Script to resolve cpu cores
-instance_type=""
-if [ "$CPU_CORES" = "2" ]; then
-	instance_type="c6i.large"
-elif [ "$CPU_CORES" = "4" ]; then
-	instance_type="c6i.xlarge"
-elif [ "$CPU_CORES" = "8" ]; then
-	instance_type="c6i.2xlarge"
-else
-	echo ""
-	echo "Provided CPU cores [$CPU_CORES] is not supported with the deployment: $DEPLOYMENT."
-	echo "Exiting..."
-	exit 1
-fi
-
 cd $DEPLOYMENT
 
 echo ""
@@ -98,10 +84,8 @@ echo ""
 echo "Starting test..."
 echo "=========================================================="
 
-echo "CPU Instance type: $instance_type"
-
 cmd="./start-performance.sh -k $RESOURCES_DIR/thunder-perf-test.pem \
--c is-perf-cert -j $RESOURCES_DIR/apache-jmeter-5.6.3.tgz -n $WORKSPACE/thunder.zip -q $BUILD_USER_EMAIL -i $instance_type -m $DB_TYPE -r $CONCURRENCY -v $MODE -f $DEPLOYMENT -z $USE_DELAYS "
+-c is-perf-cert -j $RESOURCES_DIR/apache-jmeter-5.6.3.tgz -n $WORKSPACE/thunder.zip -q $BUILD_USER_EMAIL -i $THUNDER_INSTANCE_TYPE -e $DB_INSTANCE_TYPE -m $DB_TYPE -r $CONCURRENCY -v $MODE -f $DEPLOYMENT -z $USE_DELAYS "
 
 if [[ ! -z $ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT ]]; then
 	cmd+=" $ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT"
@@ -142,7 +126,9 @@ Thunder Pack URL: $THUNDER_PACK_URL
 
 Deployment Pattern: $DEPLOYMENT
 
-CPU Cores: $CPU_CORES
+Thunder Instance Type: $THUNDER_INSTANCE_TYPE
+
+Database Instance Type: $DB_INSTANCE_TYPE
 
 Database Type: $DB_TYPE
 
