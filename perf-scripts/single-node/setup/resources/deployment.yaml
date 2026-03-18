@@ -31,11 +31,11 @@ tls:
   min_version: "1.2"
 
 database:
-    identity:
+    config:
         type: "postgres"
         hostname: "{db_hostname}"
         port: 5432
-        name: "thunderdb"
+        name: "configdb"
         username: "asgthunder"
         password: "asgthunder"
         sslmode: "disable"
