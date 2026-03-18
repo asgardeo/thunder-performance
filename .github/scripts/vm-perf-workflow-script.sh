@@ -47,42 +47,50 @@ cd workspace
 
 echo ""
 echo "Downloading Thunder Pack..."
-echo "=========================================================="
 if [ -f "$WORKSPACE/thunder.zip" ]; then
     echo "Thunder pack found locally at $WORKSPACE/thunder.zip. Skipping download."
 else
     wget -q -O "$WORKSPACE"/thunder.zip "$THUNDER_PACK_URL"
+    echo "Thunder pack downloaded successfully."
 fi
+echo "=========================================================="
 
 sudo rm -rf thunder-performance
 echo ""
 echo "Cloning thunder-performance repo..."
-echo "=========================================================="
 git clone https://x-access-token:${GITHUB_TOKEN}@${PERFORMANCE_REPO#https://}
 cd thunder-performance
 git checkout $BRANCH
-cd perf-scripts
+echo "Thunder-performance repo cloned successfully."
+echo "=========================================================="
 
-aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem thunder-perf-test.pem
+echo ""
+echo "Downloading Thunder-perf-test.pem from S3..."
+aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem thunder-perf-test.pem --only-show-errors --no-progress
 chmod 400 thunder-perf-test.pem
 mv thunder-perf-test.pem $RESOURCES_DIR
+echo "Thunder-perf-test.pem downloaded successfully."
+echo "=========================================================="
 
-aws s3 cp s3://performance-thunder-resources/apache-jmeter-5.6.3.tgz apache-jmeter-5.6.3.tgz
+echo ""
+echo "Downloading Apache-jmeter-5.6.3.tgz from S3..."
+aws s3 cp s3://performance-thunder-resources/apache-jmeter-5.6.3.tgz apache-jmeter-5.6.3.tgz --only-show-errors --no-progress
 mv apache-jmeter-5.6.3.tgz $RESOURCES_DIR
+echo "Apache-jmeter-5.6.3.tgz downloaded successfully."
+echo "=========================================================="
 
+cd perf-scripts
 cd $DEPLOYMENT
 
 echo ""
-echo "Building project..."
+echo "Building performance test project: $DEPLOYMENT ..."
+CMD_MVN="mvn -q clean install"
+$CMD_MVN
 echo "=========================================================="
 
-CMD_MVN="mvn clean install"
-
-$CMD_MVN
 
 echo ""
-echo "Starting test..."
-echo "=========================================================="
+echo "Starting performance test..."
 
 cmd="./start-performance.sh -k $RESOURCES_DIR/thunder-perf-test.pem \
 -c is-perf-cert -j $RESOURCES_DIR/apache-jmeter-5.6.3.tgz -n $WORKSPACE/thunder.zip -q $BUILD_USER_EMAIL -i $THUNDER_INSTANCE_TYPE -e $DB_INSTANCE_TYPE -m $DB_TYPE -r $CONCURRENCY -v $MODE -f $DEPLOYMENT -z $USE_DELAYS "
@@ -95,9 +103,17 @@ echo "$cmd"
 
 eval $cmd
 
-cp -r results-* "$WORKSPACE_DIR"
+echo "=========================================================="
 
-aws s3 cp --recursive results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER"
+echo ""
+echo "Copying results..."
+cp -r results-* "$WORKSPACE_DIR"
+echo "=========================================================="
+
+echo ""
+echo "Uploading results to S3..."
+aws s3 cp --recursive results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER" --only-show-errors --no-progress
+echo "=========================================================="
 
 # Function to push benchmark results to GitHub
 push_benchmarks_to_github() {
@@ -146,6 +162,8 @@ EOF
     git push -u origin $BRANCH
 }
 
+echo ""
+echo "Pushing benchmark results to GitHub..."
 # Conditionally execute the function based on the PUSH_BENCHMARKS_TO_GITHUB environment variable
 if [ "$PUSH_BENCHMARKS_TO_GITHUB" = "true" ]; then
     echo "Pushing benchmark results to GitHub repository."
@@ -153,3 +171,5 @@ if [ "$PUSH_BENCHMARKS_TO_GITHUB" = "true" ]; then
 else
     echo "Skipping push of benchmark results to GitHub as per configuration."
 fi
+echo "=========================================================="
+
