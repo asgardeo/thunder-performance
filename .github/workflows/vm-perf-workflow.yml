@@ -232,8 +232,6 @@ jobs:
           BUILD_USER_EMAIL: ${{ github.actor }}@github.com
           BUILD_CAUSE: ${{ github.event_name }}
           BUILD_NUMBER: ${{ github.run_number }}
-          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
-          PUSH_BENCHMARKS_TO_GITHUB: ${{ inputs.PUSH_BENCHMARKS_TO_GITHUB }}
           BASTION_NODE_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
           NGINX_INSTANCE_IP: ${{ steps.create-cf-stack.outputs.nginx_instance_ip }}
           WSO2_THUNDER_1_IP: ${{ steps.create-cf-stack.outputs.wso2_thunder_1_ip }}
@@ -250,7 +248,68 @@ jobs:
           chmod +x .github/scripts/delete-cf-stack.sh
           bash .github/scripts/delete-cf-stack.sh
 
-      - name: Upload test results
+      - name: Upload test results to S3
+        if: always()
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          aws s3 cp --recursive $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER" --only-show-errors --no-progress
+
+      - name: Publish test results to GitHub
+        if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          DB_TYPE: 'postgres'
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase true
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}
+
+          timestamp=$(date +%Y-%m-%d--%H-%M-%S)
+          benchmark_dir_path="benchmarks/$DEPLOYMENT/workflow-build-$BUILD_NUMBER"
+
+          mkdir -p $benchmark_dir_path
+
+          cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/summary.csv $benchmark_dir_path/"summary-$timestamp".csv
+          cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/summary-original.csv $benchmark_dir_path/"summary_detailed-$timestamp".csv
+
+          cat <<EOF >> $benchmark_dir_path/readme.md
+          Build Number: $BUILD_NUMBER
+
+          Build Date and Time: $timestamp
+
+          Thunder Pack URL: $THUNDER_PACK_URL
+
+          Deployment Pattern: $DEPLOYMENT
+
+          Thunder Instance Type: $THUNDER_INSTANCE_TYPE
+
+          Database Instance Type: $DB_INSTANCE_TYPE
+
+          Database Type: $DB_TYPE
+
+          Concurrency: $CONCURRENCY
+
+          Performance Repo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
+
+          Performance Repo Branch: $GITHUB_REF_NAME
+
+          EOF
+
+          git add $benchmark_dir_path/
+          git commit -m "Add performance benchmarks from test at $timestamp"
+          git pull origin $GITHUB_REF_NAME
+          git push -u origin $GITHUB_REF_NAME
+
+      - name: Upload test results to Pipeline Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
