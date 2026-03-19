@@ -46,11 +46,16 @@ cd $WORKSPACE/perf-scripts/$DEPLOYMENT
 timestamp=$(date +%Y-%m-%d--%H-%M-%S)
 random_number=$RANDOM
 
-# Enable high concurrency if concurrency pattern has 4-digit numbers
+# Enable high concurrency if any value in the comma-separated list has 4 or more digits
 enable_high_concurrency=false
-if [[ $CONCURRENCY =~ ^([0-9]{4}-[0-9]{3}|[0-9]{3}-[0-9]{4}|[0-9]{4}-[0-9]{4})$ ]]; then
-    enable_high_concurrency=true
-fi
+IFS=',' read -ra concurrency_levels <<< "$CONCURRENCY"
+for level in "${concurrency_levels[@]}"; do
+    level="${level// /}"
+    if [[ ${#level} -ge 4 ]]; then
+        enable_high_concurrency=true
+        break
+    fi
+done
 
 echo ""
 echo "Preparing CloudFormation template..."

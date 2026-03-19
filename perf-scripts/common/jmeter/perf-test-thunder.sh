@@ -126,7 +126,7 @@ function usage() {
     echo "-c: Concurrency levels to test. You can give multiple options to specify multiple levels. Default \"$default_concurrent_users\"."
     echo "-d: Test Duration in minutes. Default $default_test_duration m."
     echo "-w: Warm-up time in minutes. Default $default_warm_up_time m."
-    echo "-r: Concurrency range shorthand. Supported values: 50-50, 50-500, 50-1000, 500-3000, 1000-3000. Default: 50-3000."
+    echo "-r: Comma-separated list of concurrent user counts to test (e.g. 50,100,150,300,500)."
     echo "-j: Heap Size of JMeter Client. Default $default_jmeter_client_heap_size."
     echo "-i: Scenario name to to be included. You can give multiple options to filter scenarios."
     echo "-e: Scenario name to to be excluded. You can give multiple options to filter scenarios."
@@ -228,25 +228,23 @@ done
 number_regex='^[0-9]+$'
 heap_regex='^[0-9]+[MG]$'
 
-# Check concurrency level
-if [ "$concurrency" == "50-500" ]; then
-    echo "Running tests for concurrency level 50-500"
-    default_concurrent_users="50 100 150 300 500"
-elif [ "$concurrency" == "500-3000" ]; then
-    echo "Running tests for concurrency level 500-3000"
-    default_concurrent_users="500 750 1000 1500 2000 2500 3000"
-elif [ "$concurrency" == "1000-3000" ]; then
-    echo "Running tests for concurrency level 1000-3000"
-    default_concurrent_users="1000 1500 2000 2500 3000"
-elif [ "$concurrency" == "50-50" ]; then
-    echo "Running tests for concurrency level 50"
-    default_concurrent_users="50"
-elif [ "$concurrency" == "50-1000" ]; then
-    echo "Running tests for concurrency level 50-1000"
-    default_concurrent_users="50 100 150 300 500 750 1000"
+# Parse comma-separated concurrency list
+if [[ -n "$concurrency" ]]; then
+    IFS=',' read -ra concurrency_arr <<< "$concurrency"
+    default_concurrent_users=""
+    for level in "${concurrency_arr[@]}"; do
+        level="${level// /}"
+        if ! [[ "$level" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Error: '$level' is not a valid positive integer in the CONCURRENCY list."
+            exit 1
+        fi
+        default_concurrent_users+="$level "
+    done
+    default_concurrent_users="${default_concurrent_users% }"
+    echo "Running tests for concurrent user counts: $default_concurrent_users"
 else
-    echo "Running tests for concurrency level 50-3000"
-    default_concurrent_users="50 100 150 300 500 750 1000 1500 2000 2500 3000"
+    echo "No concurrency specified. Please provide a comma-separated list of positive integers via -r."
+    exit 1
 fi
 
 if [[ -z $test_duration ]]; then

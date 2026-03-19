@@ -42,16 +42,10 @@ on:
         default: true
         type: boolean
       CONCURRENCY:
-        description: 'Concurrency pattern'
+        description: 'Comma-separated list of concurrent user counts to test (e.g. 50,100,150,300,500)'
         required: true
-        default: '50-50'
-        type: choice
-        options:
-          - '50-50'
-          - '50-500'
-          - '50-1000'
-          - '500-3000'
-          - '1000-3000'
+        default: '50'
+        type: string
       DB_INSTANCE_TYPE:
         description: 'RDS DB instance type'
         required: true
@@ -98,9 +92,9 @@ on:
         default: true
         type: boolean
       CONCURRENCY:
-        description: 'Concurrency pattern'
+        description: 'Comma-separated list of concurrent user counts to test (e.g. 50,100,150,300,500)'
         required: false
-        default: '50-50'
+        default: '50'
         type: string
       DB_INSTANCE_TYPE:
         description: 'RDS DB instance type'
@@ -162,6 +156,23 @@ jobs:
             echo "Error: Either THUNDER_ARTIFACT_NAME or THUNDER_PACK_URL must be provided."
             exit 1
           fi
+
+      - name: Validate Concurrency input
+        run: |
+          concurrency="${{ inputs.CONCURRENCY }}"
+          if [[ -z "$concurrency" ]]; then
+            echo "Error: CONCURRENCY must not be empty."
+            exit 1
+          fi
+          IFS=',' read -ra levels <<< "$concurrency"
+          for level in "${levels[@]}"; do
+            level="${level// /}"
+            if ! [[ "$level" =~ ^[1-9][0-9]*$ ]]; then
+              echo "Error: '$level' is not a valid positive integer. CONCURRENCY must be a comma-separated list of positive integers (e.g. 50,100,150,300,500)."
+              exit 1
+            fi
+          done
+          echo "CONCURRENCY input is valid: $concurrency"
 
       - name: Download Thunder Pack from Pipeline Artifact
         if: ${{ inputs.THUNDER_ARTIFACT_NAME != '' }}
