@@ -36,14 +36,6 @@ on:
         required: true
         default: '-d 15 -w 5 -x false -y JWT'
         type: string
-      MODE:
-        description: 'Testing mode'
-        required: true
-        default: 'FULL'
-        type: choice
-        options:
-          - FULL
-          - QUICK
       USE_DELAYS:
         description: 'Enable delays in testing'
         required: true
@@ -99,11 +91,6 @@ on:
         description: 'Additional parameters for performance script'
         required: false
         default: '-d 15 -w 5 -x false -y JWT'
-        type: string
-      MODE:
-        description: 'Testing mode'
-        required: false
-        default: 'FULL'
         type: string
       USE_DELAYS:
         description: 'Enable delays in testing'
@@ -226,7 +213,6 @@ jobs:
           WORKSPACE: ${{ github.workspace }}
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
           ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
-          MODE: ${{ inputs.MODE }}
           USE_DELAYS: ${{ inputs.USE_DELAYS }}
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
           DB_TYPE: 'postgres'

@@ -40,7 +40,7 @@ function usage() {
     echo "Usage: "
     echo "$0 -k <key_file> -c <certificate_name> -j <jmeter_setup_path> -n <IS_zip_file_path>"
     echo "   [-u <db_username>] [-p <db_password>] [-r <concurrency>] [-m <db_type>]"
-    echo "   [-q <user_tag>] [-g <number_of_nodes>] [-v <testing_mode>] [-h]"
+    echo "   [-q <user_tag>] [-g <number_of_nodes>] [-h]"
     echo ""
     echo "-k: The Amazon EC2 key file to be used to access the instances."
     echo "-c: The name of the IAM certificate."
@@ -117,7 +117,7 @@ done
 shift "$((OPTIND - 1))"
 
 # All remaining positional args are forwarded to run-performance-tests.sh
-run_performance_tests_options=("-b ${db_type} -g ${no_of_nodes} -r ${concurrency} -v $@")
+run_performance_tests_options=("-b ${db_type} -g ${no_of_nodes} -r ${concurrency} $@")
 
 if [[ -z $user_tag ]]; then
     echo "Please provide the user tag."

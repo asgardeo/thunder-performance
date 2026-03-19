@@ -82,7 +82,6 @@ noOfTenants=100
 spCount=10
 idpCount=1
 userCount=1000
-mode=""
 deployment=""
 
 # Use delays inside tests to mimic user input
@@ -121,7 +120,7 @@ function usage() {
     echo "   [-g <no_of_nodes>] [-f <deployment>] [-n <no_of_tenants>]"
     echo "   [-s <sp_count>] [-q <idp_count>] [-u <user_count>]"
     echo "   [-k <jwt_token_client_secret>] [-o <jwt_token_user_password>]"
-    echo "   [-v <mode>] [-x <enable_burst>] [-y <token_issuer>]"
+    echo "   [-x <enable_burst>] [-y <token_issuer>]"
     echo "   [-t] [-p <is_port>] [-b <db_type>] [-z <use_delay>] [-h]"
     echo ""
     echo "-c: Concurrency levels to test. You can give multiple options to specify multiple levels. Default \"$default_concurrent_users\"."
@@ -139,7 +138,6 @@ function usage() {
     echo "-u: Number of users. Default $userCount."
     echo "-k: JWT token client secret."
     echo "-o: JWT token user password."
-    echo "-v: Test mode. Use QUICK to run a single concurrency level of 200 users."
     echo "-x: Enable burst traffic."
     echo "-y: Token issuer type. Use Opaque (default) or JWT."
     echo "-t: Estimate time without executing tests."
@@ -150,7 +148,7 @@ function usage() {
     echo ""
 }
 
-while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:v:x:o:y:b:z:h" opts; do
+while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:h" opts; do
     case $opts in
     c)
         concurrent_users+=("${OPTARG}")
@@ -202,9 +200,6 @@ while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:v:x:o:y:b:z:h" opts; do
         ;;
     o)
         jwt_token_user_password=${OPTARG}
-        ;;
-    v)
-        mode=${OPTARG}
         ;;
     x)
         enable_burst=${OPTARG}
@@ -305,11 +300,7 @@ fi
 
 declare -ag concurrent_users_array
 if [ ${#concurrent_users[@]} -eq 0 ]; then
-    if [ "$mode" == "QUICK" ]; then
-        concurrent_users_array=( "200" )
-    else
-        concurrent_users_array=( $default_concurrent_users )
-    fi
+    concurrent_users_array=( $default_concurrent_users )
 else
     concurrent_users_array=( ${concurrent_users[@]} )
 fi
@@ -483,20 +474,6 @@ function initialize_test() {
         done
     fi
     
-    if [[ ! -z $mode ]]; then
-        declare -n scenario
-        for scenario in ${!test_scenario@}; do
-            scenario[skip]=true
-            modeValues=${scenario[modes]}
-            for i in $modeValues; do
-                if [ "$i" == $mode ]; then
-                    scenario[skip]=false
-                    break
-                fi
-            done
-        done
-    fi
-
     echo ""
     echo "Saving test metadata..."
     declare -n scenario
