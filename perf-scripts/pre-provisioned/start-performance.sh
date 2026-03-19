@@ -150,8 +150,7 @@ unzip -q results.zip
 wget -q https://sourceforge.net/projects/gcviewer/files/gcviewer-1.35.jar/download -O gcviewer.jar
 "$results_dir"/jmeter/create-summary-csv.sh -d results -n "WSO2 Thunder" -p thunder -c "Heap Size" \
     -c "Concurrent Users" -r "([0-9]+[a-zA-Z])_heap" -r "([0-9]+)_users" -i -l -k 2 -g gcviewer.jar
-echo "Creating summary file..."
-./summary/summary-modifier-pre-provisioned.py
+
 
 rm -rf cf-test-metadata.json cloudformation/ common/ gcviewer.jar is/ jmeter/ jtl-splitter/ netty-service/ payloads/ results/ sar/ setup/ workspace/
 

@@ -248,7 +248,7 @@ wget -q http://sourceforge.net/projects/gcviewer/files/gcviewer-1.35.jar/downloa
 
 echo "Creating summary results markdown file..."
 
-./summary/summary-modifier.py
+
 ./jmeter/create-summary-markdown.py --json-files cf-test-metadata.json results/test-metadata.json --column-names \
     "Concurrent Users" "95th Percentile of Response Time (ms)"
 

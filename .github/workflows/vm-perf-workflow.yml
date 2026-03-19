@@ -279,7 +279,6 @@ jobs:
           mkdir -p $benchmark_dir_path
 
           cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/summary.csv $benchmark_dir_path/"summary-$timestamp".csv
-          cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/summary-original.csv $benchmark_dir_path/"summary_detailed-$timestamp".csv
 
           cat <<EOF >> $benchmark_dir_path/readme.md
           Build Number: $BUILD_NUMBER
