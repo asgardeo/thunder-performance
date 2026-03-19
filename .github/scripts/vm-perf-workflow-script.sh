@@ -45,6 +45,8 @@ fi
 
 echo "$cmd"
 
+echo "perf_test_start_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 eval $cmd
+echo "perf_test_end_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
 echo "=========================================================="

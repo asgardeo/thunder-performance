@@ -220,6 +220,7 @@ jobs:
           bash .github/scripts/create-cf-stack.sh
 
       - name: Execute VM Performance Test
+        id: execute-perf-test
         env:
           WORKSPACE: ${{ github.workspace }}
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
@@ -237,6 +238,21 @@ jobs:
         run: |
           chmod +x .github/scripts/vm-perf-workflow-script.sh
           bash .github/scripts/vm-perf-workflow-script.sh
+
+      - name: Collect CloudWatch Metrics
+        if: always() && steps.create-cf-stack.outputs.thunder_instance_id != ''
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          PERF_TEST_START_TIME: ${{ steps.execute-perf-test.outputs.perf_test_start_time }}
+          PERF_TEST_END_TIME: ${{ steps.execute-perf-test.outputs.perf_test_end_time }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+        run: |
+          chmod +x .github/scripts/collect-cloudwatch-metrics.sh
+          bash .github/scripts/collect-cloudwatch-metrics.sh
 
       - name: Delete CloudFormation Stack
         if: always() && steps.create-cf-stack.outputs.stack_id != ''
