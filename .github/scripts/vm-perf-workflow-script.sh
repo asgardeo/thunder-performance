@@ -20,7 +20,6 @@
 # ----------------------------------------------------------------------------
 
 RESOURCES_DIR=$WORKSPACE/resources
-WORKSPACE_DIR=$WORKSPACE/workspace
 
 echo "WORKSPACE Directory: $WORKSPACE"
 
@@ -31,8 +30,8 @@ echo "    DEPLOYMENT: $DEPLOYMENT"
 echo "    THUNDER_INSTANCE_TYPE: $THUNDER_INSTANCE_TYPE"
 echo "    DB_INSTANCE_TYPE: $DB_INSTANCE_TYPE"
 echo "    CONCURRENCY: $CONCURRENCY"
-echo "    PERFORMANCE_REPO: $PERFORMANCE_REPO"
-echo "    BRANCH: $BRANCH"
+echo "    PERFORMANCE_REPO: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+echo "    BRANCH: $GITHUB_REF_NAME"
 echo "    DB_TYPE: $DB_TYPE"
 echo "    BUILD_CAUSE: $BUILD_CAUSE"
 echo "    Build Triggered By $BUILD_USER_EMAIL"
@@ -49,7 +48,7 @@ else
 fi
 echo "=========================================================="
 
-cd $WORKSPACE/workspace/thunder-performance/perf-scripts/$DEPLOYMENT
+cd $WORKSPACE/perf-scripts/$DEPLOYMENT
 
 echo ""
 echo "Starting performance test..."
@@ -68,11 +67,6 @@ eval $cmd
 echo "=========================================================="
 
 echo ""
-echo "Copying results..."
-cp -r results-* "$WORKSPACE_DIR"
-echo "=========================================================="
-
-echo ""
 echo "Uploading results to S3..."
 aws s3 cp --recursive results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER" --only-show-errors --no-progress
 echo "=========================================================="
@@ -84,7 +78,7 @@ push_benchmarks_to_github() {
     git config pull.rebase true
 
     # Set up Git authentication using the GitHub token
-    git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@${PERFORMANCE_REPO#https://}
+    git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}
 
     timestamp=$(date +%Y-%m-%d--%H-%M-%S)
     benchmark_dir_path="../../benchmarks/$DEPLOYMENT/workflow-build-$BUILD_NUMBER"
@@ -112,16 +106,16 @@ Database Type: $DB_TYPE
 
 Concurrency: $CONCURRENCY
 
-Performance Repo: $PERFORMANCE_REPO
+Performance Repo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
 
-Performance Repo Branch: $BRANCH
+Performance Repo Branch: $GITHUB_REF_NAME
 
 EOF
 
     git add $benchmark_dir_path/
     git commit -m "Add performance benchmarks from test at $timestamp"
-    git pull origin $BRANCH
-    git push -u origin $BRANCH
+    git pull origin $GITHUB_REF_NAME
+    git push -u origin $GITHUB_REF_NAME
 }
 
 echo ""

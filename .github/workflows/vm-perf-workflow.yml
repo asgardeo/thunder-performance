@@ -36,16 +36,6 @@ on:
         required: true
         default: '-d 15 -w 5 -x false -y JWT'
         type: string
-      PERFORMANCE_REPO:
-        description: 'Performance repository URL'
-        required: true
-        default: 'https://github.com/asgardeo/thunder-performance'
-        type: string
-      BRANCH:
-        description: 'Branch to use from performance repository'
-        required: true
-        default: 'main'
-        type: string
       MODE:
         description: 'Testing mode'
         required: true
@@ -109,16 +99,6 @@ on:
         description: 'Additional parameters for performance script'
         required: false
         default: '-d 15 -w 5 -x false -y JWT'
-        type: string
-      PERFORMANCE_REPO:
-        description: 'Performance repository URL'
-        required: false
-        default: 'https://github.com/asgardeo/thunder-performance'
-        type: string
-      BRANCH:
-        description: 'Branch to use from performance repository'
-        required: false
-        default: 'main'
         type: string
       MODE:
         description: 'Testing mode'
@@ -190,23 +170,9 @@ jobs:
           name: ${{ inputs.THUNDER_ARTIFACT_NAME }}
           path: ${{ github.workspace }}
 
-      - name: Clone Performance Repository
-        env:
-          PERFORMANCE_REPO: ${{ inputs.PERFORMANCE_REPO }}
-          BRANCH: ${{ inputs.BRANCH }}
-          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
-        run: |
-          cd $GITHUB_WORKSPACE
-          rm -rf workspace resources
-          mkdir workspace resources
-          cd workspace
-          git clone https://x-access-token:${GITHUB_TOKEN}@${PERFORMANCE_REPO#https://}
-          cd thunder-performance
-          git checkout $BRANCH
-          echo "Cloned thunder-performance at branch $BRANCH"
-
       - name: Download Infrastructure Resources
         run: |
+          mkdir -p $GITHUB_WORKSPACE/resources
           RESOURCES_DIR=$GITHUB_WORKSPACE/resources
           echo "Downloading thunder-perf-test.pem..."
           aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem $RESOURCES_DIR/thunder-perf-test.pem --only-show-errors --no-progress
@@ -218,7 +184,7 @@ jobs:
         env:
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
         run: |
-          cd $GITHUB_WORKSPACE/workspace/thunder-performance/perf-scripts/$DEPLOYMENT
+          cd $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT
           echo "Building performance test project: $DEPLOYMENT..."
           mvn -q clean install
 
@@ -242,8 +208,6 @@ jobs:
           THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
           ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
-          PERFORMANCE_REPO: ${{ inputs.PERFORMANCE_REPO }}
-          BRANCH: ${{ inputs.BRANCH }}
           MODE: ${{ inputs.MODE }}
           USE_DELAYS: ${{ inputs.USE_DELAYS }}
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
@@ -274,5 +238,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: performance-test-results-${{ github.run_number }}
-          path: ${{ github.workspace }}/workspace/results-*
+          path: ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*
           retention-days: 30

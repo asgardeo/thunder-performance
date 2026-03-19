@@ -41,7 +41,7 @@ echo "    CONCURRENCY: $CONCURRENCY"
 echo "    DB_TYPE: $DB_TYPE"
 echo "=========================================================="
 
-cd $WORKSPACE/workspace/thunder-performance/perf-scripts/$DEPLOYMENT
+cd $WORKSPACE/perf-scripts/$DEPLOYMENT
 
 timestamp=$(date +%Y-%m-%d--%H-%M-%S)
 random_number=$RANDOM
