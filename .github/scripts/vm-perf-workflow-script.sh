@@ -38,12 +38,6 @@ echo "    BUILD_CAUSE: $BUILD_CAUSE"
 echo "    Build Triggered By $BUILD_USER_EMAIL"
 echo "    PUSH_BENCHMARKS_TO_GITHUB: $PUSH_BENCHMARKS_TO_GITHUB"
 echo "=========================================================="
-cd $WORKSPACE
-rm -rf workspace
-mkdir workspace
-rm -rf resources
-mkdir resources
-cd workspace
 
 echo ""
 echo "Downloading Thunder Pack..."
@@ -55,45 +49,13 @@ else
 fi
 echo "=========================================================="
 
-sudo rm -rf thunder-performance
-echo ""
-echo "Cloning thunder-performance repo..."
-git clone https://x-access-token:${GITHUB_TOKEN}@${PERFORMANCE_REPO#https://}
-cd thunder-performance
-git checkout $BRANCH
-echo "Thunder-performance repo cloned successfully."
-echo "=========================================================="
-
-echo ""
-echo "Downloading Thunder-perf-test.pem from S3..."
-aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem thunder-perf-test.pem --only-show-errors --no-progress
-chmod 400 thunder-perf-test.pem
-mv thunder-perf-test.pem $RESOURCES_DIR
-echo "Thunder-perf-test.pem downloaded successfully."
-echo "=========================================================="
-
-echo ""
-echo "Downloading Apache-jmeter-5.6.3.tgz from S3..."
-aws s3 cp s3://performance-thunder-resources/apache-jmeter-5.6.3.tgz apache-jmeter-5.6.3.tgz --only-show-errors --no-progress
-mv apache-jmeter-5.6.3.tgz $RESOURCES_DIR
-echo "Apache-jmeter-5.6.3.tgz downloaded successfully."
-echo "=========================================================="
-
-cd perf-scripts
-cd $DEPLOYMENT
-
-echo ""
-echo "Building performance test project: $DEPLOYMENT ..."
-CMD_MVN="mvn -q clean install"
-$CMD_MVN
-echo "=========================================================="
-
+cd $WORKSPACE/workspace/thunder-performance/perf-scripts/$DEPLOYMENT
 
 echo ""
 echo "Starting performance test..."
 
 cmd="./start-performance.sh -k $RESOURCES_DIR/thunder-perf-test.pem \
--c is-perf-cert -j $RESOURCES_DIR/apache-jmeter-5.6.3.tgz -n $WORKSPACE/thunder.zip -q $BUILD_USER_EMAIL -i $THUNDER_INSTANCE_TYPE -e $DB_INSTANCE_TYPE -m $DB_TYPE -r $CONCURRENCY -v $MODE -f $DEPLOYMENT -z $USE_DELAYS "
+-c is-perf-cert -j $RESOURCES_DIR/apache-jmeter-5.6.3.tgz -n $WORKSPACE/thunder.zip -q $BUILD_USER_EMAIL -m $DB_TYPE -r $CONCURRENCY -v $MODE -f $DEPLOYMENT -z $USE_DELAYS "
 
 if [[ ! -z $ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT ]]; then
 	cmd+=" $ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT"
@@ -172,4 +134,3 @@ else
     echo "Skipping push of benchmark results to GitHub as per configuration."
 fi
 echo "=========================================================="
-

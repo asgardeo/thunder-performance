@@ -190,13 +190,57 @@ jobs:
           name: ${{ inputs.THUNDER_ARTIFACT_NAME }}
           path: ${{ github.workspace }}
 
+      - name: Clone Performance Repository
+        env:
+          PERFORMANCE_REPO: ${{ inputs.PERFORMANCE_REPO }}
+          BRANCH: ${{ inputs.BRANCH }}
+          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
+        run: |
+          cd $GITHUB_WORKSPACE
+          rm -rf workspace resources
+          mkdir workspace resources
+          cd workspace
+          git clone https://x-access-token:${GITHUB_TOKEN}@${PERFORMANCE_REPO#https://}
+          cd thunder-performance
+          git checkout $BRANCH
+          echo "Cloned thunder-performance at branch $BRANCH"
+
+      - name: Download Infrastructure Resources
+        run: |
+          RESOURCES_DIR=$GITHUB_WORKSPACE/resources
+          echo "Downloading thunder-perf-test.pem..."
+          aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem $RESOURCES_DIR/thunder-perf-test.pem --only-show-errors --no-progress
+          chmod 400 $RESOURCES_DIR/thunder-perf-test.pem
+          echo "Downloading apache-jmeter-5.6.3.tgz..."
+          aws s3 cp s3://performance-thunder-resources/apache-jmeter-5.6.3.tgz $RESOURCES_DIR/apache-jmeter-5.6.3.tgz --only-show-errors --no-progress
+
+      - name: Build Performance Tests
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+        run: |
+          cd $GITHUB_WORKSPACE/workspace/thunder-performance/perf-scripts/$DEPLOYMENT
+          echo "Building performance test project: $DEPLOYMENT..."
+          mvn -q clean install
+
+      - name: Create CloudFormation Stack
+        id: create-cf-stack
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          DB_TYPE: 'postgres'
+          BUILD_USER_EMAIL: ${{ github.actor }}@github.com
+        run: |
+          chmod +x .github/scripts/create-cf-stack.sh
+          bash .github/scripts/create-cf-stack.sh
+
       - name: Execute VM Performance Test
         env:
           WORKSPACE: ${{ github.workspace }}
           THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
-          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
-          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
           ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
           PERFORMANCE_REPO: ${{ inputs.PERFORMANCE_REPO }}
           BRANCH: ${{ inputs.BRANCH }}
@@ -209,9 +253,21 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
           PUSH_BENCHMARKS_TO_GITHUB: ${{ inputs.PUSH_BENCHMARKS_TO_GITHUB }}
+          BASTION_NODE_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
+          NGINX_INSTANCE_IP: ${{ steps.create-cf-stack.outputs.nginx_instance_ip }}
+          WSO2_THUNDER_1_IP: ${{ steps.create-cf-stack.outputs.wso2_thunder_1_ip }}
+          RDS_HOST: ${{ steps.create-cf-stack.outputs.rds_host }}
         run: |
           chmod +x .github/scripts/vm-perf-workflow-script.sh
           bash .github/scripts/vm-perf-workflow-script.sh
+
+      - name: Delete CloudFormation Stack
+        if: always() && steps.create-cf-stack.outputs.stack_id != ''
+        env:
+          STACK_ID: ${{ steps.create-cf-stack.outputs.stack_id }}
+        run: |
+          chmod +x .github/scripts/delete-cf-stack.sh
+          bash .github/scripts/delete-cf-stack.sh
 
       - name: Upload test results
         if: always()
