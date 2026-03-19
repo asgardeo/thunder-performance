@@ -38,16 +38,6 @@ echo "    Build Triggered By $BUILD_USER_EMAIL"
 echo "    PUSH_BENCHMARKS_TO_GITHUB: $PUSH_BENCHMARKS_TO_GITHUB"
 echo "=========================================================="
 
-echo ""
-echo "Downloading Thunder Pack..."
-if [ -f "$WORKSPACE/thunder.zip" ]; then
-    echo "Thunder pack found locally at $WORKSPACE/thunder.zip. Skipping download."
-else
-    wget -q -O "$WORKSPACE"/thunder.zip "$THUNDER_PACK_URL"
-    echo "Thunder pack downloaded successfully."
-fi
-echo "=========================================================="
-
 cd $WORKSPACE/perf-scripts/$DEPLOYMENT
 
 echo ""
