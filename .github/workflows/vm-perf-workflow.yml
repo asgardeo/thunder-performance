@@ -16,7 +16,7 @@ on:
         options:
           - single-node
       THUNDER_INSTANCE_TYPE:
-        description: 'Thunder VM instance type. Specs - t2.nano: 1 vCPU/0.5 GB/Low-Moderate | t2.micro: 1 vCPU/1 GB/Low-Moderate | t2.small: 1 vCPU/2 GB/Low-Moderate | t3a.nano: 2 vCPU/0.5 GB/Up to 5 Gbps | t3a.micro: 2 vCPU/1 GB/Up to 5 Gbps | t3a.small: 2 vCPU/2 GB/Up to 5 Gbps | t3a.medium: 2 vCPU/4 GB/Up to 5 Gbps | t3a.large: 2 vCPU/8 GB/Up to 5 Gbps | t3a.xlarge: 4 vCPU/16 GB/Up to 5 Gbps | t3a.2xlarge: 8 vCPU/32 GB/Up to 5 Gbps'
+        description: 'Thunder VM instance type'
         required: true
         default: 't3a.medium'
         type: choice
@@ -61,7 +61,7 @@ on:
           - '500-3000'
           - '1000-3000'
       DB_INSTANCE_TYPE:
-        description: 'RDS DB instance type. Specs - db.t3.medium: 2 vCPU/4 GB | db.t3.large: 2 vCPU/8 GB | db.t3.xlarge: 4 vCPU/16 GB | db.m6i.large: 2 vCPU/8 GB | db.m6i.xlarge: 4 vCPU/16 GB | db.m6i.2xlarge: 8 vCPU/32 GB'
+        description: 'RDS DB instance type'
         required: true
         default: 'db.t3.medium'
         type: choice
@@ -257,6 +257,14 @@ jobs:
         run: |
           aws s3 cp --recursive $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER" --only-show-errors --no-progress
 
+      - name: Upload test results to Pipeline Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results-${{ github.run_number }}
+          path: ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*
+          retention-days: 30
+
       - name: Publish test results to GitHub
         if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true
         env:
@@ -306,13 +314,6 @@ jobs:
 
           git add $benchmark_dir_path/
           git commit -m "Add performance benchmarks from test at $timestamp"
+          git restore .
           git pull origin $GITHUB_REF_NAME
           git push -u origin $GITHUB_REF_NAME
-
-      - name: Upload test results to Pipeline Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-test-results-${{ github.run_number }}
-          path: ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*
-          retention-days: 30
