@@ -143,6 +143,8 @@ permissions:
 jobs:
   vm-performance-test:
     runs-on: ubuntu-latest
+    env:
+      RESOURCES_DIR: ${{ github.workspace }}/resources
 
     steps:
       - name: Checkout repository
@@ -190,8 +192,7 @@ jobs:
 
       - name: Download Infrastructure Resources
         run: |
-          mkdir -p $GITHUB_WORKSPACE/resources
-          RESOURCES_DIR=$GITHUB_WORKSPACE/resources
+          mkdir -p $RESOURCES_DIR
           echo "Downloading thunder-perf-test.pem..."
           aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem $RESOURCES_DIR/thunder-perf-test.pem --only-show-errors --no-progress
           chmod 400 $RESOURCES_DIR/thunder-perf-test.pem

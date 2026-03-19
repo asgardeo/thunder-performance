@@ -19,18 +19,13 @@
 # Run VM Performance tests on AWS
 # ----------------------------------------------------------------------------
 
-RESOURCES_DIR=$WORKSPACE/resources
-
 echo "WORKSPACE Directory: $WORKSPACE"
+echo "RESOURCES Directory: $RESOURCES_DIR"
 
 echo ""
 echo "Starting performance test with params:"
 echo "    DEPLOYMENT: $DEPLOYMENT"
-echo "    THUNDER_INSTANCE_TYPE: $THUNDER_INSTANCE_TYPE"
-echo "    DB_INSTANCE_TYPE: $DB_INSTANCE_TYPE"
 echo "    CONCURRENCY: $CONCURRENCY"
-echo "    PERFORMANCE_REPO: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
-echo "    BRANCH: $GITHUB_REF_NAME"
 echo "    DB_TYPE: $DB_TYPE"
 echo "    BUILD_CAUSE: $BUILD_CAUSE"
 echo "    Build Triggered By $BUILD_USER_EMAIL"
