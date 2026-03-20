@@ -272,11 +272,22 @@ jobs:
         run: |
           aws s3 cp --recursive $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER" --only-show-errors --no-progress
 
-      - name: Upload test results to Pipeline Artifact
+      - name: Upload summary and CloudWatch metrics to Pipeline Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: performance-test-results-${{ github.run_number }}
+          path: |
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/summary.csv
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/summary.md
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/cloudwatch/**
+          retention-days: 30
+
+      - name: Upload full test results to Pipeline Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results-full-${{ github.run_number }}
           path: ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*
           retention-days: 30
 
