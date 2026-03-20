@@ -40,7 +40,7 @@ cmd="./start-performance.sh -k $RESOURCES_DIR/thunder-perf-test.pem \
 -c is-perf-cert -j $RESOURCES_DIR/apache-jmeter-5.6.3.tgz -n $WORKSPACE/thunder.zip -q $BUILD_USER_EMAIL -m $DB_TYPE -r $CONCURRENCY -f $DEPLOYMENT -z $USE_DELAYS "
 
 if [[ ! -z $ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT ]]; then
-	cmd+=" $ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT"
+	cmd+=" -- $ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT"
 fi
 
 echo "$cmd"
