@@ -67,6 +67,4 @@ jwt:
 
 crypto:
   password_hashing:
-    algorithm: "PBKDF2"
-    parameters:
-      "iterations": 10000
+    algorithm: "SHA256"
