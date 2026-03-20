@@ -11,11 +11,11 @@ BENCHMARK_DIR_PATH="benchmarks/$DEPLOYMENT/workflow-build-$BUILD_NUMBER"
 
 mkdir -p "$BENCHMARK_DIR_PATH"
 
-cp "$GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/summary.csv" "$BENCHMARK_DIR_PATH/summary-$TIMESTAMP.csv"
+cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/summary.csv "$BENCHMARK_DIR_PATH/summary-$TIMESTAMP.csv"
 
-if ls "$GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/cloudwatch/*.png" 1>/dev/null 2>&1; then
+if ls $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/cloudwatch/*.png 1>/dev/null 2>&1; then
   mkdir -p "$BENCHMARK_DIR_PATH/cloudwatch"
-  cp "$GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/cloudwatch/*.png" "$BENCHMARK_DIR_PATH/cloudwatch/"
+  cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/cloudwatch/*.png "$BENCHMARK_DIR_PATH/cloudwatch/"
 fi
 
 cat <<EOF >> "$BENCHMARK_DIR_PATH/readme.md"
