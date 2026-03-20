@@ -72,7 +72,10 @@ function execute_db_command() {
     ssh_bastion_cmd "$db_command"
 }
 
-while getopts "q:k:c:j:n:u:p:g:m:r:h" opts; do
+deployment=""
+use_delay=""
+
+while getopts "q:k:c:j:n:u:p:g:m:r:f:z:h" opts; do
     case $opts in
     q)
         user_tag=${OPTARG}
@@ -104,6 +107,12 @@ while getopts "q:k:c:j:n:u:p:g:m:r:h" opts; do
     r)
         concurrency=${OPTARG}
         ;;
+    f)
+        deployment=${OPTARG}
+        ;;
+    z)
+        use_delay=${OPTARG}
+        ;;
     h)
         usage
         exit 0
@@ -117,7 +126,7 @@ done
 shift "$((OPTIND - 1))"
 
 # All remaining positional args are forwarded to run-performance-tests.sh
-run_performance_tests_options=("-b ${db_type} -g ${no_of_nodes} -r ${concurrency} $@")
+run_performance_tests_options=("-b ${db_type} -g ${no_of_nodes} -r ${concurrency} -f ${deployment} -z ${use_delay} $@")
 
 if [[ -z $user_tag ]]; then
     echo "Please provide the user tag."
