@@ -42,7 +42,7 @@ on:
         default: true
         type: boolean
       CONCURRENCY:
-        description: 'Comma-separated list of concurrent user counts to test (e.g. 50,100,150,300,500)'
+        description: 'Concurrency (Comma-separated list)'
         required: true
         default: '50'
         type: string
@@ -92,7 +92,7 @@ on:
         default: true
         type: boolean
       CONCURRENCY:
-        description: 'Comma-separated list of concurrent user counts to test (e.g. 50,100,150,300,500)'
+        description: 'Concurrency (Comma-separated list)'
         required: false
         default: '50'
         type: string
