@@ -251,8 +251,10 @@ jobs:
           THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
           RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
         run: |
+          pip install -q matplotlib
           chmod +x .github/scripts/collect-cloudwatch-metrics.sh
           bash .github/scripts/collect-cloudwatch-metrics.sh
+          python3 .github/scripts/generate-metrics-charts.py || echo "WARN: Chart generation failed."
 
       - name: Delete CloudFormation Stack
         if: always() && steps.create-cf-stack.outputs.stack_id != ''
@@ -302,6 +304,11 @@ jobs:
 
           cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/summary.csv $benchmark_dir_path/"summary-$timestamp".csv
 
+          if ls $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/cloudwatch/*.png 1>/dev/null 2>&1; then
+            mkdir -p $benchmark_dir_path/cloudwatch
+            cp $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-*/cloudwatch/*.png $benchmark_dir_path/cloudwatch/
+          fi
+
           cat <<EOF >> $benchmark_dir_path/readme.md
           Build Number: $BUILD_NUMBER
 
@@ -324,6 +331,26 @@ jobs:
           Performance Repo Branch: $GITHUB_REF_NAME
 
           EOF
+
+          if [ -d "$benchmark_dir_path/cloudwatch" ]; then
+            cat <<EOF >> $benchmark_dir_path/readme.md
+
+          ## CloudWatch Metrics
+
+          ### Thunder (EC2)
+          ![Thunder EC2 Metrics](cloudwatch/thunder-ec2.png)
+
+          ### Nginx (EC2)
+          ![Nginx EC2 Metrics](cloudwatch/nginx-ec2.png)
+
+          ### Bastion (EC2)
+          ![Bastion EC2 Metrics](cloudwatch/bastion-ec2.png)
+
+          ### RDS
+          ![RDS Metrics](cloudwatch/rds.png)
+
+          EOF
+          fi
 
           git add $benchmark_dir_path/
           git commit -m "Add performance benchmarks from test at $timestamp"
