@@ -24,8 +24,8 @@
 export AWS_DEFAULT_OUTPUT="json"
 
 # Defaults not exposed as workflow inputs
-BASTION_INSTANCE_TYPE="t3a.large"
-NGINX_INSTANCE_TYPE="t3a.medium"
+BASTION_INSTANCE_TYPE="t3a.2xlarge"
+NGINX_INSTANCE_TYPE="t3a.small"
 DB_USERNAME="asgthunder"
 DB_PASSWORD="asgthunder"
 CERTIFICATE_NAME="is-perf-cert"
