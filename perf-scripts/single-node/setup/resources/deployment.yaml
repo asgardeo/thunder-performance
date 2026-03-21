@@ -64,7 +64,3 @@ cache:
 
 jwt:
   issuer: "thunder"
-
-crypto:
-  password_hashing:
-    algorithm: "SHA256"
