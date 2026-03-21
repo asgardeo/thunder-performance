@@ -64,3 +64,10 @@ cache:
 
 jwt:
   issuer: "thunder"
+
+
+crypto:
+  password_hashing:
+    algorithm: "PBKDF2"
+    parameters:
+      "iterations": 10000
