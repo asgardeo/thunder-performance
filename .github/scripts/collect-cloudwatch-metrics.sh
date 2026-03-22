@@ -44,6 +44,15 @@ METRICS_DIR="$RESULTS_DIR/cloudwatch"
 mkdir -p "$METRICS_DIR"
 
 echo ""
+echo "Writing instance IDs to $RESULTS_DIR/instance-ids.txt..."
+cat <<EOF > "$RESULTS_DIR/instance-ids.txt"
+Thunder Instance ID: ${THUNDER_INSTANCE_ID:-}
+Nginx Instance ID: ${NGINX_INSTANCE_ID:-}
+Bastion Instance ID: ${BASTION_INSTANCE_ID:-}
+RDS Instance ID: ${RDS_INSTANCE_ID:-}
+EOF
+
+echo ""
 echo "Collecting CloudWatch metrics..."
 echo "    Time window : $START_TIME → $END_TIME"
 echo "    Output dir  : $METRICS_DIR"

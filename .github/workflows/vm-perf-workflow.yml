@@ -268,6 +268,10 @@ jobs:
           DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
           DB_TYPE: 'postgres'
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
         run: |
           python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
 
@@ -295,6 +299,7 @@ jobs:
           path: |
             ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/summary.csv
             ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/summary.md
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/instance-ids.txt
             ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/cloudwatch/**
           retention-days: 30
 
@@ -317,6 +322,10 @@ jobs:
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
           BUILD_NUMBER: ${{ github.run_number }}
           GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
         run: |
           chmod +x .github/scripts/publish-benchmarks.sh
           bash .github/scripts/publish-benchmarks.sh

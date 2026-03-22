@@ -35,6 +35,14 @@ Database Type: $DB_TYPE
 
 Concurrency: $CONCURRENCY
 
+Thunder Instance ID: $THUNDER_INSTANCE_ID
+
+Nginx Instance ID: $NGINX_INSTANCE_ID
+
+Bastion Instance ID: $BASTION_INSTANCE_ID
+
+RDS Instance ID: $RDS_INSTANCE_ID
+
 Performance Repo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
 
 Performance Repo Branch: $GITHUB_REF_NAME
