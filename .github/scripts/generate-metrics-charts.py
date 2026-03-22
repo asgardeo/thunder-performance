@@ -21,7 +21,6 @@
 # Reads WORKSPACE and DEPLOYMENT env vars to locate the metrics directory.
 # ----------------------------------------------------------------------------
 
-import base64
 import csv
 import os
 import sys
@@ -109,11 +108,9 @@ def make_figure(data, groups, title):
     return fig
 
 
-def save_and_encode(fig, path):
+def save_fig(fig, path):
     fig.savefig(path, dpi=100, bbox_inches='tight', facecolor='white')
     plt.close(fig)
-    with open(path, 'rb') as f:
-        return base64.b64encode(f.read()).decode()
 
 
 def to_mb(v):
@@ -125,9 +122,6 @@ def main():
     if not metrics_dir or not os.path.isdir(metrics_dir):
         print("No cloudwatch metrics directory found — skipping chart generation.", file=sys.stderr)
         sys.exit(0)
-
-    summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
-    lines = ['\n## CloudWatch Infrastructure Metrics\n']
 
     # EC2 nodes — basic monitoring (5-min intervals)
     ec2_groups = [
@@ -143,9 +137,7 @@ def main():
         if not any(data.values()):
             continue
         fig = make_figure(data, ec2_groups, f'{node.capitalize()} Node — EC2 Metrics')
-        b64 = save_and_encode(fig, os.path.join(metrics_dir, f'{node}-ec2.png'))
-        lines.append(f'### {node.capitalize()} (EC2)\n')
-        lines.append(f'<img src="data:image/png;base64,{b64}" width="800"/>\n\n')
+        save_fig(fig, os.path.join(metrics_dir, f'{node}-ec2.png'))
 
     # RDS — 1-minute intervals, includes memory
     rds_groups = [
@@ -158,16 +150,7 @@ def main():
     rds_data = read_csv(os.path.join(metrics_dir, 'rds.csv'))
     if any(rds_data.values()):
         fig = make_figure(rds_data, rds_groups, 'RDS — Database Metrics')
-        b64 = save_and_encode(fig, os.path.join(metrics_dir, 'rds.png'))
-        lines.append('### RDS\n')
-        lines.append(f'<img src="data:image/png;base64,{b64}" width="800"/>\n\n')
-
-    output = '\n'.join(lines)
-    if summary_path:
-        with open(summary_path, 'a') as f:
-            f.write(output)
-    else:
-        print(output)
+        save_fig(fig, os.path.join(metrics_dir, 'rds.png'))
 
 
 if __name__ == '__main__':

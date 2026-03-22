@@ -256,6 +256,21 @@ jobs:
           bash .github/scripts/collect-cloudwatch-metrics.sh
           python3 .github/scripts/generate-metrics-charts.py || echo "WARN: Chart generation failed."
 
+      - name: Publish Job Summary
+        if: always()
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          TIMESTAMP: ${{ steps.execute-perf-test.outputs.perf_test_start_time }}
+          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          DB_TYPE: 'postgres'
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+        run: |
+          python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
+
       - name: Delete CloudFormation Stack
         if: always() && steps.create-cf-stack.outputs.stack_id != ''
         env:
