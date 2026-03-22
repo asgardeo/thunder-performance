@@ -29,6 +29,10 @@ Deployment Pattern: $DEPLOYMENT
 
 Thunder Instance Type: $THUNDER_INSTANCE_TYPE
 
+Nginx Instance Type: $NGINX_INSTANCE_TYPE
+
+Bastion Instance Type: $BASTION_INSTANCE_TYPE
+
 Database Instance Type: $DB_INSTANCE_TYPE
 
 Database Type: $DB_TYPE

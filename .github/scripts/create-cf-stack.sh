@@ -200,6 +200,8 @@ echo "bastion_instance_id=$bastion_instance" >> "$GITHUB_OUTPUT"
 echo "nginx_instance_id=$nginx_instance" >> "$GITHUB_OUTPUT"
 echo "thunder_instance_id=$wso2thunder_instance" >> "$GITHUB_OUTPUT"
 echo "rds_instance_id=$rds_instance" >> "$GITHUB_OUTPUT"
+echo "nginx_instance_type=$NGINX_INSTANCE_TYPE" >> "$GITHUB_OUTPUT"
+echo "bastion_instance_type=$BASTION_INSTANCE_TYPE" >> "$GITHUB_OUTPUT"
 
 echo ""
 echo "CloudFormation stack created successfully."

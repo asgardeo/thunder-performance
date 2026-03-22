@@ -265,6 +265,8 @@ jobs:
           TIMESTAMP: ${{ steps.execute-perf-test.outputs.perf_test_start_time }}
           THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
           THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
+          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
           DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
           DB_TYPE: 'postgres'
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
@@ -317,6 +319,8 @@ jobs:
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
           THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
           THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
+          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
           DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
           DB_TYPE: 'postgres'
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
