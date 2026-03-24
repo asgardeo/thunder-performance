@@ -94,18 +94,6 @@ echo "Running JMeter setup script..."
 echo "============================================"
 cd /home/ubuntu || exit 0
 
-echo "[DIAG] Checking JMeter tgz on bastion..."
-ls -lh /home/ubuntu/apache-jmeter-*.tgz || echo "[DIAG] WARNING: JMeter tgz not found at /home/ubuntu/"
-echo "[DIAG] Checking if JMeter dir already exists (would skip extraction)..."
-if [[ -d /home/ubuntu/apache-jmeter-5.6.3 ]]; then
-    echo "[DIAG] WARNING: /home/ubuntu/apache-jmeter-5.6.3 already exists — extraction will be skipped by install-jmeter.sh"
-    ls /home/ubuntu/apache-jmeter-5.6.3/lib/ext/ | grep -E "ApacheJMeter_core|jmeter-studio" || echo "[DIAG] Neither ApacheJMeter_core.jar nor jmeter-studio jar found in existing dir"
-else
-    echo "[DIAG] /home/ubuntu/apache-jmeter-5.6.3 does not exist — extraction will proceed"
-fi
-echo "[DIAG] Verifying ApacheJMeter_core.jar is present in tgz..."
-tar -tf /home/ubuntu/apache-jmeter-*.tgz 2>/dev/null | grep ApacheJMeter_core || echo "[DIAG] WARNING: ApacheJMeter_core.jar NOT found in tgz"
-
 if [[ -z $no_of_nodes ]]; then
     echo "Please provide the number of Thunder nodes in the deployment."
     exit 1
@@ -122,10 +110,18 @@ else
     exit 1
 fi
 
-echo "[DIAG] JMeter setup complete. Checking for ApacheJMeter_core.jar..."
-ls /home/ubuntu/apache-jmeter-*/lib/ext/ApacheJMeter_core.jar 2>/dev/null \
-    && echo "[DIAG] ApacheJMeter_core.jar is present" \
-    || echo "[DIAG] ERROR: ApacheJMeter_core.jar is MISSING after setup"
+echo "Restoring ApacheJMeter_core.jar if missing..."
+echo "============================================"
+jmeter_dir=$(ls -d /home/ubuntu/apache-jmeter-* 2>/dev/null | grep -v '\.tgz' | head -1)
+if [[ -n "$jmeter_dir" && ! -f "$jmeter_dir/lib/ext/ApacheJMeter_core.jar" ]]; then
+    echo "ApacheJMeter_core.jar missing — restoring from tgz..."
+    tar -xOf /home/ubuntu/apache-jmeter-*.tgz \
+        --wildcards '*/lib/ext/ApacheJMeter_core.jar' \
+        > "$jmeter_dir/lib/ext/ApacheJMeter_core.jar"
+    echo "ApacheJMeter_core.jar restored."
+else
+    echo "ApacheJMeter_core.jar is present."
+fi
 
 sudo chown -R ubuntu:ubuntu workspace
 sudo chown -R ubuntu:ubuntu apache-jmeter-*
