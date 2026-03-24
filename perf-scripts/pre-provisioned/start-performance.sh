@@ -20,7 +20,6 @@ timestamp=$(date +%Y-%m-%d--%H-%M-%S)
 bastion_user="azureuser"
 rds_host=""
 cloud_host_name=""
-mode=""
 bastion_node_ip=""
 
 results_dir="$PWD/results-$timestamp"
@@ -28,28 +27,24 @@ results_dir="$PWD/results-$timestamp"
 function usage() {
     echo ""
     echo "Usage: "
-    echo "$0  -n <database_hostname> -d <cloud_hostname> -t <mode>"
+    echo "$0  -n <database_hostname> -d <cloud_hostname>"
     echo "   [-b <bastion_node_ip>]"
     echo "   [-h]"
     echo ""
     echo "-n: RDS Hostname. Default: $rds_host."
     echo "-d: Cloud Hostname: $cloud_host_name."
-    echo "-t: The required testing mode [FULL/QUICK]"
     echo "-b: The IP address of the bastion node."
     echo "-h: Display this help and exit."
     echo ""
 }
 
-while getopts "n:t:d:b:h" opts; do
+while getopts "n:d:b:h" opts; do
     case $opts in
     d)
         cloud_host_name=${OPTARG}
         ;;
     n)
         rds_host=${OPTARG}
-        ;;
-    t)
-        mode=${OPTARG}
         ;;
     b)
         bastion_node_ip=${OPTARG}
@@ -67,14 +62,13 @@ done
 shift "$((OPTIND - 1))"
 
 python --version
-echo "Run mode: $mode"
 
 run_performance_tests_options="$@"
 echo "$run_performance_tests_options"
 
 echo "Bastion IP address: $bastion_node_ip"
 
-run_performance_tests_options+=(" -l $cloud_host_name -v $mode")
+run_performance_tests_options+=(" -l $cloud_host_name")
 echo "$run_performance_tests_options"
 
 mkdir "$results_dir"
@@ -115,7 +109,6 @@ echo ""
 echo "Running performance tests..."
 echo "============================================"
 scp -i ~/.ssh/azure_id_rsa -o StrictHostKeyChecking=no -o HostKeyAlgorithms=ecdsa-sha2-nistp256,ssh-rsa,ssh-dss -o PubkeyAcceptedKeyTypes=+ssh-rsa-cert-v01@openssh.com run-performance-tests.sh $bastion_user@$bastion_node_ip:/home/$bastion_user/workspace/jmeter
-echo "Run Type: $mode"
 
 run_performance_tests_command="./workspace/jmeter/run-performance-tests.sh -p 443 ${run_performance_tests_options[@]}"
 
@@ -150,8 +143,7 @@ unzip -q results.zip
 wget -q https://sourceforge.net/projects/gcviewer/files/gcviewer-1.35.jar/download -O gcviewer.jar
 "$results_dir"/jmeter/create-summary-csv.sh -d results -n "WSO2 Thunder" -p thunder -c "Heap Size" \
     -c "Concurrent Users" -r "([0-9]+[a-zA-Z])_heap" -r "([0-9]+)_users" -i -l -k 2 -g gcviewer.jar
-echo "Creating summary file..."
-./summary/summary-modifier-pre-provisioned.py
+
 
 rm -rf cf-test-metadata.json cloudformation/ common/ gcviewer.jar is/ jmeter/ jtl-splitter/ netty-service/ payloads/ results/ sar/ setup/ workspace/
 

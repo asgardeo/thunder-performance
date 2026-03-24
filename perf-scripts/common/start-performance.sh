@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+# Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
 #
 # WSO2 LLC. licenses this file to you under the Apache License,
 # Version 2.0 (the "License"); you may not use this file except
@@ -22,8 +22,6 @@
 script_start_time=$(date +%s)
 timestamp=$(date +%Y-%m-%d--%H-%M-%S)
 
-random_number=$RANDOM
-
 key_file=""
 certificate_name=""
 jmeter_setup=""
@@ -33,44 +31,26 @@ default_db_username="asgthunder"
 db_username="$default_db_username"
 default_db_password="asgthunder"
 db_password="$default_db_password"
-default_db_instance_type=db.m6i.2xlarge
-db_instance_type=$default_db_instance_type
-default_is_instance_type=c5.xlarge
-wso2_thunder_instance_type="$default_is_instance_type"
-default_bastion_instance_type=c6i.2xlarge
-bastion_instance_type="$default_bastion_instance_type"
 db_type="postgres"
-enable_high_concurrency=false
 
 results_dir="$PWD/results-$timestamp"
-default_minimum_stack_creation_wait_time=10
-minimum_stack_creation_wait_time="$default_minimum_stack_creation_wait_time"
 
 function usage() {
     echo ""
     echo "Usage: "
     echo "$0 -k <key_file> -c <certificate_name> -j <jmeter_setup_path> -n <IS_zip_file_path>"
-    echo "   [-u <db_username>] [-p <db_password>] [-e <db_instance_type>] [-r <concurrency>]"
-    echo "   [-i <wso2_thunder_instance_type>] [-b <bastion_instance_type>] [-m <db_type>]"
-    echo "   [-q <user_tag>]"
-    echo "   [-w <minimum_stack_creation_wait_time>] [-g <number_of_nodes>] [-v <testing_mode>] [-h]"
+    echo "   [-u <db_username>] [-p <db_password>] [-r <concurrency>] [-m <db_type>]"
+    echo "   [-q <user_tag>] [-g <number_of_nodes>] [-h]"
     echo ""
     echo "-k: The Amazon EC2 key file to be used to access the instances."
     echo "-c: The name of the IAM certificate."
     echo "-y: The token issuer type."
-    echo "-q: User tag who triggered the Jenkins build"
+    echo "-q: User tag who triggered the build."
     echo "-r: Concurrency (50-500, 500-3000, 50-3000)"
-    echo "-m: Enable burst traffic"
     echo "-j: The path to JMeter setup."
-    echo "-n: The Thunder server zip"
+    echo "-n: The Thunder server zip."
     echo "-u: The database username. Default: $default_db_username."
     echo "-p: The database password. Default: $default_db_password."
-    echo "-e: The database instance type. Default: $default_db_instance_type."
-    echo "-i: The instance type used for Thunder nodes. Default: $default_is_instance_type."
-    echo "-b: The instance type used for the bastion node. Default: $default_bastion_instance_type."
-    echo "-w: The minimum time to wait in minutes before polling for cloudformation stack's CREATE_COMPLETE status."
-    echo "    Default: $default_minimum_stack_creation_wait_time minutes."
-    echo "-v: The required testing mode [FULL/QUICK]"
     echo "-g: Number of Thunder nodes."
     echo "-m: Database type. Default: $db_type."
     echo "-h: Display this help and exit."
@@ -92,7 +72,10 @@ function execute_db_command() {
     ssh_bastion_cmd "$db_command"
 }
 
-while getopts "q:k:c:j:n:u:p:e:i:b:w:g:m:r:h" opts; do
+deployment=""
+use_delay=""
+
+while getopts "q:k:c:j:n:u:p:g:m:r:f:z:h" opts; do
     case $opts in
     q)
         user_tag=${OPTARG}
@@ -115,26 +98,20 @@ while getopts "q:k:c:j:n:u:p:e:i:b:w:g:m:r:h" opts; do
     p)
         db_password=${OPTARG}
         ;;
-    r)
-        concurrency=${OPTARG}
-        ;;
-    e)
-        db_instance_type=${OPTARG}
-        ;;
-    i)
-        wso2_thunder_instance_type=${OPTARG}
-        ;;
-    b)
-        bastion_instance_type=${OPTARG}
-        ;;
-    w)
-        minimum_stack_creation_wait_time=${OPTARG}
-        ;;
     g)
         no_of_nodes=${OPTARG}
         ;;
     m)
         db_type=${OPTARG}
+        ;;
+    r)
+        concurrency=${OPTARG}
+        ;;
+    f)
+        deployment=${OPTARG}
+        ;;
+    z)
+        use_delay=${OPTARG}
         ;;
     h)
         usage
@@ -148,27 +125,8 @@ while getopts "q:k:c:j:n:u:p:e:i:b:w:g:m:r:h" opts; do
 done
 shift "$((OPTIND - 1))"
 
-# Define an associative array to store excluded options
-declare -A excluded_options=(
-  ["-i ${wso2_thunder_instance_type}"]=1
-  ["-q ${user_tag}"]=1
-)
-
-# Create a new array to store the modified options
-modified_options=()
-
-# Iterate over the options and add them to the modified options array,
-# excluding the options present in the excluded_options array
-while [[ $# -gt 0 ]]; do
-  option="$1"
-  if [[ -z "${excluded_options[$option]}" ]]; then
-    modified_options+=("$option")
-  fi
-  shift
-done
-
-# Pass the modified options to the command
-run_performance_tests_options=("-b ${db_type} -g ${no_of_nodes} -r ${concurrency} -v ${modified_options[@]}")
+# All remaining positional args are forwarded to run-performance-tests.sh
+run_performance_tests_options=("-b ${db_type} -g ${no_of_nodes} -r ${concurrency} -f ${deployment} -z ${use_delay} $@")
 
 if [[ -z $user_tag ]]; then
     echo "Please provide the user tag."
@@ -200,29 +158,13 @@ if [[ -z $thunder_setup ]]; then
     exit 1
 fi
 
-if ! [[ $minimum_stack_creation_wait_time =~ ^[0-9]+$ ]]; then
-    echo "Please provide a valid minimum time to wait before polling for cloudformation stack's CREATE_COMPLETE status."
-    exit 1
-fi
-
-if [[ $no_of_nodes -eq 1 ]]; then
-    no_of_nodes_string="single"
-else
+if [[ $no_of_nodes -ne 1 ]]; then
     echo "Invalid value for no_of_nodes. Please provide a valid number."
     exit 1
 fi
 
-# Enable high concurrency mode if the concurrency type contains 1000 or more
-if [[ $concurrency =~ ^([0-9]{4}-[0-9]{3}|[0-9]{3}-[0-9]{4}|[0-9]{4}-[0-9]{4})$ ]]; then
-    enable_high_concurrency=true
-fi
-
-key_filename=$(basename "$key_file")
-key_name=${key_filename%.*}
-
 # Checking for the availability of commands in jenkins.
 check_command bc
-check_command aws
 check_command unzip
 check_command jq
 check_command python
@@ -232,137 +174,32 @@ echo ""
 echo "Results will be downloaded to $results_dir"
 
 echo ""
+echo "Copying CF test metadata to results directory..."
+cp "${WORKSPACE}/cf-test-metadata.json" "$results_dir/cf-test-metadata.json"
+
+echo ""
 echo "Extracting Thunder Performance Distribution to $results_dir"
-if [[ $no_of_nodes -eq 1 ]]; then
-    tar -xf target/performance-thunder-singlenode-*.tar.gz -C "$results_dir"
-fi
+tar -xf target/performance-thunder-singlenode-*.tar.gz -C "$results_dir"
 
 cp run-performance-tests.sh "$results_dir"/jmeter/
 estimate_command="$results_dir/jmeter/run-performance-tests.sh -t ${run_performance_tests_options[*]}"
 echo ""
 echo "Estimating time for performance tests: $estimate_command"
-# Estimating this script will also validate the options. It's important to validate options before creating the stack.
 $estimate_command
-
-temp_dir=$(mktemp -d)
 
 # Get absolute paths
 key_file=$(realpath "$key_file")
 
-echo "your key is"
-echo "$key_file"
+# IPs are provided by the Create CloudFormation Stack workflow step
+bastion_node_ip="${BASTION_NODE_IP:?'BASTION_NODE_IP environment variable is not set'}"
+nginx_instance_ip="${NGINX_INSTANCE_IP:?'NGINX_INSTANCE_IP environment variable is not set'}"
+wso2_thunder_1_ip="${WSO2_THUNDER_1_IP:?'WSO2_THUNDER_1_IP environment variable is not set'}"
+rds_host="${RDS_HOST:?'RDS_HOST environment variable is not set'}"
 
-ln -s "$key_file" "$temp_dir"/"$key_filename"
-
-export AWS_DEFAULT_OUTPUT="json"
-
-echo ""
-echo "Preparing cloud formation template..."
-echo "============================================"
-echo "random_number: $random_number"
-if [[ $no_of_nodes -eq 1 ]]; then
-    template_file_name="new-single-node.yml"
-    cp single-node.yaml "$template_file_name"
-fi
-sed -i "s/suffix/$random_number/" "$template_file_name"
-
-echo ""
-echo "Validating stack..."
-echo "============================================"
-aws cloudformation validate-template --template-body "file://$template_file_name"
-
-# Save metadata
-test_parameters_json='.'
-test_parameters_json+=' | .["thunder_nodes_ec2_instance_type"]=$thunder_nodes_ec2_instance_type'
-test_parameters_json+=' | .["bastion_node_ec2_instance_type"]=$bastion_node_ec2_instance_type'
-jq -n \
-    --arg thunder_nodes_ec2_instance_type "$wso2_thunder_instance_type" \
-    --arg bastion_node_ec2_instance_type "$bastion_instance_type" \
-    "$test_parameters_json" > "$results_dir"/cf-test-metadata.json
-
-stack_create_start_time=$(date +%s)
-stack_name="thunder-performance-$no_of_nodes_string-node--$timestamp--$random_number"
-create_stack_command="aws cloudformation create-stack --stack-name $stack_name \
-    --template-body file://$template_file_name --parameters \
-        ParameterKey=CertificateName,ParameterValue=$certificate_name \
-        ParameterKey=KeyPairName,ParameterValue=$key_name \
-        ParameterKey=DBUsername,ParameterValue=$db_username \
-        ParameterKey=DBPassword,ParameterValue=$db_password \
-        ParameterKey=DBInstanceType,ParameterValue=$db_instance_type \
-        ParameterKey=DBType,ParameterValue=$db_type \
-        ParameterKey=WSO2InstanceType,ParameterValue=$wso2_thunder_instance_type \
-        ParameterKey=BastionInstanceType,ParameterValue=$bastion_instance_type \
-        ParameterKey=EnableHighConcurrencyMode,ParameterValue=$enable_high_concurrency \
-        ParameterKey=UserTag,ParameterValue=$user_tag \
-    --capabilities CAPABILITY_IAM"
-
-echo ""
-echo "Creating stack..."
-echo "============================================"
-echo "$create_stack_command"
-stack_id="$($create_stack_command)"
-stack_id=$(echo "$stack_id" | jq -r .StackId)
-
-# Delete the stack in case of an error.
-trap 'exit_handler "$results_dir" "$stack_id" "$script_start_time"' EXIT SIGINT SIGTERM
-
-echo ""
-echo "Created stack ID: $stack_id"
-rm "$template_file_name"
-
-echo ""
-echo "Waiting ${minimum_stack_creation_wait_time}m before polling for cloudformation stack's CREATE_COMPLETE status..."
-sleep "${minimum_stack_creation_wait_time}"m
-
-echo ""
-echo "Polling till the stack creation completes..."
-aws cloudformation wait stack-create-complete --stack-name "$stack_id" || {
-  echo "Stack creation failed!"
-  aws cloudformation describe-stack-events --stack-name "$stack_id" | jq '.StackEvents[] | select(.ResourceStatus | contains("FAILED")) | {LogicalResourceId: .LogicalResourceId, ResourceStatusReason: .ResourceStatusReason}'
-  echo "Exiting due to stack creation failure."
-  exit 1
-}
-printf "Stack creation time: %s\n" "$(format_time "$(measure_time "$stack_create_start_time")")"
-
-echo ""
-echo "Getting Bastion Node Public IP..."
-bastion_instance="$(aws cloudformation describe-stack-resources --stack-name "$stack_id" --logical-resource-id WSO2BastionInstance"$random_number" | jq -r '.StackResources[].PhysicalResourceId')"
-bastion_node_ip="$(aws ec2 describe-instances --instance-ids "$bastion_instance" | jq -r '.Reservations[].Instances[].PublicIpAddress')"
-echo "Bastion Node Public IP: $bastion_node_ip"
-
-echo ""
-echo "Getting NGinx Instance Private IP..."
-nginx_instance="$(aws cloudformation describe-stack-resources --stack-name "$stack_id" --logical-resource-id WSO2NGinxInstance"$random_number" | jq -r '.StackResources[].PhysicalResourceId')"
-nginx_instance_ip="$(aws ec2 describe-instances --instance-ids "$nginx_instance" | jq -r '.Reservations[].Instances[].PrivateIpAddress')"
-echo "NGinx Instance Private IP: $nginx_instance_ip"
-
-echo ""
-echo "Getting WSO2 Thunder Node 1 Private IP..."
-wso2_thunder_1_ip=$(get_private_ip "$stack_id" "WSO2ThunderNode1AutoScalingGroup$random_number")
-echo "WSO2 Thunder Node 1 Private IP: $wso2_thunder_1_ip"
-
-echo ""
-echo "Getting RDS Hostname..."
-rds_instance="$(aws cloudformation describe-stack-resources --stack-name "$stack_id" --logical-resource-id WSO2ThunderDBInstance"$random_number" | jq -r '.StackResources[].PhysicalResourceId')"
-rds_host="$(aws rds describe-db-instances --db-instance-identifier "$rds_instance" | jq -r '.DBInstances[].Endpoint.Address')"
-echo "RDS Hostname: $rds_host"
-
-if [[ -z $bastion_node_ip ]]; then
-    echo "Bastion node IP could not be found. Exiting..."
-    exit 1
-fi
-if [[ -z $nginx_instance_ip ]]; then
-    echo "Load balancer IP could not be found. Exiting..."
-    exit 1
-fi
-if [[ -z $wso2_thunder_1_ip ]]; then
-    echo "WSO2 node 1 IP could not be found. Exiting..."
-    exit 1
-fi
-if [[ -z $rds_host ]]; then
-    echo "RDS host could not be found. Exiting..."
-    exit 1
-fi
+echo "Bastion Node IP: $bastion_node_ip"
+echo "Nginx Instance IP: $nginx_instance_ip"
+echo "WSO2 Thunder Node 1 IP: $wso2_thunder_1_ip"
+echo "RDS Host: $rds_host"
 
 echo ""
 echo "Copying files to Bastion node..."
@@ -399,7 +236,7 @@ ssh_bastion_cmd "./workspace/jmeter/run-performance-tests.sh -p 443 ${run_perfor
 echo ""
 echo "Downloading results..."
 echo "============================================"
-download="scp -i $key_file -o "StrictHostKeyChecking=no" ubuntu@$bastion_node_ip:/home/ubuntu/results.zip $results_dir/"
+download="scp -i $key_file -o StrictHostKeyChecking=no ubuntu@$bastion_node_ip:/home/ubuntu/results.zip $results_dir/"
 echo "$download"
 $download || echo "Remote download failed"
 
@@ -415,14 +252,12 @@ echo "============================================"
 cd "$results_dir"
 unzip -q results.zip
 wget -q http://sourceforge.net/projects/gcviewer/files/gcviewer-1.35.jar/download -O gcviewer.jar
-if [[ $no_of_nodes -eq 1 ]]; then
-    "$results_dir"/jmeter/create-summary-csv.sh -d results -n "WSO2 Thunder" -p wso2thunder -c "Heap Size" \
-        -c "Concurrent Users" -r "([0-9]+[a-zA-Z])_heap" -r "([0-9]+)_users" -i -l -k 1 -g gcviewer.jar
-fi
+"$results_dir"/jmeter/create-summary-csv.sh -d results -n "WSO2 Thunder" -p wso2thunder -c "Heap Size" \
+    -c "Concurrent Users" -r "([0-9]+[a-zA-Z])_heap" -r "([0-9]+)_users" -i -l -k 1 -g gcviewer.jar
 
 echo "Creating summary results markdown file..."
 
-./summary/summary-modifier.py
+
 ./jmeter/create-summary-markdown.py --json-files cf-test-metadata.json results/test-metadata.json --column-names \
     "Concurrent Users" "95th Percentile of Response Time (ms)"
 

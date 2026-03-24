@@ -15,96 +15,76 @@ on:
         type: choice
         options:
           - single-node
-      CPU_CORES:
-        description: 'Number of CPU cores'
+      THUNDER_INSTANCE_TYPE:
+        description: 'Thunder VM instance type'
         required: true
-        default: '4'
+        default: 't3a.medium'
         type: choice
         options:
-          - '2'
-          - '4'
-          - '8'
+          - t2.nano
+          - t2.micro
+          - t2.small
+          - t3a.nano
+          - t3a.micro
+          - t3a.small
+          - t3a.medium
+          - t3a.large
+          - t3a.xlarge
+          - t3a.2xlarge
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
         required: true
         default: '-d 15 -w 5 -x false -y JWT'
         type: string
-      PERFORMANCE_REPO:
-        description: 'Performance repository URL'
-        required: true
-        default: 'https://github.com/asgardeo/thunder-performance'
-        type: string
-      BRANCH:
-        description: 'Branch to use from performance repository'
-        required: true
-        default: 'main'
-        type: string
-      MODE:
-        description: 'Testing mode'
-        required: true
-        default: 'FULL'
-        type: choice
-        options:
-          - FULL
-          - QUICK
       USE_DELAYS:
         description: 'Enable delays in testing'
         required: true
         default: true
         type: boolean
       CONCURRENCY:
-        description: 'Concurrency pattern'
+        description: 'Concurrency (Comma-separated list)'
         required: true
-        default: '50-50'
+        default: '50'
+        type: string
+      DB_INSTANCE_TYPE:
+        description: 'RDS DB instance type'
+        required: true
+        default: 'db.t3.medium'
         type: choice
         options:
-          - '50-50'
-          - '50-500'
-          - '50-1000'
-          - '500-3000'
-          - '1000-3000'
+          - db.t3.medium
+          - db.t3.large
+          - db.t3.xlarge
+          - db.m6i.large
+          - db.m6i.xlarge
+          - db.m6i.2xlarge
       PUSH_BENCHMARKS_TO_GITHUB:
         description: 'Push benchmark results to GitHub'
         required: false
         default: false
         type: boolean
+      CLEANUP_CF_STACK:
+        description: 'Delete CloudFormation stack after test'
+        required: false
+        default: true
+        type: boolean
 
   workflow_call:
     inputs:
-      THUNDER_PACK_URL:
-        description: 'URL to download Thunder pack'
-        required: false
-        default: 'https://github.com/asgardeo/thunder/releases/download/v0.7.0/thunder-v0.7.0-linux-x64.zip'
-        type: string
       DEPLOYMENT:
         description: 'Deployment type'
         required: false
         default: 'single-node'
         type: string
-      CPU_CORES:
-        description: 'Number of CPU cores'
+      THUNDER_INSTANCE_TYPE:
+        description: 'Thunder VM instance type'
         required: false
-        default: '4'
+        default: 't3a.medium'
         type: string
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
         required: false
         default: '-d 15 -w 5 -x false -y JWT'
-        type: string
-      PERFORMANCE_REPO:
-        description: 'Performance repository URL'
-        required: false
-        default: 'https://github.com/asgardeo/thunder-performance'
-        type: string
-      BRANCH:
-        description: 'Branch to use from performance repository'
-        required: false
-        default: 'main'
-        type: string
-      MODE:
-        description: 'Testing mode'
-        required: false
-        default: 'FULL'
         type: string
       USE_DELAYS:
         description: 'Enable delays in testing'
@@ -112,14 +92,24 @@ on:
         default: true
         type: boolean
       CONCURRENCY:
-        description: 'Concurrency pattern'
+        description: 'Concurrency (Comma-separated list)'
         required: false
-        default: '50-50'
+        default: '50'
+        type: string
+      DB_INSTANCE_TYPE:
+        description: 'RDS DB instance type'
+        required: false
+        default: 'db.t3.medium'
         type: string
       PUSH_BENCHMARKS_TO_GITHUB:
         description: 'Push benchmark results to GitHub'
         required: false
         default: false
+        type: boolean
+      CLEANUP_CF_STACK:
+        description: 'Delete CloudFormation stack after test'
+        required: false
+        default: true
         type: boolean
       THUNDER_ARTIFACT_NAME:
         description: 'Name of the artifact to download'
@@ -139,6 +129,8 @@ permissions:
 jobs:
   vm-performance-test:
     runs-on: ubuntu-latest
+    env:
+      RESOURCES_DIR: ${{ github.workspace }}/resources
 
     steps:
       - name: Checkout repository
@@ -159,39 +151,190 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download Thunder Artifact
+      - name: Validate Thunder Pack inputs
+        run: |
+          if [[ -n "${{ inputs.THUNDER_ARTIFACT_NAME }}" && -n "${{ inputs.THUNDER_PACK_URL }}" ]]; then
+            echo "Error: Only one of THUNDER_ARTIFACT_NAME or THUNDER_PACK_URL must be provided, not both."
+            exit 1
+          fi
+          if [[ -z "${{ inputs.THUNDER_ARTIFACT_NAME }}" && -z "${{ inputs.THUNDER_PACK_URL }}" ]]; then
+            echo "Error: Either THUNDER_ARTIFACT_NAME or THUNDER_PACK_URL must be provided."
+            exit 1
+          fi
+
+      - name: Validate Concurrency input
+        run: |
+          concurrency="${{ inputs.CONCURRENCY }}"
+          if [[ -z "$concurrency" ]]; then
+            echo "Error: CONCURRENCY must not be empty."
+            exit 1
+          fi
+          IFS=',' read -ra levels <<< "$concurrency"
+          for level in "${levels[@]}"; do
+            level="${level// /}"
+            if ! [[ "$level" =~ ^[1-9][0-9]*$ ]]; then
+              echo "Error: '$level' is not a valid positive integer. CONCURRENCY must be a comma-separated list of positive integers (e.g. 50,100,150,300,500)."
+              exit 1
+            fi
+          done
+          echo "CONCURRENCY input is valid: $concurrency"
+
+      - name: Download Thunder Pack from Pipeline Artifact
         if: ${{ inputs.THUNDER_ARTIFACT_NAME != '' }}
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.THUNDER_ARTIFACT_NAME }}
           path: ${{ github.workspace }}
 
-      - name: Execute VM Performance Test
+      - name: Download Thunder Pack from URL
+        if: ${{ inputs.THUNDER_ARTIFACT_NAME == '' && inputs.THUNDER_PACK_URL != '' }}
+        run: |
+          echo "Downloading Thunder Pack from URL..."
+          wget -q -O "${{ github.workspace }}/thunder.zip" "${{ inputs.THUNDER_PACK_URL }}"
+          echo "Thunder pack downloaded successfully."
+
+      - name: Download Infrastructure Resources
+        run: |
+          mkdir -p $RESOURCES_DIR
+          echo "Downloading thunder-perf-test.pem..."
+          aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem $RESOURCES_DIR/thunder-perf-test.pem --only-show-errors --no-progress
+          chmod 400 $RESOURCES_DIR/thunder-perf-test.pem
+          echo "Downloading apache-jmeter-5.6.3.tgz..."
+          aws s3 cp s3://performance-thunder-resources/apache-jmeter-5.6.3.tgz $RESOURCES_DIR/apache-jmeter-5.6.3.tgz --only-show-errors --no-progress
+
+      - name: Build Performance Tests
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+        run: |
+          cd $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT
+          echo "Building performance test project: $DEPLOYMENT..."
+          mvn -q clean install
+
+      - name: Create CloudFormation Stack
+        id: create-cf-stack
         env:
           WORKSPACE: ${{ github.workspace }}
-          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
-          CPU_CORES: ${{ inputs.CPU_CORES }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          DB_TYPE: 'postgres'
+          BUILD_USER_EMAIL: ${{ github.actor }}@github.com
+        run: |
+          chmod +x .github/scripts/create-cf-stack.sh
+          bash .github/scripts/create-cf-stack.sh
+
+      - name: Execute VM Performance Test
+        id: execute-perf-test
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
           ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
-          PERFORMANCE_REPO: ${{ inputs.PERFORMANCE_REPO }}
-          BRANCH: ${{ inputs.BRANCH }}
-          MODE: ${{ inputs.MODE }}
           USE_DELAYS: ${{ inputs.USE_DELAYS }}
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
           DB_TYPE: 'postgres'
           BUILD_USER_EMAIL: ${{ github.actor }}@github.com
           BUILD_CAUSE: ${{ github.event_name }}
           BUILD_NUMBER: ${{ github.run_number }}
-          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
-          PUSH_BENCHMARKS_TO_GITHUB: ${{ inputs.PUSH_BENCHMARKS_TO_GITHUB }}
+          BASTION_NODE_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
+          NGINX_INSTANCE_IP: ${{ steps.create-cf-stack.outputs.nginx_instance_ip }}
+          WSO2_THUNDER_1_IP: ${{ steps.create-cf-stack.outputs.wso2_thunder_1_ip }}
+          RDS_HOST: ${{ steps.create-cf-stack.outputs.rds_host }}
         run: |
           chmod +x .github/scripts/vm-perf-workflow-script.sh
           bash .github/scripts/vm-perf-workflow-script.sh
 
-      - name: Upload test results
+      - name: Collect CloudWatch Metrics
+        if: always() && steps.create-cf-stack.outputs.thunder_instance_id != ''
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          PERF_TEST_START_TIME: ${{ steps.execute-perf-test.outputs.perf_test_start_time }}
+          PERF_TEST_END_TIME: ${{ steps.execute-perf-test.outputs.perf_test_end_time }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+        run: |
+          pip install -q matplotlib
+          chmod +x .github/scripts/collect-cloudwatch-metrics.sh
+          bash .github/scripts/collect-cloudwatch-metrics.sh
+          python3 .github/scripts/generate-metrics-charts.py || echo "WARN: Chart generation failed."
+
+      - name: Publish Job Summary
+        if: always()
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          TIMESTAMP: ${{ steps.execute-perf-test.outputs.perf_test_start_time }}
+          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
+          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          DB_TYPE: 'postgres'
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+        run: |
+          python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
+
+      - name: Delete CloudFormation Stack
+        if: always() && steps.create-cf-stack.outputs.stack_id != '' && inputs.CLEANUP_CF_STACK == true
+        env:
+          STACK_ID: ${{ steps.create-cf-stack.outputs.stack_id }}
+        run: |
+          chmod +x .github/scripts/delete-cf-stack.sh
+          bash .github/scripts/delete-cf-stack.sh
+
+      - name: Upload test results to S3
+        if: always()
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          aws s3 cp --recursive $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER" --only-show-errors --no-progress
+
+      - name: Upload summary and CloudWatch metrics to Pipeline Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: performance-test-results-${{ github.run_number }}
-          path: ${{ github.workspace }}/workspace/results-*
+          path: |
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/summary.csv
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/summary.md
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/instance-ids.txt
+            ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*/cloudwatch/**
           retention-days: 30
+
+      - name: Upload full test results to Pipeline Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results-full-${{ github.run_number }}
+          path: ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*
+          retention-days: 30
+
+      - name: Publish test results to GitHub
+        if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
+          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          DB_TYPE: 'postgres'
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+        run: |
+          chmod +x .github/scripts/publish-benchmarks.sh
+          bash .github/scripts/publish-benchmarks.sh

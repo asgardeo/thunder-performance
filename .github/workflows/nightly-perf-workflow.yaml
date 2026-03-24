@@ -40,7 +40,6 @@ jobs:
     needs: build
     uses: ./.github/workflows/vm-perf-workflow.yml
     with:
-      THUNDER_PACK_URL: 'LOCAL'
       THUNDER_ARTIFACT_NAME: 'thunder'
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

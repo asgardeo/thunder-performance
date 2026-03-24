@@ -20,8 +20,6 @@ When triggering the workflow, you can configure the following parameters:
 | `DEPLOYMENT` | Deployment type | `single-node` | Yes |
 | `CPU_CORES` | Number of CPU cores for the VM | `4` (options: 2, 4, 8) | Yes |
 | `ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT` | Additional parameters for the performance script | `-d 15 -w 5 -x false -y JWT` | Yes |
-| `PERFORMANCE_REPO` | Performance repository URL | `https://github.com/asgardeo/thunder-performance` | Yes |
-| `BRANCH` | Branch to use from the performance repository | `main` | Yes |
 | `MODE` | Testing mode | `FULL` (options: FULL, QUICK) | Yes |
 | `USE_DELAYS` | Enable delays in testing | `true` | Yes |
 | `CONCURRENCY` | Concurrency pattern for load testing | `50-50` (various options available) | Yes |
