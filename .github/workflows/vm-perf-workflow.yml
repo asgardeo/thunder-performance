@@ -122,6 +122,8 @@ on:
         required: true
       THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN:
         required: true
+      GOOGLE_CHAT_WEBHOOK:
+        required: false
 
 permissions:
   contents: write
@@ -317,6 +319,42 @@ jobs:
           name: performance-test-results-full-${{ github.run_number }}
           path: ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*
           retention-days: 30
+
+      - name: Notify Google Chat on Failure
+        if: failure()
+        env:
+          GOOGLE_CHAT_WEBHOOK: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ -z "$GOOGLE_CHAT_WEBHOOK" ]]; then
+            echo "GOOGLE_CHAT_WEBHOOK is not set. Skipping notification."
+            exit 0
+          fi
+          curl -s -X POST "$GOOGLE_CHAT_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "cardsV2": [{
+                "cardId": "perf-failure-card",
+                "card": {
+                  "header": {
+                    "title": "\u26a0\ufe0f Thunder VM Performance Test Failed",
+                    "subtitle": "Run #${{ github.run_number }} \u2022 Triggered by ${{ github.actor }}"
+                  },
+                  "sections": [{
+                    "widgets": [{
+                      "buttonList": {
+                        "buttons": [{
+                          "text": "View Pipeline",
+                          "onClick": {
+                            "openLink": { "url": "'"$RUN_URL"'" }
+                          }
+                        }]
+                      }
+                    }]
+                  }]
+                }
+              }]
+            }'
 
       - name: Publish test results to GitHub
         if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true
