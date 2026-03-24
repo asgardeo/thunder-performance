@@ -63,6 +63,11 @@ on:
         required: false
         default: false
         type: boolean
+      CLEANUP_CF_STACK:
+        description: 'Delete CloudFormation stack after test'
+        required: false
+        default: true
+        type: boolean
 
   workflow_call:
     inputs:
@@ -105,6 +110,11 @@ on:
         description: 'Push benchmark results to GitHub'
         required: false
         default: false
+        type: boolean
+      CLEANUP_CF_STACK:
+        description: 'Delete CloudFormation stack after test'
+        required: false
+        default: true
         type: boolean
       THUNDER_ARTIFACT_NAME:
         description: 'Name of the artifact to download'
@@ -278,7 +288,7 @@ jobs:
           python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
 
       - name: Delete CloudFormation Stack
-        if: always() && steps.create-cf-stack.outputs.stack_id != ''
+        if: always() && steps.create-cf-stack.outputs.stack_id != '' && inputs.CLEANUP_CF_STACK == true
         env:
           STACK_ID: ${{ steps.create-cf-stack.outputs.stack_id }}
         run: |
