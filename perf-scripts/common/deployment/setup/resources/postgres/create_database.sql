@@ -14,12 +14,12 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
-create database "thunderdb";
+create database "configdb";
 create database "runtimedb";
 create database "userdb";
 
-\c thunderdb
-\i /home/ubuntu/thunder/dbscripts/thunderdb/postgres.sql
+\c configdb
+\i /home/ubuntu/thunder/dbscripts/configdb/postgres.sql
 \c runtimedb
 \i /home/ubuntu/thunder/dbscripts/runtimedb/postgres.sql
 \c userdb

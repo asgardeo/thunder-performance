@@ -82,7 +82,6 @@ noOfTenants=100
 spCount=10
 idpCount=1
 userCount=1000
-mode=""
 deployment=""
 
 # Use delays inside tests to mimic user input
@@ -116,15 +115,31 @@ function usage() {
     echo ""
     echo "Usage: "
     echo "$0 [-c <concurrent_users>] [-d <test_duration>] [-w <warm_up_time>]"
-    echo "   [-j <jmeter_client_heap_size>] [-i <include_scenario_name>] [-e <exclude_scenario_name>]"
-    echo "   [-t] [-p <is_port>] [-h]"
+    echo "   [-r <concurrency_range>] [-j <jmeter_client_heap_size>]"
+    echo "   [-i <include_scenario_name>] [-e <exclude_scenario_name>]"
+    echo "   [-g <no_of_nodes>] [-f <deployment>] [-n <no_of_tenants>]"
+    echo "   [-s <sp_count>] [-q <idp_count>] [-u <user_count>]"
+    echo "   [-k <jwt_token_client_secret>] [-o <jwt_token_user_password>]"
+    echo "   [-x <enable_burst>] [-y <token_issuer>]"
+    echo "   [-t] [-p <is_port>] [-b <db_type>] [-z <use_delay>] [-h]"
     echo ""
     echo "-c: Concurrency levels to test. You can give multiple options to specify multiple levels. Default \"$default_concurrent_users\"."
     echo "-d: Test Duration in minutes. Default $default_test_duration m."
     echo "-w: Warm-up time in minutes. Default $default_warm_up_time m."
+    echo "-r: Comma-separated list of concurrent user counts to test (e.g. 50,100,150,300,500)."
     echo "-j: Heap Size of JMeter Client. Default $default_jmeter_client_heap_size."
     echo "-i: Scenario name to to be included. You can give multiple options to filter scenarios."
     echo "-e: Scenario name to to be excluded. You can give multiple options to filter scenarios."
+    echo "-g: Number of nodes in the deployment."
+    echo "-f: Deployment type."
+    echo "-n: Number of tenants. Default $noOfTenants."
+    echo "-s: Number of service providers per tenant. Default $spCount."
+    echo "-q: Number of IDPs per tenant. Default $idpCount."
+    echo "-u: Number of users. Default $userCount."
+    echo "-k: JWT token client secret."
+    echo "-o: JWT token user password."
+    echo "-x: Enable burst traffic."
+    echo "-y: Token issuer type. Use Opaque (default) or JWT."
     echo "-t: Estimate time without executing tests."
     echo "-p: Thunder Port. Default $default_is_port."
     echo "-b: Database type."
@@ -133,7 +148,7 @@ function usage() {
     echo ""
 }
 
-while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:v:x:o:y:b:z:h" opts; do
+while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:h" opts; do
     case $opts in
     c)
         concurrent_users+=("${OPTARG}")
@@ -186,9 +201,6 @@ while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:v:x:o:y:b:z:h" opts; do
     o)
         jwt_token_user_password=${OPTARG}
         ;;
-    v)
-        mode=${OPTARG}
-        ;;
     x)
         enable_burst=${OPTARG}
         ;;
@@ -216,25 +228,23 @@ done
 number_regex='^[0-9]+$'
 heap_regex='^[0-9]+[MG]$'
 
-# Check concurrency level
-if [ "$concurrency" == "50-500" ]; then
-    echo "Running tests for concurrency level 50-500"
-    default_concurrent_users="50 100 150 300 500"
-elif [ "$concurrency" == "500-3000" ]; then
-    echo "Running tests for concurrency level 500-3000"
-    default_concurrent_users="500 750 1000 1500 2000 2500 3000"
-elif [ "$concurrency" == "1000-3000" ]; then
-    echo "Running tests for concurrency level 1000-3000"
-    default_concurrent_users="1000 1500 2000 2500 3000"
-elif [ "$concurrency" == "50-50" ]; then
-    echo "Running tests for concurrency level 50"
-    default_concurrent_users="50"
-elif [ "$concurrency" == "50-1000" ]; then
-    echo "Running tests for concurrency level 50-1000"
-    default_concurrent_users="50 100 150 300 500 750 1000"
+# Parse comma-separated concurrency list
+if [[ -n "$concurrency" ]]; then
+    IFS=',' read -ra concurrency_arr <<< "$concurrency"
+    default_concurrent_users=""
+    for level in "${concurrency_arr[@]}"; do
+        level="${level// /}"
+        if ! [[ "$level" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Error: '$level' is not a valid positive integer in the CONCURRENCY list."
+            exit 1
+        fi
+        default_concurrent_users+="$level "
+    done
+    default_concurrent_users="${default_concurrent_users% }"
+    echo "Running tests for concurrent user counts: $default_concurrent_users"
 else
-    echo "Running tests for concurrency level 50-3000"
-    default_concurrent_users="50 100 150 300 500 750 1000 1500 2000 2500 3000"
+    echo "No concurrency specified. Please provide a comma-separated list of positive integers via -r."
+    exit 1
 fi
 
 if [[ -z $test_duration ]]; then
@@ -288,11 +298,7 @@ fi
 
 declare -ag concurrent_users_array
 if [ ${#concurrent_users[@]} -eq 0 ]; then
-    if [ "$mode" == "QUICK" ]; then
-        concurrent_users_array=( "200" )
-    else
-        concurrent_users_array=( $default_concurrent_users )
-    fi
+    concurrent_users_array=( $default_concurrent_users )
 else
     concurrent_users_array=( ${concurrent_users[@]} )
 fi
@@ -466,20 +472,6 @@ function initialize_test() {
         done
     fi
     
-    if [[ ! -z $mode ]]; then
-        declare -n scenario
-        for scenario in ${!test_scenario@}; do
-            scenario[skip]=true
-            modeValues=${scenario[modes]}
-            for i in $modeValues; do
-                if [ "$i" == $mode ]; then
-                    scenario[skip]=false
-                    break
-                fi
-            done
-        done
-    fi
-
     echo ""
     echo "Saving test metadata..."
     declare -n scenario

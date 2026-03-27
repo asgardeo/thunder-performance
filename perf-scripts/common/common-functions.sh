@@ -49,34 +49,6 @@ function measure_time() {
     echo "$duration"
 }
 
-function exit_handler() {
-
-    # Resolving parameters
-    results_dir="$1"
-    stack_id="$2"
-    script_start_time="$3"
-
-    # Get stack events
-    local stack_events_json=$results_dir/stack-events.json
-    echo ""
-    echo "Saving stack events to $stack_events_json"
-    aws cloudformation describe-stack-events --stack-name "$stack_id" --no-paginate --output json >"$stack_events_json"
-    # Check whether there are any failed events
-    cat "$stack_events_json" | jq '.StackEvents | .[] | select ( .ResourceStatus == "CREATE_FAILED" )'
-
-    local stack_delete_start_time=$(date +%s)
-    echo ""
-    echo "Deleting the stack: $stack_id"
-    aws cloudformation delete-stack --stack-name "$stack_id"
-
-    echo ""
-    echo "Polling till the stack deletion completes..."
-    aws cloudformation wait stack-delete-complete --stack-name "$stack_id"
-    printf "Stack deletion time: %s\n" "$(format_time $(measure_time "$stack_delete_start_time"))"
-
-    printf "Script execution time: %s\n" "$(format_time $(measure_time "$script_start_time"))"
-}
-
 function ssh_bastion_cmd() {
 
     local ssh_command="ssh -i $key_file -o "StrictHostKeyChecking=no" -t ubuntu@$bastion_node_ip $1"
@@ -98,16 +70,4 @@ function scp_r_bastion_cmd() {
     $scp_command || echo "Remote scp command failed."
 }
 
-function get_private_ip() {
 
-    local stack_id=$1
-    local auto_scaling_grp_id=$2
-    local wso2thunder_auto_scaling_grp
-    local wso2thunder_instance
-    local wso2_thunder_ip
-
-    wso2thunder_auto_scaling_grp="$(aws cloudformation describe-stack-resources --stack-name "$stack_id" --logical-resource-id "$auto_scaling_grp_id" | jq -r '.StackResources[].PhysicalResourceId')"
-    wso2thunder_instance="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$wso2thunder_auto_scaling_grp" | jq -r '.AutoScalingGroups[].Instances[].InstanceId')"
-    wso2_thunder_ip="$(aws ec2 describe-instances --instance-ids "$wso2thunder_instance" | jq -r '.Reservations[].Instances[].PrivateIpAddress')"
-    echo "$wso2_thunder_ip"
-}

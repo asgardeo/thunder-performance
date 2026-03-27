@@ -27,6 +27,7 @@ Metadata:
         Parameters:
           - KeyPairName
           - WSO2InstanceType
+          - NginxInstanceType
           - BastionInstanceType
           - EnableHighConcurrencyMode
       - Label:
@@ -56,7 +57,9 @@ Metadata:
       UserTag:
         default: User Tag
       WSO2InstanceType:
-        default: Instance Type
+        default: Thunder Instance Type
+      NginxInstanceType:
+        default: Nginx Instance Type
       DBAllocationStorage:
         default: Allocation Storage
       DBIops:
@@ -391,7 +394,7 @@ Resources:
         - WSO2ThunderAMIRegionMapsuffix
         - !Ref 'AWS::Region'
         - AMI
-      InstanceType: !Ref WSO2InstanceType
+      InstanceType: !Ref NginxInstanceType
       KeyName: !Ref KeyPairName
       Monitoring: 'false'
       Tags:
@@ -567,22 +570,33 @@ Parameters:
     MinLength: 1
   WSO2InstanceType:
     Type: String
-    Default: c6i.xlarge
+    Default: t3a.medium
     AllowedValues:
+      - t2.nano
       - t2.micro
-      - t2.medium
-      - t2.large
-      - t2.xlarge
-      - t2.2xlarge
-      - m4.large
-      - c4.large
-      - c4.xlarge
-      - c5.large
-      - c5.xlarge
-      - c5.2xlarge
-      - c6i.large
-      - c6i.xlarge
-      - c6i.2xlarge
+      - t2.small
+      - t3a.nano
+      - t3a.micro
+      - t3a.small
+      - t3a.medium
+      - t3a.large
+      - t3a.xlarge
+      - t3a.2xlarge
+    ConstraintDescription: Must be a valid EC2 instance type
+  NginxInstanceType:
+    Type: String
+    Default: t3a.medium
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t3a.nano
+      - t3a.micro
+      - t3a.small
+      - t3a.medium
+      - t3a.large
+      - t3a.xlarge
+      - t3a.2xlarge
     ConstraintDescription: Must be a valid EC2 instance type
   DBUsername:
     Type: String
@@ -600,21 +614,14 @@ Parameters:
       - "false"
   DBInstanceType:
     Type: String
-    Default: db.m6i.2xlarge
+    Default: db.t3.medium
     AllowedValues:
-      - db.t2.medium
-      - db.t2.large
-      - db.t2.xlarge
-      - db.t2.2xlarge
-      - db.m4.large
-      - db.m4.xlarge
-      - db.m4.2xlarge
-      - db.m5.xlarge
-      - db.m5.2xlarge
+      - db.t3.medium
+      - db.t3.large
+      - db.t3.xlarge
       - db.m6i.large
       - db.m6i.xlarge
       - db.m6i.2xlarge
-      - db.m6i.4xlarge
   DBType:
     Type: String
     AllowedValues:
@@ -626,23 +633,18 @@ Parameters:
     Default: user@wso2.com
   BastionInstanceType:
     Type: String
-    Default: c6i.xlarge
+    Default: t3a.large
     AllowedValues:
+      - t2.nano
       - t2.micro
-      - t2.medium
-      - t2.large
-      - t2.xlarge
-      - t2.2xlarge
-      - m4.large
-      - m4.xlarge
-      - c4.large
-      - c4.xlarge
-      - c5.large
-      - c5.xlarge
-      - c5.2xlarge
-      - c6i.large
-      - c6i.xlarge
-      - c6i.2xlarge
+      - t2.small
+      - t3a.nano
+      - t3a.micro
+      - t3a.small
+      - t3a.medium
+      - t3a.large
+      - t3a.xlarge
+      - t3a.2xlarge
     ConstraintDescription: Must be a valid EC2 instance type
 Mappings:
   WSO2ThunderAMIRegionMapsuffix:

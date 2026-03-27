@@ -110,6 +110,19 @@ else
     exit 1
 fi
 
+echo "Restoring ApacheJMeter_core.jar if missing..."
+echo "============================================"
+jmeter_dir=$(ls -d /home/ubuntu/apache-jmeter-* 2>/dev/null | grep -v '\.tgz' | head -1)
+if [[ -n "$jmeter_dir" && ! -f "$jmeter_dir/lib/ext/ApacheJMeter_core.jar" ]]; then
+    echo "ApacheJMeter_core.jar missing — restoring from tgz..."
+    tar -xOf /home/ubuntu/apache-jmeter-*.tgz \
+        --wildcards '*/lib/ext/ApacheJMeter_core.jar' \
+        > "$jmeter_dir/lib/ext/ApacheJMeter_core.jar"
+    echo "ApacheJMeter_core.jar restored."
+else
+    echo "ApacheJMeter_core.jar is present."
+fi
+
 sudo chown -R ubuntu:ubuntu workspace
 sudo chown -R ubuntu:ubuntu apache-jmeter-*
 sudo chown -R ubuntu:ubuntu jmeter.log
