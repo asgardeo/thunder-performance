@@ -95,7 +95,7 @@
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <CounterConfig guiclass="CounterConfigGui" testclass="CounterConfig" testname="Application Counter" enabled="true">
+        <CounterConfig guiclass="CounterConfigGui" testclass="CounterConfig" testname="Application Counter">
           <stringProp name="CounterConfig.start">1</stringProp>
           <stringProp name="CounterConfig.end">${applicationCount}</stringProp>
           <stringProp name="CounterConfig.incr">1</stringProp>
@@ -104,7 +104,7 @@
           <boolProp name="CounterConfig.per_user">false</boolProp>
         </CounterConfig>
         <hashTree/>
-        <BeanShellPreProcessor guiclass="TestBeanGUI" testclass="BeanShellPreProcessor" testname="setRequestingNode()" enabled="true">
+        <BeanShellPreProcessor guiclass="TestBeanGUI" testclass="BeanShellPreProcessor" testname="setRequestingNode()">
           <stringProp name="filename"></stringProp>
           <stringProp name="parameters"></stringProp>
           <boolProp name="resetInterpreter">false</boolProp>
@@ -123,7 +123,7 @@ if (y == 0) {
 }</stringProp>
         </BeanShellPreProcessor>
         <hashTree/>
-        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
           <collectionProp name="HeaderManager.headers">
             <elementProp name="" elementType="Header">
               <stringProp name="Header.name">Content-Type</stringProp>
@@ -152,23 +152,23 @@ if (y == 0) {
                 <stringProp name="Argument.value">{&#xd;
     &quot;name&quot;: &quot;${applicationNamePrefix}${application_count_id}&quot;,&#xd;
     &quot;description&quot;: &quot;Initial testing App&quot;,&#xd;
-    &quot;inbound_auth_config&quot;: [&#xd;
+    &quot;inboundAuthConfig&quot;: [&#xd;
         {&#xd;
             &quot;type&quot;: &quot;oauth2&quot;,&#xd;
             &quot;config&quot;: {&#xd;
-                &quot;client_id&quot;: &quot;${consumerKeyPrefix}${application_count_id}&quot;,&#xd;
-                &quot;client_secret&quot;: &quot;${consumerSecretPrefix}${application_count_id}&quot;,&#xd;
-                &quot;redirect_uris&quot;: [&#xd;
+                &quot;clientId&quot;: &quot;${consumerKeyPrefix}${application_count_id}&quot;,&#xd;
+                &quot;clientSecret&quot;: &quot;${consumerSecretPrefix}${application_count_id}&quot;,&#xd;
+                &quot;redirectUris&quot;: [&#xd;
                     &quot;https://localhost:3000&quot;&#xd;
                 ],&#xd;
-                &quot;grant_types&quot;: [&#xd;
+                &quot;grantTypes&quot;: [&#xd;
                 	&quot;authorization_code&quot;,&#xd;
                     &quot;client_credentials&quot;&#xd;
                 ],&#xd;
-                &quot;response_types&quot;: [&#xd;
+                &quot;responseTypes&quot;: [&#xd;
                     &quot;code&quot;&#xd;
                 ],&#xd;
-                &quot;token_endpoint_auth_methods&quot;: [&#xd;
+                &quot;tokenEndpointAuthMethods&quot;: [&#xd;
                     &quot;client_secret_basic&quot;,&#xd;
                     &quot;client_secret_post&quot;&#xd;
                 ]&#xd;
