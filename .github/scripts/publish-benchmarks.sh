@@ -7,7 +7,8 @@ git config pull.rebase true
 git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}
 
 TIMESTAMP=$(date +%Y-%m-%d--%H-%M-%S)
-BENCHMARK_DIR_PATH="benchmarks/$DEPLOYMENT/workflow-build-$BUILD_NUMBER"
+THUNDER_VERSION=$(echo "$THUNDER_PACK_URL" | grep -oP '(?<=/releases/download/)[^/]+'  )
+BENCHMARK_DIR_PATH="benchmarks/$THUNDER_VERSION/$DEPLOYMENT/workflow-build-$BUILD_NUMBER"
 
 mkdir -p "$BENCHMARK_DIR_PATH"
 
@@ -49,7 +50,9 @@ RDS Instance ID: $RDS_INSTANCE_ID
 
 Performance Repo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
 
-Performance Repo Branch: $GITHUB_REF_NAME
+Pipeline Definition Branch: $GITHUB_REF_NAME
+
+Checkout Ref (code under test): ${REPO_REF:-$GITHUB_REF_NAME}
 
 EOF
 

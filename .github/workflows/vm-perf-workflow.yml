@@ -3,6 +3,11 @@ name: VM Performance Test on AWS
 on:
   workflow_dispatch:
     inputs:
+      REPO_REF:
+        description: 'Git ref (branch, tag, or commit SHA) to checkout'
+        required: false
+        default: ''
+        type: string
       THUNDER_PACK_URL:
         description: 'URL to download Thunder pack'
         required: true
@@ -18,7 +23,7 @@ on:
       THUNDER_INSTANCE_TYPE:
         description: 'Thunder VM instance type'
         required: true
-        default: 't3a.medium'
+        default: 't2.nano'
         type: choice
         options:
           - t2.nano
@@ -71,6 +76,10 @@ on:
 
   workflow_call:
     inputs:
+      REPO_REF:
+        description: 'Git ref (branch, tag, or commit SHA) to checkout'
+        required: false
+        type: string
       DEPLOYMENT:
         description: 'Deployment type'
         required: false
@@ -79,7 +88,7 @@ on:
       THUNDER_INSTANCE_TYPE:
         description: 'Thunder VM instance type'
         required: false
-        default: 't3a.medium'
+        default: 't2.nano'
         type: string
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
@@ -139,6 +148,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.REPO_REF }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -281,6 +291,7 @@ jobs:
           NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
           THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
           RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+          REPO_REF: ${{ inputs.REPO_REF }}
         run: |
           python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
 
@@ -291,14 +302,6 @@ jobs:
         run: |
           chmod +x .github/scripts/delete-cf-stack.sh
           bash .github/scripts/delete-cf-stack.sh
-
-      - name: Upload test results to S3
-        if: always()
-        env:
-          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
-          BUILD_NUMBER: ${{ github.run_number }}
-        run: |
-          aws s3 cp --recursive $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT/results-* s3://performance-thunder/results/"GitHub-$BUILD_NUMBER" --only-show-errors --no-progress
 
       - name: Upload summary and CloudWatch metrics to Pipeline Artifact
         if: always()
@@ -319,6 +322,28 @@ jobs:
           name: performance-test-results-full-${{ github.run_number }}
           path: ${{ github.workspace }}/perf-scripts/${{ inputs.DEPLOYMENT }}/results-*
           retention-days: 30
+
+      - name: Publish test results to GitHub
+        if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true && startsWith(inputs.THUNDER_PACK_URL, 'https://github.com/asgardeo/thunder/releases/download/')
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
+          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          DB_TYPE: 'postgres'
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+          REPO_REF: ${{ inputs.REPO_REF }}
+        run: |
+          chmod +x .github/scripts/publish-benchmarks.sh
+          bash .github/scripts/publish-benchmarks.sh
 
       - name: Notify Google Chat on Failure
         if: failure()
@@ -355,24 +380,3 @@ jobs:
                 }
               }]
             }'
-
-      - name: Publish test results to GitHub
-        if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true
-        env:
-          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
-          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
-          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
-          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
-          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
-          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
-          DB_TYPE: 'postgres'
-          CONCURRENCY: ${{ inputs.CONCURRENCY }}
-          BUILD_NUMBER: ${{ github.run_number }}
-          GITHUB_TOKEN: ${{ secrets.THUNDER_PERFORMANCE_GITHUB_BOT_TOKEN }}
-          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
-          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
-          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
-          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
-        run: |
-          chmod +x .github/scripts/publish-benchmarks.sh
-          bash .github/scripts/publish-benchmarks.sh
