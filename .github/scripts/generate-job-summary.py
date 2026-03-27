@@ -25,6 +25,7 @@
 import csv
 import glob
 import os
+import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -48,6 +49,13 @@ GITHUB_SERVER_URL = os.environ.get("GITHUB_SERVER_URL", "")
 GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
 GITHUB_REF_NAME = os.environ.get("GITHUB_REF_NAME", "")
 REPO_REF = os.environ.get("REPO_REF", "")
+
+try:
+    CHECKOUT_COMMIT_SHA = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True
+    ).strip()
+except Exception:
+    CHECKOUT_COMMIT_SHA = ""
 
 SUMMARY_COLS = [
     "Scenario Name",
@@ -140,6 +148,7 @@ out.append(f"\nRDS Instance ID: {RDS_INSTANCE_ID}\n")
 out.append(f"\nPerformance Repo: {GITHUB_SERVER_URL}/{GITHUB_REPOSITORY}\n")
 out.append(f"\nPipeline Definition Branch: {GITHUB_REF_NAME}\n")
 out.append(f"\nCheckout Ref (code under test): {REPO_REF if REPO_REF else GITHUB_REF_NAME}\n")
+out.append(f"\nCheckout Commit SHA: {CHECKOUT_COMMIT_SHA}\n")
 
 # ── Performance summary table ──────────────────────────────────────────────────
 csvs = glob.glob(f"{WORKSPACE}/perf-scripts/{DEPLOYMENT}/results-*/summary.csv")

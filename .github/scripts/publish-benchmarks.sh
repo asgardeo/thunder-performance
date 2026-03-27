@@ -54,6 +54,8 @@ Pipeline Definition Branch: $GITHUB_REF_NAME
 
 Checkout Ref (code under test): ${REPO_REF:-$GITHUB_REF_NAME}
 
+Checkout Commit SHA: $(git rev-parse HEAD)
+
 EOF
 
 BENCHMARK_DIR_PATH="$BENCHMARK_DIR_PATH" python3 .github/scripts/generate-benchmark-readme.py
