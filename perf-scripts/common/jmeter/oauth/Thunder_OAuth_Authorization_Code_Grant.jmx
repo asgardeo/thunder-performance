@@ -202,6 +202,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <boolProp name="HTTPSampler.follow_redirects">false</boolProp>
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
             <collectionProp name="Arguments.arguments">
               <elementProp name="client_id" elementType="HTTPArgument">
@@ -270,10 +271,10 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <boolProp name="RegexExtractor.default_empty_value">false</boolProp>
           </RegexExtractor>
           <hashTree/>
-          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - flowId" enabled="true">
+          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - executionId" enabled="true">
             <stringProp name="RegexExtractor.useHeaders">true</stringProp>
-            <stringProp name="RegexExtractor.refname">flowId</stringProp>
-            <stringProp name="RegexExtractor.regex">[\?&amp;]flowId=([0-9a-fA-F\-]+)</stringProp>
+            <stringProp name="RegexExtractor.refname">executionId</stringProp>
+            <stringProp name="RegexExtractor.regex">[\?&amp;]executionId=([0-9a-fA-F\-]+)</stringProp>
             <stringProp name="RegexExtractor.template">$1$</stringProp>
             <stringProp name="RegexExtractor.default">FALSE</stringProp>
             <stringProp name="RegexExtractor.match_number">1</stringProp>
@@ -294,7 +295,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
               <elementProp name="" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.value">{&#xd;
-	&quot;flowId&quot;:&quot;${flowId}&quot;,&#xd;
+	&quot;executionId&quot;:&quot;${executionId}&quot;,&#xd;
 	&quot;verbose&quot;:true&#xd;
 }</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
@@ -347,7 +348,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.value">{&#xd;
 	&quot;action&quot;:&quot;action_001&quot;,&#xd;
-	&quot;flowId&quot;:&quot;${flowId}&quot;,&#xd;
+	&quot;executionId&quot;:&quot;${executionId}&quot;,&#xd;
 	&quot;inputs&quot;:{&#xd;
 		&quot;username&quot;:&quot;${username}&quot;,&#xd;
 		&quot;password&quot;:&quot;${password}&quot;&#xd;
