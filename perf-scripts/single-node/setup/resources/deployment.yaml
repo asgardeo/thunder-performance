@@ -33,28 +33,31 @@ tls:
 database:
     config:
         type: "postgres"
-        hostname: "{db_hostname}"
-        port: 5432
-        name: "configdb"
-        username: "asgthunder"
-        password: "asgthunder"
-        sslmode: "disable"
+        postgres:
+          hostname: "{db_hostname}"
+          port: 5432
+          name: "configdb"
+          username: "asgthunder"
+          password: "asgthunder"
+          sslmode: "disable"
     runtime:
         type: "postgres"
-        hostname: "{db_hostname}"
-        port: 5432
-        name: "runtimedb"
-        username: "asgthunder"
-        password: "asgthunder"
-        sslmode: "disable"
+        postgres:
+          hostname: "{db_hostname}"
+          port: 5432
+          name: "runtimedb"
+          username: "asgthunder"
+          password: "asgthunder"
+          sslmode: "disable"
     user:
         type: "postgres"
-        hostname: "{db_hostname}"
-        port: 5432
-        name: "userdb"
-        username: "asgthunder"
-        password: "asgthunder"
-        sslmode: "disable"
+        postgres:
+          hostname: "{db_hostname}"
+          port: 5432
+          name: "userdb"
+          username: "asgthunder"
+          password: "asgthunder"
+          sslmode: "disable"
 
 cache:
   disabled: false
