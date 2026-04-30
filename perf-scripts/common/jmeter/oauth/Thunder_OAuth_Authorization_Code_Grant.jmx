@@ -5,8 +5,6 @@
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
         <collectionProp name="Arguments.arguments"/>
       </elementProp>
-      <boolProp name="TestPlan.functional_mode">false</boolProp>
-      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
     </TestPlan>
     <hashTree>
       <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Server Variables">
@@ -106,7 +104,7 @@
         </collectionProp>
       </Arguments>
       <hashTree/>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Authorization Code Grant Type" enabled="true">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Authorization Code Grant Type">
         <boolProp name="ThreadGroup.delayedStart">true</boolProp>
         <stringProp name="ThreadGroup.num_threads">${noOfThreads}</stringProp>
         <stringProp name="ThreadGroup.ramp_time">${rampUpPeriod}</stringProp>
@@ -194,7 +192,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           </collectionProp>
         </HeaderManager>
         <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="1 Send request to authorize endpoint" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="1 Send request to authorize endpoint">
           <stringProp name="HTTPSampler.domain">${thunder_host}</stringProp>
           <stringProp name="HTTPSampler.port">${thunder_port}</stringProp>
           <stringProp name="HTTPSampler.protocol">https</stringProp>
@@ -202,7 +200,6 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
-          <boolProp name="HTTPSampler.follow_redirects">false</boolProp>
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
             <collectionProp name="Arguments.arguments">
               <elementProp name="client_id" elementType="HTTPArgument">
@@ -241,7 +238,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 302 Response Assertion" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 302 Response Assertion">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="103172738">HTTP/1.1 302</stringProp>
             </collectionProp>
@@ -251,7 +248,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.custom_message">Test failed - send request to authorize endpoint</stringProp>
           </ResponseAssertion>
           <hashTree/>
-          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - applicationId" enabled="true">
+          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - applicationId">
             <stringProp name="RegexExtractor.useHeaders">true</stringProp>
             <stringProp name="RegexExtractor.refname">applicationId</stringProp>
             <stringProp name="RegexExtractor.regex">[\?&amp;]applicationId=([0-9a-fA-F\-]+)</stringProp>
@@ -261,7 +258,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <boolProp name="RegexExtractor.default_empty_value">false</boolProp>
           </RegexExtractor>
           <hashTree/>
-          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - authId" enabled="true">
+          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - authId">
             <stringProp name="RegexExtractor.useHeaders">true</stringProp>
             <stringProp name="RegexExtractor.refname">authId</stringProp>
             <stringProp name="RegexExtractor.regex">[\?&amp;]authId=([0-9a-fA-F\-]+)</stringProp>
@@ -271,7 +268,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <boolProp name="RegexExtractor.default_empty_value">false</boolProp>
           </RegexExtractor>
           <hashTree/>
-          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - executionId" enabled="true">
+          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Regex Extractor - executionId">
             <stringProp name="RegexExtractor.useHeaders">true</stringProp>
             <stringProp name="RegexExtractor.refname">executionId</stringProp>
             <stringProp name="RegexExtractor.regex">[\?&amp;]executionId=([0-9a-fA-F\-]+)</stringProp>
@@ -282,7 +279,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           </RegexExtractor>
           <hashTree/>
         </hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="2 Start Authentication Flow" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="2 Start Authentication Flow">
           <stringProp name="HTTPSampler.domain">${thunder_host}</stringProp>
           <stringProp name="HTTPSampler.port">${thunder_port}</stringProp>
           <stringProp name="HTTPSampler.protocol">https</stringProp>
@@ -305,7 +302,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 200 Response Assertion" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 200 Response Assertion">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="103171775">HTTP/1.1 200</stringProp>
             </collectionProp>
@@ -315,7 +312,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.custom_message">Test failed - perform authnetication</stringProp>
           </ResponseAssertion>
           <hashTree/>
-          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Next node assertion" enabled="true">
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Next node assertion">
             <stringProp name="JSON_PATH">data.actions[0].nextNode</stringProp>
             <stringProp name="EXPECTED_VALUE">basic_auth</stringProp>
             <boolProp name="JSONVALIDATION">true</boolProp>
@@ -324,7 +321,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <boolProp name="ISREGEX">false</boolProp>
           </JSONPathAssertion>
           <hashTree/>
-          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Next action ref assertion" enabled="true">
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Next action ref assertion">
             <stringProp name="JSON_PATH">data.actions[0].ref</stringProp>
             <stringProp name="EXPECTED_VALUE">action_001</stringProp>
             <boolProp name="JSONVALIDATION">true</boolProp>
@@ -332,6 +329,13 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <boolProp name="INVERT">false</boolProp>
             <boolProp name="ISREGEX">false</boolProp>
           </JSONPathAssertion>
+          <hashTree/>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor - challengeToken">
+            <stringProp name="JSONPostProcessor.referenceNames">challengeToken</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">challengeToken</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">FALSE</stringProp>
+          </JSONPostProcessor>
           <hashTree/>
         </hashTree>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="3 Perform authentication">
@@ -349,6 +353,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
                 <stringProp name="Argument.value">{&#xd;
 	&quot;action&quot;:&quot;action_001&quot;,&#xd;
 	&quot;executionId&quot;:&quot;${executionId}&quot;,&#xd;
+	&quot;challengeToken&quot;: &quot;${challengeToken}&quot;,&#xd;
 	&quot;inputs&quot;:{&#xd;
 		&quot;username&quot;:&quot;${username}&quot;,&#xd;
 		&quot;password&quot;:&quot;${password}&quot;&#xd;
@@ -361,7 +366,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 200 Response Assertion" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 200 Response Assertion">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="103171775">HTTP/1.1 200</stringProp>
             </collectionProp>
@@ -371,7 +376,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
             <stringProp name="Assertion.custom_message">Test failed - perform authnetication</stringProp>
           </ResponseAssertion>
           <hashTree/>
-          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Flow Status Complete Assertion" enabled="true">
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Flow Status Complete Assertion">
             <stringProp name="JSON_PATH">flowStatus</stringProp>
             <stringProp name="EXPECTED_VALUE">COMPLETE</stringProp>
             <boolProp name="JSONVALIDATION">true</boolProp>
@@ -411,7 +416,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
           <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 200 Response Assertion" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="HTTP/1.1 200 Response Assertion">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="103171775">HTTP/1.1 200</stringProp>
             </collectionProp>
