@@ -37,6 +37,15 @@ parameters:
     type: string
     displayName: "Terraform Performance Repository Branch"
     default: "main"
+  - name: POSTGRES_SERVER_SKU
+    type: string
+    displayName: "PostgreSQL Server SKU"
+    default: "GP_Standard_D2s_v3"
+    values:
+      - "GP_Standard_D2s_v3"
+      - "GP_Standard_D4s_v3"
+      - "GP_Standard_D8s_v3"
+      - "GP_Standard_D16s_v3"
 
 variables:
   - group: vg-thunder-perf
@@ -270,6 +279,7 @@ stages:
                 terraform apply \
                   -var-file="../conf/thunder.conf.secrets.tfvars" \
                   -var-file="../conf/thunder.conf.tfvars" \
+                  -var="postgres_server_sku_name=${{ parameters.POSTGRES_SERVER_SKU }}" \
                   -auto-approve
             env:
               ARM_CLIENT_ID: $(ARM_CLIENT_ID)
@@ -293,12 +303,14 @@ stages:
                 terraform destroy -target=module.aks-cluster \
                   -var-file="../conf/thunder.conf.secrets.tfvars" \
                   -var-file="../conf/thunder.conf.tfvars" \
+                  -var="postgres_server_sku_name=${{ parameters.POSTGRES_SERVER_SKU }}" \
                   -auto-approve
-                
+
                 # Then destroy the rest of the resources
                 terraform destroy \
                   -var-file="../conf/thunder.conf.secrets.tfvars" \
                   -var-file="../conf/thunder.conf.tfvars" \
+                  -var="postgres_server_sku_name=${{ parameters.POSTGRES_SERVER_SKU }}" \
                   -auto-approve
             env:
               ARM_CLIENT_ID: $(ARM_CLIENT_ID)
