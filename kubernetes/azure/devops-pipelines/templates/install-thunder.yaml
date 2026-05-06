@@ -66,10 +66,10 @@ steps:
           --set hpa.averageUtilizationCPU=$(THUNDER_HPA_CPU_UTILIZATION) \
           --set hpa.averageUtilizationMemory=$(THUNDER_HPA_MEMORY_UTILIZATION) \
           --set ingress.tlsSecretsName=$(TLS_SECRET_NAME) \
-          --set configuration.database.identity.type=$(THUNDER_DB_TYPE) \
-          --set configuration.database.identity.name=$(THUNDER_DB_NAME) \
-          --set configuration.database.identity.host=$(THUNDER_DB_HOST) \
-          --set configuration.database.identity.port=$(THUNDER_DB_PORT) \
+          --set configuration.database.identity.type=$(CONFIG_DB_TYPE) \
+          --set configuration.database.identity.name=$(CONFIG_DB_NAME) \
+          --set configuration.database.identity.host=$(CONFIG_DB_HOST) \
+          --set configuration.database.identity.port=$(CONFIG_DB_PORT) \
           --set configuration.database.identity.username=$(POSTGRES-ADMIN-USERNAME) \
           --set configuration.database.identity.password=$(POSTGRES-ADMIN-PASSWORD) \
           --set configuration.database.runtime.type=$(RUNTIME_DB_TYPE) \

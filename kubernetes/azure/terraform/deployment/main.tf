@@ -154,9 +154,9 @@ module "postgres-server" {
   tags                             = local.default_tags
 }
 
-module "postgres-thunder-db" {
+module "postgres-config-db" {
   source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Database?ref=v2.18.10"
-  database_full_name = var.thunder_db_name
+  database_full_name = var.config_db_name
   server_id          = module.postgres-server.postgresql_server_id
 }
 
