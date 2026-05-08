@@ -26,8 +26,8 @@ variables:
   INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP: "10.0.2.5"
   INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET: "snet-aksinternallbthunder-$(PADDING)"
   TLS_SECRET_NAME: "thunder-tls"
-  THUNDER_KUBERNETES_INGRESS: "thunder-perf-ingress"
-  THUNDER_HOSTNAME: "thunder.local"
+  THUNDER_KUBERNETES_INGRESS: "thunder-perf-thunderid-ingress"
+  THUNDER_HOSTNAME: "thunderid.local"
   DATABASE_HOSTNAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
   SKIP_SECURITY: 'true'
 
