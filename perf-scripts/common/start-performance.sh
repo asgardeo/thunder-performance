@@ -219,7 +219,7 @@ ssh_bastion_cmd "sudo ./setup/setup-bastion.sh -n $no_of_nodes -w $wso2_thunder_
 echo ""
 echo "Creating databases in RDS..."
 echo "============================================"
-ssh_bastion_cmd "cd /home/ubuntu/ ; unzip -q thunder.zip ; mv thunder-* thunder"
+ssh_bastion_cmd "cd /home/ubuntu/ ; unzip -q thunder.zip ; mv thunderid-* thunder"
 execute_db_command "$rds_host" "/home/ubuntu/workspace/setup/resources/$db_type/create_database.sql"
 
 echo ""

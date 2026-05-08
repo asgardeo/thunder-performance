@@ -71,7 +71,7 @@ unzip -q thunder.zip
 echo ""
 echo "changing server name"
 echo "-------------------------------------------"
-mv thunder-* thunder
+mv thunderid-* thunder
 
 sudo chown -R ubuntu:ubuntu thunder
 
