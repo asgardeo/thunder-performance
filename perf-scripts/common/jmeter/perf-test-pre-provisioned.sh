@@ -92,13 +92,14 @@ spCount=10
 userCount=1000
 mode=""
 lb_host=""
+use_delay=true
 
 function usage() {
     echo ""
     echo "Usage: "
     echo "$0 [-c <concurrent_users>] [-d <test_duration>] [-w <warm_up_time>]"
     echo "   [-j <jmeter_client_heap_size>] [-i <include_scenario_name>] [-e <exclude_scenario_name>]"
-    echo "   [-t] [-p <thunder_port>] [-h]"
+    echo "   [-t] [-p <thunder_port>] [-u <use_delay>] [-h]"
     echo ""
     echo "-r: Concurrency levels to test. You can give multiple options to specify multiple levels. Default \"$default_concurrent_users\"."
     echo "-d: Test Duration in minutes. Default $default_test_duration m."
@@ -110,12 +111,13 @@ function usage() {
     echo "-q: Populate test data. Default true."
     echo "-t: Estimate time without executing tests."
     echo "-p: Thunder Port. Default $default_thunder_port."
+    echo "-u: Enable delays in testing. Default true."
     echo "-v: Specify testing mode [FULL/QUICK]"
     echo "-h: Display this help and exit."
     echo ""
 }
 
-while getopts "c:d:w:r:j:i:e:x:y:z:t:p:l:q:v:h" opts; do
+while getopts "c:d:w:r:j:i:e:x:y:z:t:p:l:q:u:v:h" opts; do
     case $opts in
     c)
         concurrent_users+=("${OPTARG}")
@@ -158,6 +160,9 @@ while getopts "c:d:w:r:j:i:e:x:y:z:t:p:l:q:v:h" opts; do
         ;;
     q)
         populateTestData=${OPTARG}
+        ;;
+    u)
+        use_delay=${OPTARG}
         ;;
     v)
         mode=${OPTARG}
@@ -516,7 +521,7 @@ function test_scenarios() {
             echo "Report location is $report_location"
             mkdir -p "$report_location"
             time=$(expr "$test_duration" \* 60)
-            declare -ag jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$thunder_port")
+            declare -ag jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$thunder_port" "useDelay=$use_delay")
             local tenantMode=${scenario[tenantMode]}
             if [ "$tenantMode" = true ]; then
                   jmeter_params+=" -JtenantMode=true -JnoOfTenants=$noOfTenants -JspCount=$spCount -JuserCount=$userCount"
