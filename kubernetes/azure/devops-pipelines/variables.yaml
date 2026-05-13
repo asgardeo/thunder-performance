@@ -37,7 +37,10 @@ variables:
   THUNDER_CPU_REQUESTS: '1'
   THUNDER_MEMORY_LIMITS: '512Mi'
   THUNDER_MEMORY_REQUESTS: '256Mi'
-  
+
+  # Thunder Crypto Configuration
+  THUNDER_PASSWORD_HASHING_ALGORITHM: 'SHA256'
+
   # HPA and Cache Configuration
   THUNDER_HPA_ENABLED: 'true'
   THUNDER_HPA_MAX_REPLICAS: '10'
@@ -57,3 +60,8 @@ variables:
   USER_DB_NAME: 'userdb'
   USER_DB_HOST: $(DATABASE_HOSTNAME)
   USER_DB_PORT: '5432'
+
+  # Database Connection Pool Configuration
+  DB_MAX_OPEN_CONNS: '10'
+  DB_MAX_IDLE_CONNS: '10'
+  DB_CONN_MAX_LIFETIME: '3600'
