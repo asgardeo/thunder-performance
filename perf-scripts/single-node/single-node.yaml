@@ -206,6 +206,9 @@ Resources:
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
       MultiAZ: 'false'
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
       Iops: !FindInMap [HighConcurrencyModeMap, !Ref EnableHighConcurrencyMode, DBIops]
       StorageType: io1
       DBParameterGroupName: !FindInMap [DBTypeMap, !Ref DBType, ParameterGroup]
