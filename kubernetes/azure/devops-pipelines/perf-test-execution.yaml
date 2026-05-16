@@ -66,17 +66,42 @@ parameters:
     displayName: Concurrency
     type: number
     default: 200
+  - name: TEST_DURATION
+    displayName: Test Duration (minutes)
+    type: number
+    default: 3
+  - name: WARM_UP_TIME
+    displayName: Warm-up Time (minutes)
+    type: number
+    default: 2
+  - name: USE_DELAYS
+    displayName: Enable delays in testing
+    type: boolean
+    default: true
+  - name: THUNDER_REPLICAS
+    displayName: Thunder Replicas
+    type: string
+    default: '2'
+  - name: THUNDER_CPU_LIMITS
+    displayName: Thunder CPU Limits
+    type: string
+    default: '1.5'
+  - name: THUNDER_CPU_REQUESTS
+    displayName: Thunder CPU Requests
+    type: string
+    default: '1'
+  - name: THUNDER_MEMORY_LIMITS
+    displayName: Thunder Memory Limits
+    type: string
+    default: '512Mi'
+  - name: THUNDER_MEMORY_REQUESTS
+    displayName: Thunder Memory Requests
+    type: string
+    default: '256Mi'
   - name: BUILD_PURPOSE
     displayName: Perf-Test purpose
     type: string
     default: Regular Thunder performance test
-  - name: RUN_MODE
-    displayName: Run Mode
-    type: string
-    default: QUICK
-    values:
-      - QUICK
-      - FULL
 
 variables:
   - group: vg-thunder-perf
@@ -90,6 +115,16 @@ variables:
     value: ${{parameters.THUNDER_HELM_REPO}}
   - name: THUNDER_HELM_REPO_BRANCH
     value: ${{parameters.THUNDER_HELM_REPO_BRANCH}}
+  - name: THUNDER_REPLICAS
+    value: ${{parameters.THUNDER_REPLICAS}}
+  - name: THUNDER_CPU_LIMITS
+    value: ${{parameters.THUNDER_CPU_LIMITS}}
+  - name: THUNDER_CPU_REQUESTS
+    value: ${{parameters.THUNDER_CPU_REQUESTS}}
+  - name: THUNDER_MEMORY_LIMITS
+    value: ${{parameters.THUNDER_MEMORY_LIMITS}}
+  - name: THUNDER_MEMORY_REQUESTS
+    value: ${{parameters.THUNDER_MEMORY_REQUESTS}}
   - name: PYTHON_VERSION
     value: 3.9
 
@@ -226,7 +261,9 @@ jobs:
           DATABASE_HOST_NAME: $(DATABASE_HOSTNAME)
           THUNDER_HOST_NAME: $(THUNDER_HOSTNAME)
           POPULATE_TEST_DATA: "false"
-          RUN_MODE: ${{parameters.RUN_MODE}}
+          TEST_DURATION: ${{parameters.TEST_DURATION}}
+          WARM_UP_TIME: ${{parameters.WARM_UP_TIME}}
+          USE_DELAYS: ${{parameters.USE_DELAYS}}
           CONCURRENCY: ${{parameters.CONCURRENCY}}
           BASTION_NODE_IP: $(BASTION_NODE_IP)
           WORKSPACE: '$(Agent.BuildDirectory)/thunder-performance-repo/perf-scripts'

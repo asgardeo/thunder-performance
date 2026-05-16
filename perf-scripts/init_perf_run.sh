@@ -20,14 +20,15 @@ BUILD_DIR=$(pwd)
 RESOURCES_DIR=$BUILD_DIR/resources
 cd $BUILD_DIR
 mkdir -p resources
+USE_DELAYS=$(echo "$USE_DELAYS" | tr '[:upper:]' '[:lower:]')
 echo "Build Dir:$BUILD_DIR | Resources_Dir: $RESOURCES_DIR | Workspace: $WORKSPACE"
-MODE=$RUN_MODE
 
 echo ""
 echo "Starting performance test with params:"
 echo "    CONCURRENCY: $CONCURRENCY"
-echo "    MODE: $MODE"
-echo "    PURPOSE: $BUILD_PURPOSE"
+echo "    TEST_DURATION: $TEST_DURATION"
+echo "    WARM_UP_TIME: $WARM_UP_TIME"
+echo "    USE_DELAYS: $USE_DELAYS"
 echo "=========================================================="
 echo "Thunder Perf Environment - Status: "
 curl -s -i https://$THUNDER_HOST_NAME/health/liveness | head -1
@@ -48,7 +49,7 @@ echo "=========================================================="
   
 # Define and execute start-performance command.
 echo "Bastion IP init: $BASTION_NODE_IP"
-cmd="./start-performance.sh -b $BASTION_NODE_IP -n $DATABASE_HOST_NAME -d $THUNDER_HOST_NAME -- -d 3 -w 2 -q $POPULATE_TEST_DATA -c $CONCURRENCY"
+cmd="./start-performance.sh -b $BASTION_NODE_IP -n $DATABASE_HOST_NAME -d $THUNDER_HOST_NAME -- -d $TEST_DURATION -w $WARM_UP_TIME -q $POPULATE_TEST_DATA -u $USE_DELAYS -c $CONCURRENCY"
 
 $cmd
 
