@@ -98,6 +98,10 @@ parameters:
     displayName: Thunder Memory Requests
     type: string
     default: '256Mi'
+  - name: THUNDER_HPA_ENABLED
+    displayName: Thunder HPA Enabled
+    type: boolean
+    default: true
   - name: BUILD_PURPOSE
     displayName: Perf-Test purpose
     type: string
@@ -125,6 +129,11 @@ variables:
     value: ${{parameters.THUNDER_MEMORY_LIMITS}}
   - name: THUNDER_MEMORY_REQUESTS
     value: ${{parameters.THUNDER_MEMORY_REQUESTS}}
+  - name: THUNDER_HPA_ENABLED
+    ${{ if eq(parameters.THUNDER_HPA_ENABLED, true) }}:
+      value: 'true'
+    ${{ else }}:
+      value: 'false'
   - name: PYTHON_VERSION
     value: 3.9
 
