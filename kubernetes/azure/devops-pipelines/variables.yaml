@@ -60,3 +60,8 @@ variables:
   USER_DB_NAME: 'userdb'
   USER_DB_HOST: $(DATABASE_HOSTNAME)
   USER_DB_PORT: '5432'
+
+  # Database Connection Pool Configuration
+  DB_MAX_OPEN_CONNS: '10'
+  DB_MAX_IDLE_CONNS: '10'
+  DB_CONN_MAX_LIFETIME: '3600'
