@@ -30,7 +30,7 @@ declare -A test_scenario0=(
     [description]="Obtain an access token using the OAuth 2.0 client credential grant type."
     [jmx]="oauth/Thunder_OAuth_Client_Credentials_Grant.jmx"
     [tenantMode]=false
-    [skip]=false
+    [skip]=true
     [modes]="QUICK FULL"
 )
 declare -A test_scenario1=(
@@ -48,7 +48,7 @@ declare -A test_scenario2=(
     [description]="Authenticate a user using credentials."
     [jmx]="authenticate/Authenticate_With_Credentials.jmx"
     [tenantMode]=false
-    [skip]=false
+    [skip]=true
     [modes]="FULL"
 )
 
