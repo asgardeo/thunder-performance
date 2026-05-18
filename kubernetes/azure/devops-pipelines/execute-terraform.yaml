@@ -77,12 +77,12 @@ stages:
               scriptType: "bash"
               scriptLocation: "inlineScript"
               inlineScript: |
-                echo "Checking if blob '$(TF_STATE_NAME)' exists in container '$(TF_STATE_CONTAINER_NAME)'..."
+                echo "Checking if blob '$(TF_STATE_NAME_002)' exists in container '$(TF_STATE_CONTAINER_NAME)'..."
                 lease_status="unlocked" # Default to unlocked
                 exists=$(az storage blob exists \
                   --account-name $(TF_STATE_STORAGE_ACCOUNT_NAME) \
                   --container-name $(TF_STATE_CONTAINER_NAME) \
-                  --name $(TF_STATE_NAME) \
+                  --name $(TF_STATE_NAME_002) \
                   --auth-mode login \
                   --query exists -o tsv 2>/dev/null)
                 if [[ "$exists" == "true" ]]; then
@@ -90,7 +90,7 @@ stages:
                   lease_status_check=$(az storage blob show \
                     --account-name $(TF_STATE_STORAGE_ACCOUNT_NAME) \
                     --container-name $(TF_STATE_CONTAINER_NAME) \
-                    --name $(TF_STATE_NAME) \
+                    --name $(TF_STATE_NAME_002) \
                     --auth-mode login \
                     --query properties.lease.status -o tsv 2>/dev/null)
                   if [[ -n "$lease_status_check" ]]; then
@@ -117,7 +117,7 @@ stages:
             inputs:
               notifyUsers: ''
               instructions: |
-                ⚠️ Terraform state file ($(TF_STATE_NAME) in storage account $(TF_STATE_STORAGE_ACCOUNT_NAME)) is locked.
+                ⚠️ Terraform state file ($(TF_STATE_NAME_002) in storage account $(TF_STATE_STORAGE_ACCOUNT_NAME)) is locked.
                 This usually means another plan/apply is in progress or failed unexpectedly.
                 Action required:
                 - RESUME: Break the lease and continue with the Plan stage.
@@ -137,17 +137,17 @@ stages:
               scriptType: "bash"
               scriptLocation: "inlineScript"
               inlineScript: |
-                echo "Attempting to break lease on blob '$(TF_STATE_NAME)'..."
+                echo "Attempting to break lease on blob '$(TF_STATE_NAME_002)'..."
                 az storage blob lease break \
                   --account-name $(TF_STATE_STORAGE_ACCOUNT_NAME) \
                   --container-name $(TF_STATE_CONTAINER_NAME) \
-                  --blob-name $(TF_STATE_NAME) \
+                  --blob-name $(TF_STATE_NAME_002) \
                   --auth-mode login \
                   --output none # Suppress verbose output
                 if [[ $? -eq 0 ]]; then
-                  echo "Lease successfully broken for blob '$(TF_STATE_NAME)'."
+                  echo "Lease successfully broken for blob '$(TF_STATE_NAME_002)'."
                 else
-                  echo "##vso[task.logissue type=error;]Failed to break lease for blob '$(TF_STATE_NAME)'."
+                  echo "##vso[task.logissue type=error;]Failed to break lease for blob '$(TF_STATE_NAME_002)'."
                   exit 1
                 fi
 
@@ -257,7 +257,7 @@ stages:
                   -backend-config="resource_group_name=$(TF_STATE_ST_ACC_RG_NAME)" \
                   -backend-config="storage_account_name=$(TF_STATE_STORAGE_ACCOUNT_NAME)" \
                   -backend-config="container_name=$(TF_STATE_CONTAINER_NAME)" \
-                  -backend-config="key=$(TF_STATE_NAME)"
+                  -backend-config="key=$(TF_STATE_NAME_002)"
             env:
               ARM_CLIENT_ID: $(ARM_CLIENT_ID)
               ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
