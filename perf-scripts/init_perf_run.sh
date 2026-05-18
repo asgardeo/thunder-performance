@@ -20,6 +20,8 @@ BUILD_DIR=$(pwd)
 RESOURCES_DIR=$BUILD_DIR/resources
 cd $BUILD_DIR
 mkdir -p resources
+TEST_DURATION=${TEST_DURATION:-3}
+WARM_UP_TIME=${WARM_UP_TIME:-2}
 USE_DELAYS=$(echo "$USE_DELAYS" | tr '[:upper:]' '[:lower:]')
 echo "Build Dir:$BUILD_DIR | Resources_Dir: $RESOURCES_DIR | Workspace: $WORKSPACE"
 
