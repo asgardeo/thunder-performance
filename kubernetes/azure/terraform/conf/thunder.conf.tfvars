@@ -18,7 +18,7 @@
 project              = "thunder"
 environment          = "perf"
 location             = "eastus2"
-padding              = "001"
+padding              = "002"
 
 # AKS configuration
 
