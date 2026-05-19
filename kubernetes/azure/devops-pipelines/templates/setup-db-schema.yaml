@@ -61,6 +61,40 @@ steps:
         RUNTIME_DB_PORT=$(RUNTIME_DB_PORT)
         CONFIG_DB_PORT=$(CONFIG_DB_PORT)
         USER_DB_PORT=$(USER_DB_PORT)
+
+        echo "Resolving PostgreSQL private IPs from Azure private DNS zone"
+        PRIVATE_DNS_ZONE="privatelink.postgres.database.azure.com"
+        RESOURCE_GROUP=$(RESOURCE_GROUP_NAME)
+
+        RUNTIME_DB_RECORD="${RUNTIME_DB_HOST%.postgres.database.azure.com}"
+        CONFIG_DB_RECORD="${CONFIG_DB_HOST%.postgres.database.azure.com}"
+        USER_DB_RECORD="${USER_DB_HOST%.postgres.database.azure.com}"
+
+        RUNTIME_DB_IP=$(az network private-dns record-set a show \
+          --resource-group "$RESOURCE_GROUP" \
+          --zone-name "$PRIVATE_DNS_ZONE" \
+          --name "$RUNTIME_DB_RECORD" \
+          --query "aRecords[0].ipv4Address" -o tsv)
+        CONFIG_DB_IP=$(az network private-dns record-set a show \
+          --resource-group "$RESOURCE_GROUP" \
+          --zone-name "$PRIVATE_DNS_ZONE" \
+          --name "$CONFIG_DB_RECORD" \
+          --query "aRecords[0].ipv4Address" -o tsv)
+        USER_DB_IP=$(az network private-dns record-set a show \
+          --resource-group "$RESOURCE_GROUP" \
+          --zone-name "$PRIVATE_DNS_ZONE" \
+          --name "$USER_DB_RECORD" \
+          --query "aRecords[0].ipv4Address" -o tsv)
+
+        echo "Runtime DB IP: $RUNTIME_DB_IP, Config DB IP: $CONFIG_DB_IP, User DB IP: $USER_DB_IP"
+
+        echo "Adding PostgreSQL hostnames to /etc/hosts on bastion VM"
+        ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP \
+          "sudo sed -i '/$RUNTIME_DB_HOST/d;/$CONFIG_DB_HOST/d;/$USER_DB_HOST/d' /etc/hosts && \
+          echo '$RUNTIME_DB_IP $RUNTIME_DB_HOST' | sudo tee -a /etc/hosts && \
+          echo '$CONFIG_DB_IP $CONFIG_DB_HOST' | sudo tee -a /etc/hosts && \
+          echo '$USER_DB_IP $USER_DB_HOST' | sudo tee -a /etc/hosts"
+
         ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP "export PGPASSWORD=$POSTGRES_ADMIN_PASSWORD && \
         cd /home/$BASTION_USER/dbscripts/ && \
         psql -h $RUNTIME_DB_HOST -p $RUNTIME_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $RUNTIME_DB_NAME -f runtimedb/postgres.sql && \
