@@ -1,0 +1,53 @@
+# Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+parameters:
+  - name: RELEASE_NAME
+    type: string
+    default: "redis-perf"
+  - name: NAMESPACE
+    type: string
+    default: "redis"
+  - name: REDIS_PASSWORD
+    type: string
+    default: ""
+
+steps:
+  - template: ./utils/set-aks-credentials.yaml
+  - task: AzureCLI@2
+    displayName: "Install Redis"
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
+      inlineScript: |
+        set -e
+        echo "Creating namespace ${{ parameters.NAMESPACE }} if it does not exist"
+        kubectl create namespace ${{ parameters.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
+        echo "Adding Bitnami Helm repository"
+        helm repo add bitnami https://charts.bitnami.com/bitnami
+        helm repo update
+
+        echo "Installing Redis Helm Chart"
+        helm upgrade --install ${{ parameters.RELEASE_NAME }} bitnami/redis \
+          --namespace ${{ parameters.NAMESPACE }} \
+          --set auth.password=${{ parameters.REDIS_PASSWORD }} \
+          --set architecture=standalone \
+          --set master.persistence.enabled=false \
+          --wait --timeout 5m
+        echo "Redis Helm Chart installed successfully"
+        echo "Redis is accessible at: ${{ parameters.RELEASE_NAME }}-master.${{ parameters.NAMESPACE }}.svc.cluster.local:6379"

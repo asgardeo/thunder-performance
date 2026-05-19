@@ -1,4 +1,4 @@
-# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+# Copyright (c) 2025-2026, WSO2 LLC. (https://www.wso2.com).
 #
 # WSO2 LLC. licenses this file to you under the Apache License,
 # Version 2.0 (the "License"); you may not use this file except
@@ -96,6 +96,10 @@ steps:
           --set configuration.consent.enabled=false \
           --set configuration.crypto.passwordHashing.algorithm=$(THUNDER_PASSWORD_HASHING_ALGORITHM) \
           --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
-          --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }}
-          --set configuration.cache.disabled=false
+          --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }} \
+          --set configuration.cache.disabled=false \
+          --set configuration.cache.type=redis \
+          --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
+          --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
+          --set configuration.cache.redis.keyPrefix=thunderid
         echo "Thunder Helm Chart installed successfully"
