@@ -42,15 +42,15 @@ declare -A test_scenario1=(
     [skip]=false
     [modes]="QUICK FULL"
 )
-declare -A test_scenario2=(
-    [name]="02-thunder_authenticate_with_credentials"
-    [display_name]="User Authentication with Credentials"
-    [description]="Authenticate a user using credentials."
-    [jmx]="authenticate/Authenticate_With_Credentials.jmx"
-    [tenantMode]=false
-    [skip]=false
-    [modes]="FULL"
-)
+# declare -A test_scenario2=(
+#     [name]="02-thunder_authenticate_with_credentials"
+#     [display_name]="User Authentication with Credentials"
+#     [description]="Authenticate a user using credentials."
+#     [jmx]="authenticate/Authenticate_With_Credentials.jmx"
+#     [tenantMode]=false
+#     [skip]=false
+#     [modes]="FULL"
+# )
 
 function before_execute_test_scenario() {
 

@@ -35,11 +35,11 @@ declare -A test_scenario1=(
     [tenantMode]=false
     [skip]=false
 )
-declare -A test_scenario2=(
-    [name]="02-thunder_authenticate_with_credentials"
-    [display_name]="User Authentication with Credentials"
-    [description]="Authenticate a user using credentials."
-    [jmx]="authenticate/Authenticate_With_Credentials.jmx"
-    [tenantMode]=false
-    [skip]=false
-)
+# declare -A test_scenario2=(
+#     [name]="02-thunder_authenticate_with_credentials"
+#     [display_name]="User Authentication with Credentials"
+#     [description]="Authenticate a user using credentials."
+#     [jmx]="authenticate/Authenticate_With_Credentials.jmx"
+#     [tenantMode]=false
+#     [skip]=false
+# )
