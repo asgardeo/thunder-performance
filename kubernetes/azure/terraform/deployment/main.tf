@@ -141,7 +141,7 @@ module "private-dns-postgres" {
 
 module "postgres-config-server" {
   source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
-  server_name                      = join("-", ["postgresql", var.project, "config", var.environment, var.location, var.padding])
+  server_name                      = join("-", [var.project, "config", var.environment, var.location, var.padding])
   resource_group_name              = module.resource-group.resource_group_name
   subnet_id                        = module.postgres-vm-subnet.subnet_id
   private_dns_zone_id              = module.private-dns-postgres.private_dns_zone_id
@@ -156,7 +156,7 @@ module "postgres-config-server" {
 
 module "postgres-runtime-server" {
   source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
-  server_name                      = join("-", ["postgresql", var.project, "runtime", var.environment, var.location, var.padding])
+  server_name                      = join("-", [var.project, "runtime", var.environment, var.location, var.padding])
   resource_group_name              = module.resource-group.resource_group_name
   subnet_id                        = module.postgres-vm-subnet.subnet_id
   private_dns_zone_id              = module.private-dns-postgres.private_dns_zone_id
@@ -171,7 +171,7 @@ module "postgres-runtime-server" {
 
 module "postgres-user-server" {
   source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
-  server_name                      = join("-", ["postgresql", var.project, "user", var.environment, var.location, var.padding])
+  server_name                      = join("-", [var.project, "user", var.environment, var.location, var.padding])
   resource_group_name              = module.resource-group.resource_group_name
   subnet_id                        = module.postgres-vm-subnet.subnet_id
   private_dns_zone_id              = module.private-dns-postgres.private_dns_zone_id
