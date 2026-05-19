@@ -1,4 +1,4 @@
-# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+# Copyright (c) 2025-2026, WSO2 LLC. (https://www.wso2.com).
 #
 # WSO2 LLC. licenses this file to you under the Apache License,
 # Version 2.0 (the "License"); you may not use this file except
@@ -19,22 +19,22 @@ parameters:
     type: string
   - name: BASTION_USER
     type: string
-    default: 'azureuser'
-    
+    default: "azureuser"
+
 steps:
   - template: ./utils/get-bastion-node-ip.yaml
   - task: DownloadSecureFile@1
     name: vmKey
-    displayName: 'Download VM Key'
+    displayName: "Download VM Key"
     inputs:
-      secureFile: 'azureVMSSHKey'
+      secureFile: "azureVMSSHKey"
 
   - task: AzureCLI@2
-    displayName: 'Setup Database Schema'
+    displayName: "Setup Database Schema"
     inputs:
       azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
       workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
       inlineScript: |
         set -e
@@ -45,7 +45,7 @@ steps:
         echo "SSH into the VM and set ownership"
         ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP \
           "sudo chown -R $BASTION_USER:$BASTION_USER /home/$BASTION_USER"
-        
+
         echo "Copying DB scripts to bastion VM"
         scp -r -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) dbscripts $BASTION_USER@$BASTION_NODE_IP:/home/$BASTION_USER/
 
@@ -65,25 +65,24 @@ steps:
         echo "Resolving PostgreSQL private IPs from Azure private DNS zone"
         PRIVATE_DNS_ZONE="privatelink.postgres.database.azure.com"
         RESOURCE_GROUP=$(RESOURCE_GROUP_NAME)
-
-        RUNTIME_DB_RECORD="${RUNTIME_DB_HOST%.postgres.database.azure.com}"
-        CONFIG_DB_RECORD="${CONFIG_DB_HOST%.postgres.database.azure.com}"
-        USER_DB_RECORD="${USER_DB_HOST%.postgres.database.azure.com}"
+        POSTGRES_RUNTIME_SERVER_NAME=$(POSTGRES_RUNTIME_SERVER_NAME)
+        POSTGRES_CONFIG_SERVER_NAME=$(POSTGRES_CONFIG_SERVER_NAME)
+        POSTGRES_USER_SERVER_NAME=$(POSTGRES_USER_SERVER_NAME)
 
         RUNTIME_DB_IP=$(az network private-dns record-set a show \
           --resource-group "$RESOURCE_GROUP" \
           --zone-name "$PRIVATE_DNS_ZONE" \
-          --name "$RUNTIME_DB_RECORD" \
+          --name "$POSTGRES_RUNTIME_SERVER_NAME" \
           --query "aRecords[0].ipv4Address" -o tsv)
         CONFIG_DB_IP=$(az network private-dns record-set a show \
           --resource-group "$RESOURCE_GROUP" \
           --zone-name "$PRIVATE_DNS_ZONE" \
-          --name "$CONFIG_DB_RECORD" \
+          --name "$POSTGRES_CONFIG_SERVER_NAME" \
           --query "aRecords[0].ipv4Address" -o tsv)
         USER_DB_IP=$(az network private-dns record-set a show \
           --resource-group "$RESOURCE_GROUP" \
           --zone-name "$PRIVATE_DNS_ZONE" \
-          --name "$USER_DB_RECORD" \
+          --name "$POSTGRES_USER_SERVER_NAME" \
           --query "aRecords[0].ipv4Address" -o tsv)
 
         echo "Runtime DB IP: $RUNTIME_DB_IP, Config DB IP: $CONFIG_DB_IP, User DB IP: $USER_DB_IP"
