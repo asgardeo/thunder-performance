@@ -33,7 +33,6 @@ module "virtual-network" {
   resource_group_name           = module.resource-group.resource_group_name
   location                      = var.location
   virtual_network_address_space = var.virtual_network_address_space
-  dns_servers                   = ["168.63.129.16"]
   tags                          = local.default_tags
   private_dns_zones = [
     {
