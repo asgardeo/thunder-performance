@@ -49,53 +49,18 @@ steps:
         echo "Copying DB scripts to bastion VM"
         scp -r -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) dbscripts $BASTION_USER@$BASTION_NODE_IP:/home/$BASTION_USER/
 
-        echo "SSH into VM and execute database schema creation commands"
-        POSTGRES_ADMIN_USERNAME=$(POSTGRES-ADMIN-USERNAME)
-        POSTGRES_ADMIN_PASSWORD=$(POSTGRES-ADMIN-PASSWORD)
-        RUNTIME_DB_NAME=$(RUNTIME_DB_NAME)
-        CONFIG_DB_NAME=$(CONFIG_DB_NAME)
-        USER_DB_NAME=$(USER_DB_NAME)
-        RUNTIME_DB_HOST=$(RUNTIME_DB_HOST)
-        CONFIG_DB_HOST=$(CONFIG_DB_HOST)
-        USER_DB_HOST=$(USER_DB_HOST)
-        RUNTIME_DB_PORT=$(RUNTIME_DB_PORT)
-        CONFIG_DB_PORT=$(CONFIG_DB_PORT)
-        USER_DB_PORT=$(USER_DB_PORT)
-
-        echo "Resolving PostgreSQL private IPs from Azure private DNS zone"
-        PRIVATE_DNS_ZONE="privatelink.postgres.database.azure.com"
-        RESOURCE_GROUP=$(RESOURCE_GROUP_NAME)
-        POSTGRES_RUNTIME_SERVER_NAME=$(POSTGRES_RUNTIME_SERVER_NAME)
-        POSTGRES_CONFIG_SERVER_NAME=$(POSTGRES_CONFIG_SERVER_NAME)
-        POSTGRES_USER_SERVER_NAME=$(POSTGRES_USER_SERVER_NAME)
-
-        RUNTIME_DB_IP=$(az network private-dns record-set a show \
-          --resource-group "$RESOURCE_GROUP" \
-          --zone-name "$PRIVATE_DNS_ZONE" \
-          --name "$POSTGRES_RUNTIME_SERVER_NAME" \
-          --query "aRecords[0].ipv4Address" -o tsv)
-        CONFIG_DB_IP=$(az network private-dns record-set a show \
-          --resource-group "$RESOURCE_GROUP" \
-          --zone-name "$PRIVATE_DNS_ZONE" \
-          --name "$POSTGRES_CONFIG_SERVER_NAME" \
-          --query "aRecords[0].ipv4Address" -o tsv)
-        USER_DB_IP=$(az network private-dns record-set a show \
-          --resource-group "$RESOURCE_GROUP" \
-          --zone-name "$PRIVATE_DNS_ZONE" \
-          --name "$POSTGRES_USER_SERVER_NAME" \
-          --query "aRecords[0].ipv4Address" -o tsv)
-
-        echo "Runtime DB IP: $RUNTIME_DB_IP, Config DB IP: $CONFIG_DB_IP, User DB IP: $USER_DB_IP"
-
-        echo "Adding PostgreSQL hostnames to /etc/hosts on bastion VM"
+        echo "Executing database schema creation on bastion VM"
         ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP \
-          "sudo sed -i '/$RUNTIME_DB_HOST/d;/$CONFIG_DB_HOST/d;/$USER_DB_HOST/d' /etc/hosts && \
-          echo '$RUNTIME_DB_IP $RUNTIME_DB_HOST' | sudo tee -a /etc/hosts && \
-          echo '$CONFIG_DB_IP $CONFIG_DB_HOST' | sudo tee -a /etc/hosts && \
-          echo '$USER_DB_IP $USER_DB_HOST' | sudo tee -a /etc/hosts"
-
-        ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP "export PGPASSWORD=$POSTGRES_ADMIN_PASSWORD && \
-        cd /home/$BASTION_USER/dbscripts/ && \
-        psql -h $RUNTIME_DB_HOST -p $RUNTIME_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $RUNTIME_DB_NAME -f runtimedb/postgres.sql && \
-        psql -h $CONFIG_DB_HOST -p $CONFIG_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $CONFIG_DB_NAME -f configdb/postgres.sql && \
-        psql -h $USER_DB_HOST -p $USER_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $USER_DB_NAME -f userdb/postgres.sql"
+          POSTGRES_ADMIN_USERNAME=$(POSTGRES-ADMIN-USERNAME) \
+          POSTGRES_ADMIN_PASSWORD=$(POSTGRES-ADMIN-PASSWORD) \
+          RUNTIME_DB_HOST=$(RUNTIME_DB_HOST) RUNTIME_DB_PORT=$(RUNTIME_DB_PORT) RUNTIME_DB_NAME=$(RUNTIME_DB_NAME) \
+          CONFIG_DB_HOST=$(CONFIG_DB_HOST) CONFIG_DB_PORT=$(CONFIG_DB_PORT) CONFIG_DB_NAME=$(CONFIG_DB_NAME) \
+          USER_DB_HOST=$(USER_DB_HOST) USER_DB_PORT=$(USER_DB_PORT) USER_DB_NAME=$(USER_DB_NAME) \
+          bash << 'EOF'
+            set -e
+            export PGPASSWORD="$POSTGRES_ADMIN_PASSWORD"
+            cd ~/dbscripts
+            psql -h "$RUNTIME_DB_HOST" -p "$RUNTIME_DB_PORT" -U "$POSTGRES_ADMIN_USERNAME" -d "$RUNTIME_DB_NAME" -f runtimedb/postgres.sql
+            psql -h "$CONFIG_DB_HOST"  -p "$CONFIG_DB_PORT"  -U "$POSTGRES_ADMIN_USERNAME" -d "$CONFIG_DB_NAME"  -f configdb/postgres.sql
+            psql -h "$USER_DB_HOST"    -p "$USER_DB_PORT"    -U "$POSTGRES_ADMIN_USERNAME" -d "$USER_DB_NAME"    -f userdb/postgres.sql
+          EOF
