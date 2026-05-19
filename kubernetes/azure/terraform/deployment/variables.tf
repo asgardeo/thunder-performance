@@ -183,8 +183,20 @@ variable "postgres_server_storage_size" {
   default     = 32768
 }
 
-variable "postgres_server_sku_name" {
-  description = "The SKU name for the Postgres server"
+variable "postgres_config_server_sku_name" {
+  description = "The SKU name for the Postgres config server"
+  type        = string
+  default     = "GP_Standard_D2s_v3"
+}
+
+variable "postgres_runtime_server_sku_name" {
+  description = "The SKU name for the Postgres runtime server"
+  type        = string
+  default     = "GP_Standard_D2s_v3"
+}
+
+variable "postgres_user_server_sku_name" {
+  description = "The SKU name for the Postgres user server"
   type        = string
   default     = "GP_Standard_D2s_v3"
 }
