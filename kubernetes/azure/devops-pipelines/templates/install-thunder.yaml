@@ -38,6 +38,9 @@ parameters:
   - name: RUN_SETUP_SCRIPT
     type: boolean
     default: true
+  - name: CACHE_ENABLED
+    type: boolean
+    default: false
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -96,10 +99,15 @@ steps:
           --set configuration.consent.enabled=false \
           --set configuration.crypto.passwordHashing.algorithm=$(THUNDER_PASSWORD_HASHING_ALGORITHM) \
           --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
-          --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }} \
+          --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }}
+        ${{ if eq(parameters.CACHE_ENABLED, true) }}
+        helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
+          --namespace ${{ parameters.NAMESPACE }} \
+          --reuse-values \
           --set configuration.cache.disabled=false \
           --set configuration.cache.type=redis \
           --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
           --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
           --set configuration.cache.redis.keyPrefix=thunderid
+        ${{ end }}
         echo "Thunder Helm Chart installed successfully"
