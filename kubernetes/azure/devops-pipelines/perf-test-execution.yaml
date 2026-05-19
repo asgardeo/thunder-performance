@@ -267,7 +267,7 @@ jobs:
           GITHUB_USERNAME: $(gitUsername)
           BUILD_TYPE: $(Build.Reason)
           BUILD_PATH: $(Build.ArtifactStagingDirectory)
-          DATABASE_HOST_NAME: $(DATABASE_HOSTNAME)
+          DATABASE_HOST_NAME: $(CONFIG_DB_HOSTNAME)
           THUNDER_HOST_NAME: $(THUNDER_HOSTNAME)
           POPULATE_TEST_DATA: "false"
           TEST_DURATION: ${{parameters.TEST_DURATION}}
