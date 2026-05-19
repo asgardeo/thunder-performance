@@ -96,6 +96,6 @@ steps:
           --set configuration.consent.enabled=false \
           --set configuration.crypto.passwordHashing.algorithm=$(THUNDER_PASSWORD_HASHING_ALGORITHM) \
           --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
-          --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }}
+          --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }} \
           --set configuration.cache.disabled=false
         echo "Thunder Helm Chart installed successfully"
