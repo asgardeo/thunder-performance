@@ -301,3 +301,116 @@ module "container_insights_data_collection_rule_association" {
     module.log-analytics-workspace
   ]
 }
+
+# PostgreSQL Server Configurations - enable track_io_timing for Query Performance Insights
+module "postgres-config-server-configuration" {
+  source                        = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Configuration?ref=v2.18.10"
+  postgresql_flexible_server_id = module.postgres-config-server.postgresql_server_id
+  server_configurations = {
+    track_io_timing = {
+      property = "track_io_timing"
+      settings = "on"
+    }
+  }
+  depends_on = [module.postgres-config-server]
+}
+
+module "postgres-runtime-server-configuration" {
+  source                        = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Configuration?ref=v2.18.10"
+  postgresql_flexible_server_id = module.postgres-runtime-server.postgresql_server_id
+  server_configurations = {
+    track_io_timing = {
+      property = "track_io_timing"
+      settings = "on"
+    }
+  }
+  depends_on = [module.postgres-runtime-server]
+}
+
+module "postgres-user-server-configuration" {
+  source                        = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Configuration?ref=v2.18.10"
+  postgresql_flexible_server_id = module.postgres-user-server.postgresql_server_id
+  server_configurations = {
+    track_io_timing = {
+      property = "track_io_timing"
+      settings = "on"
+    }
+  }
+  depends_on = [module.postgres-user-server]
+}
+
+# PostgreSQL Diagnostic Settings - send all PostgreSQL logs and metrics to Log Analytics for Query Performance Insights
+module "postgres-config-server-diagnostics" {
+  source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Resource-Monitoring-Diagnostic-Setting?ref=v2.19.0"
+  log_setting_name   = join("-", [var.project, "config", var.environment, var.location, var.padding])
+  target_resource_id = module.postgres-config-server.postgresql_server_id
+  archival_locations = {
+    archival_storage_account_id = ""
+    log_analytics_workspace_id  = module.log-analytics-workspace.log_analytics_workspace_id
+  }
+  required_log_categories = [
+    { category_name = "PostgreSQLLogs" },
+    { category_name = "PostgreSQLFlexSessions" },
+    { category_name = "PostgreSQLFlexQueryStoreRuntime" },
+    { category_name = "PostgreSQLFlexQueryStoreWaitStats" },
+    { category_name = "PostgreSQLFlexTableStats" },
+    { category_name = "PostgreSQLFlexDatabaseXacts" },
+    { category_name = "PostgreSQLFlexPgBouncer" },
+    { category_name = "PostgreSQLFlexQueryStoreSQLText" },
+  ]
+  all_metrics_enabled = true
+  depends_on = [
+    module.postgres-config-server,
+    module.log-analytics-workspace
+  ]
+}
+
+module "postgres-runtime-server-diagnostics" {
+  source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Resource-Monitoring-Diagnostic-Setting?ref=v2.19.0"
+  log_setting_name   = join("-", [var.project, "runtime", var.environment, var.location, var.padding])
+  target_resource_id = module.postgres-runtime-server.postgresql_server_id
+  archival_locations = {
+    archival_storage_account_id = ""
+    log_analytics_workspace_id  = module.log-analytics-workspace.log_analytics_workspace_id
+  }
+  required_log_categories = [
+    { category_name = "PostgreSQLLogs" },
+    { category_name = "PostgreSQLFlexSessions" },
+    { category_name = "PostgreSQLFlexQueryStoreRuntime" },
+    { category_name = "PostgreSQLFlexQueryStoreWaitStats" },
+    { category_name = "PostgreSQLFlexTableStats" },
+    { category_name = "PostgreSQLFlexDatabaseXacts" },
+    { category_name = "PostgreSQLFlexPgBouncer" },
+    { category_name = "PostgreSQLFlexQueryStoreSQLText" },
+  ]
+  all_metrics_enabled = true
+  depends_on = [
+    module.postgres-runtime-server,
+    module.log-analytics-workspace
+  ]
+}
+
+module "postgres-user-server-diagnostics" {
+  source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Resource-Monitoring-Diagnostic-Setting?ref=v2.19.0"
+  log_setting_name   = join("-", [var.project, "user", var.environment, var.location, var.padding])
+  target_resource_id = module.postgres-user-server.postgresql_server_id
+  archival_locations = {
+    archival_storage_account_id = ""
+    log_analytics_workspace_id  = module.log-analytics-workspace.log_analytics_workspace_id
+  }
+  required_log_categories = [
+    { category_name = "PostgreSQLLogs" },
+    { category_name = "PostgreSQLFlexSessions" },
+    { category_name = "PostgreSQLFlexQueryStoreRuntime" },
+    { category_name = "PostgreSQLFlexQueryStoreWaitStats" },
+    { category_name = "PostgreSQLFlexTableStats" },
+    { category_name = "PostgreSQLFlexDatabaseXacts" },
+    { category_name = "PostgreSQLFlexPgBouncer" },
+    { category_name = "PostgreSQLFlexQueryStoreSQLText" },
+  ]
+  all_metrics_enabled = true
+  depends_on = [
+    module.postgres-user-server,
+    module.log-analytics-workspace
+  ]
+}
