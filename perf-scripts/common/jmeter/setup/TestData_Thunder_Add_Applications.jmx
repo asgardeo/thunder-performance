@@ -6,7 +6,6 @@
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
         <collectionProp name="Arguments.arguments"/>
       </elementProp>
-      <boolProp name="TestPlan.functional_mode">false</boolProp>
     </TestPlan>
     <hashTree>
       <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Server Variables">
@@ -84,7 +83,7 @@
         </collectionProp>
       </Arguments>
       <hashTree/>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Get Default OU ID" enabled="true">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Create Custom Authn Flow">
         <intProp name="ThreadGroup.num_threads">1</intProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -95,7 +94,191 @@
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Get OU List" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Create Authn Flow">
+          <stringProp name="HTTPSampler.domain">${thunder_host}</stringProp>
+          <stringProp name="HTTPSampler.port">${thunder_port}</stringProp>
+          <stringProp name="HTTPSampler.protocol">https</stringProp>
+          <stringProp name="HTTPSampler.path">/flows</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{&#xd;
+    &quot;handle&quot;: &quot;custom-basic-flow&quot;,&#xd;
+    &quot;name&quot;: &quot;Custom Basic Authentication Flow&quot;,&#xd;
+    &quot;flowType&quot;: &quot;AUTHENTICATION&quot;,&#xd;
+    &quot;nodes&quot;: [&#xd;
+        {&#xd;
+            &quot;id&quot;: &quot;start&quot;,&#xd;
+            &quot;type&quot;: &quot;START&quot;,&#xd;
+            &quot;onSuccess&quot;: &quot;prompt_credentials&quot;&#xd;
+        },&#xd;
+        {&#xd;
+            &quot;id&quot;: &quot;prompt_credentials&quot;,&#xd;
+            &quot;type&quot;: &quot;PROMPT&quot;,&#xd;
+            &quot;meta&quot;: {&#xd;
+                &quot;components&quot;: [&#xd;
+                    {&#xd;
+                        &quot;alt&quot;: &quot;{{ t(signin:images.app_logo.alt) }}&quot;,&#xd;
+                        &quot;category&quot;: &quot;DISPLAY&quot;,&#xd;
+                        &quot;height&quot;: &quot;60&quot;,&#xd;
+                        &quot;id&quot;: &quot;image&quot;,&#xd;
+                        &quot;resourceType&quot;: &quot;ELEMENT&quot;,&#xd;
+                        &quot;src&quot;: &quot;{{ meta(application.logoUrl) }}&quot;,&#xd;
+                        &quot;type&quot;: &quot;IMAGE&quot;,&#xd;
+                        &quot;width&quot;: &quot;&quot;&#xd;
+                    },&#xd;
+                    {&#xd;
+                        &quot;align&quot;: &quot;center&quot;,&#xd;
+                        &quot;id&quot;: &quot;text_001&quot;,&#xd;
+                        &quot;label&quot;: &quot;{{ t(signin:forms.credentials.title) }}&quot;,&#xd;
+                        &quot;type&quot;: &quot;TEXT&quot;,&#xd;
+                        &quot;variant&quot;: &quot;HEADING_1&quot;&#xd;
+                    },&#xd;
+                    {&#xd;
+                        &quot;components&quot;: [&#xd;
+                            {&#xd;
+                                &quot;id&quot;: &quot;input_001&quot;,&#xd;
+                                &quot;label&quot;: &quot;{{ t(signin:forms.credentials.fields.username.label) }}&quot;,&#xd;
+                                &quot;placeholder&quot;: &quot;{{ t(signin:forms.credentials.fields.username.placeholder) }}&quot;,&#xd;
+                                &quot;ref&quot;: &quot;username&quot;,&#xd;
+                                &quot;required&quot;: true,&#xd;
+                                &quot;type&quot;: &quot;TEXT_INPUT&quot;&#xd;
+                            },&#xd;
+                            {&#xd;
+                                &quot;id&quot;: &quot;input_002&quot;,&#xd;
+                                &quot;label&quot;: &quot;{{ t(signin:forms.credentials.fields.password.label) }}&quot;,&#xd;
+                                &quot;placeholder&quot;: &quot;{{ t(signin:forms.credentials.fields.password.placeholder) }}&quot;,&#xd;
+                                &quot;ref&quot;: &quot;password&quot;,&#xd;
+                                &quot;required&quot;: true,&#xd;
+                                &quot;type&quot;: &quot;PASSWORD_INPUT&quot;&#xd;
+                            },&#xd;
+                            {&#xd;
+                                &quot;category&quot;: &quot;DISPLAY&quot;,&#xd;
+                                &quot;id&quot;: &quot;rich_text_forgot_password&quot;,&#xd;
+                                &quot;label&quot;: &quot;&lt;p class=\&quot;rich-text-paragraph\&quot;&gt;&lt;span class=\&quot;rich-text-pre-wrap\&quot;&gt;{{ t(signin:forms.credentials.links.forgot_password.prefix) }} &lt;/span&gt;&lt;a href=\&quot;{{meta(application.forgot_password_url)}}\&quot; target=\&quot;_blank\&quot; rel=\&quot;noopener noreferrer\&quot; class=\&quot;rich-text-link\&quot;&gt;&lt;span class=\&quot;rich-text-pre-wrap\&quot;&gt;{{ t(signin:forms.credentials.links.forgot_password.label) }}&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&quot;,&#xd;
+                                &quot;resourceType&quot;: &quot;ELEMENT&quot;,&#xd;
+                                &quot;type&quot;: &quot;RICH_TEXT&quot;&#xd;
+                            },&#xd;
+                            {&#xd;
+                                &quot;eventType&quot;: &quot;SUBMIT&quot;,&#xd;
+                                &quot;id&quot;: &quot;action_001&quot;,&#xd;
+                                &quot;label&quot;: &quot;{{ t(signin:forms.credentials.actions.submit.label) }}&quot;,&#xd;
+                                &quot;type&quot;: &quot;ACTION&quot;,&#xd;
+                                &quot;variant&quot;: &quot;PRIMARY&quot;&#xd;
+                            },&#xd;
+                            {&#xd;
+                                &quot;category&quot;: &quot;DISPLAY&quot;,&#xd;
+                                &quot;id&quot;: &quot;rich_text_signup&quot;,&#xd;
+                                &quot;label&quot;: &quot;&lt;p class=\&quot;rich-text-paragraph\&quot;&gt;&lt;span class=\&quot;rich-text-pre-wrap\&quot;&gt;{{ t(signin:forms.credentials.links.sign_up.prefix) }} &lt;/span&gt;&lt;a href=\&quot;{{meta(application.sign_up_url)}}\&quot; target=\&quot;_blank\&quot; rel=\&quot;noopener noreferrer\&quot; class=\&quot;rich-text-link\&quot;&gt;&lt;span class=\&quot;rich-text-pre-wrap\&quot;&gt;{{ t(signin:forms.credentials.links.sign_up.label) }}&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&quot;,&#xd;
+                                &quot;resourceType&quot;: &quot;ELEMENT&quot;,&#xd;
+                                &quot;type&quot;: &quot;RICH_TEXT&quot;&#xd;
+                            }&#xd;
+                        ],&#xd;
+                        &quot;id&quot;: &quot;block_001&quot;,&#xd;
+                        &quot;type&quot;: &quot;BLOCK&quot;&#xd;
+                    }&#xd;
+                ]&#xd;
+            },&#xd;
+            &quot;prompts&quot;: [&#xd;
+                {&#xd;
+                    &quot;inputs&quot;: [&#xd;
+                        {&#xd;
+                            &quot;ref&quot;: &quot;input_001&quot;,&#xd;
+                            &quot;type&quot;: &quot;TEXT_INPUT&quot;,&#xd;
+                            &quot;identifier&quot;: &quot;username&quot;,&#xd;
+                            &quot;required&quot;: true&#xd;
+                        },&#xd;
+                        {&#xd;
+                            &quot;ref&quot;: &quot;input_002&quot;,&#xd;
+                            &quot;type&quot;: &quot;PASSWORD_INPUT&quot;,&#xd;
+                            &quot;identifier&quot;: &quot;password&quot;,&#xd;
+                            &quot;required&quot;: true&#xd;
+                        }&#xd;
+                    ],&#xd;
+                    &quot;action&quot;: {&#xd;
+                        &quot;ref&quot;: &quot;action_001&quot;,&#xd;
+                        &quot;nextNode&quot;: &quot;basic_auth&quot;&#xd;
+                    }&#xd;
+                }&#xd;
+            ]&#xd;
+        },&#xd;
+        {&#xd;
+            &quot;id&quot;: &quot;basic_auth&quot;,&#xd;
+            &quot;type&quot;: &quot;TASK_EXECUTION&quot;,&#xd;
+            &quot;executor&quot;: {&#xd;
+                &quot;name&quot;: &quot;BasicAuthExecutor&quot;&#xd;
+            },&#xd;
+            &quot;onSuccess&quot;: &quot;auth_assert&quot;,&#xd;
+            &quot;onIncomplete&quot;: &quot;prompt_credentials&quot;&#xd;
+        },&#xd;
+        {&#xd;
+            &quot;id&quot;: &quot;auth_assert&quot;,&#xd;
+            &quot;type&quot;: &quot;TASK_EXECUTION&quot;,&#xd;
+            &quot;executor&quot;: {&#xd;
+                &quot;name&quot;: &quot;AuthAssertExecutor&quot;&#xd;
+            },&#xd;
+            &quot;onSuccess&quot;: &quot;end&quot;&#xd;
+        },&#xd;
+        {&#xd;
+            &quot;id&quot;: &quot;end&quot;,&#xd;
+            &quot;type&quot;: &quot;END&quot;&#xd;
+        }&#xd;
+    ]&#xd;
+}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="201 HTTP Code Response Assertion">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49587">201</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">2</intProp>
+            <stringProp name="Assertion.custom_message"></stringProp>
+          </ResponseAssertion>
+          <hashTree/>
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Extract custom authn flow ID">
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="script">import groovy.json.JsonSlurper
+
+def response = prev.getResponseDataAsString()
+def json = new JsonSlurper().parseText(response)
+
+def flowId = json.id
+
+if (flowId) {
+    props.put(&apos;custom_flow_id&apos;, flowId)
+} else {
+    props.put(&apos;custom_flow_id&apos;, &apos;NOT_FOUND&apos;)
+}</stringProp>
+            <stringProp name="scriptLanguage">groovy</stringProp>
+          </JSR223PostProcessor>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Get Default OU ID">
+        <intProp name="ThreadGroup.num_threads">1</intProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Get OU List">
           <stringProp name="HTTPSampler.domain">${thunder_host}</stringProp>
           <stringProp name="HTTPSampler.port">${thunder_port}</stringProp>
           <stringProp name="HTTPSampler.protocol">https</stringProp>
@@ -109,7 +292,7 @@
           </elementProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200 HTTP Code Response Assertion" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="200 HTTP Code Response Assertion">
             <collectionProp name="Asserion.test_strings">
               <stringProp name="49586">200</stringProp>
             </collectionProp>
@@ -119,7 +302,7 @@
             <stringProp name="Assertion.custom_message"></stringProp>
           </ResponseAssertion>
           <hashTree/>
-          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Extract default OU ID" enabled="true">
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Extract default OU ID">
             <stringProp name="cacheKey">true</stringProp>
             <stringProp name="filename"></stringProp>
             <stringProp name="parameters"></stringProp>
@@ -179,7 +362,7 @@ if (y == 0) {
 }</stringProp>
         </BeanShellPreProcessor>
         <hashTree/>
-        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
           <collectionProp name="HeaderManager.headers">
             <elementProp name="" elementType="Header">
               <stringProp name="Header.name">Content-Type</stringProp>
@@ -209,6 +392,7 @@ if (y == 0) {
     &quot;ouId&quot;: &quot;${__property(default_org_id)}&quot;,&#xd;
     &quot;name&quot;: &quot;${applicationNamePrefix}${application_count_id}&quot;,&#xd;
     &quot;description&quot;: &quot;Initial testing App&quot;,&#xd;
+    &quot;authFlowId&quot;: &quot;${__property(custom_flow_id)}&quot;,&#xd;
     &quot;inboundAuthConfig&quot;: [&#xd;
         {&#xd;
             &quot;type&quot;: &quot;oauth2&quot;,&#xd;
@@ -246,7 +430,7 @@ if (y == 0) {
             <stringProp name="Assertion.custom_message"></stringProp>
           </ResponseAssertion>
           <hashTree/>
-          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="" elementType="Header">
                 <stringProp name="Header.name">Content-Type</stringProp>
