@@ -39,14 +39,6 @@ parameters:
     displayName: Add Hosts Entry to VM
     type: boolean
     default: true
-  - name: INSTALL_REDIS
-    displayName: Install Redis Cache
-    type: boolean
-    default: true
-  - name: INSTALL_REDIS_INSIGHT
-    displayName: Install RedisInsight
-    type: boolean
-    default: true
   - name: CACHE_ENABLED
     displayName: Enable Cache
     type: boolean
@@ -148,7 +140,7 @@ jobs:
 
   - job: install_redis
     displayName: Install Redis Cache
-    condition: eq('${{ parameters.INSTALL_REDIS }}', true)
+    condition: and(eq('${{ parameters.CACHE_ENABLED }}', true), eq('${{ parameters.CACHE_TYPE }}', 'redis'))
     steps:
       - checkout: self
       - template: './templates/install-redis.yaml'
@@ -156,7 +148,7 @@ jobs:
           RELEASE_NAME: $(REDIS_RELEASE_NAME)
           NAMESPACE: $(REDIS_NAMESPACE)
           REDIS_PASSWORD: $(REDIS-PASSWORD)
-          INSTALL_REDIS_INSIGHT: ${{ parameters.INSTALL_REDIS_INSIGHT }}
+          INSTALL_REDIS_INSIGHT: true
 
   - job: install_thunder
     displayName: Install Thunder

@@ -25,13 +25,13 @@ parameters:
     default: 'default'
   - name: THUNDER_IMAGE_REGISTRY
     type: string
-    default: 'ghcr.io/asgardeo'
+    default: 'ghcr.io/thunder-id'
   - name: THUNDER_IMAGE_REPOSITORY
     type: string
-    default: 'thunder'
+    default: 'thunderid'
   - name: THUNDER_IMAGE_TAG
     type: string
-    default: '0.7.0'
+    default: '0.39.0'
   - name: SKIP_SECURITY
     type: string
     default: 'false'
