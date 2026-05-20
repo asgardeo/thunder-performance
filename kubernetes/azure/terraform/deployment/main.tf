@@ -311,6 +311,18 @@ module "postgres-config-server-configuration" {
       property = "track_io_timing"
       settings = "on"
     }
+    pg_stat_statements_track = {
+      property = "pg_stat_statements.track"
+      settings = "all"
+    }
+    pg_stat_statements_max = {
+      property = "pg_stat_statements.max"
+      settings = "10000"
+    }
+    track_activity_query_size = {
+      property = "track_activity_query_size"
+      settings = "4096"
+    }
   }
   depends_on = [module.postgres-config-server]
 }
@@ -323,6 +335,18 @@ module "postgres-runtime-server-configuration" {
       property = "track_io_timing"
       settings = "on"
     }
+    pg_stat_statements_track = {
+      property = "pg_stat_statements.track"
+      settings = "all"
+    }
+    pg_stat_statements_max = {
+      property = "pg_stat_statements.max"
+      settings = "10000"
+    }
+    track_activity_query_size = {
+      property = "track_activity_query_size"
+      settings = "4096"
+    }
   }
   depends_on = [module.postgres-runtime-server]
 }
@@ -334,6 +358,18 @@ module "postgres-user-server-configuration" {
     track_io_timing = {
       property = "track_io_timing"
       settings = "on"
+    }
+    pg_stat_statements_track = {
+      property = "pg_stat_statements.track"
+      settings = "all"
+    }
+    pg_stat_statements_max = {
+      property = "pg_stat_statements.max"
+      settings = "10000"
+    }
+    track_activity_query_size = {
+      property = "track_activity_query_size"
+      settings = "4096"
     }
   }
   depends_on = [module.postgres-user-server]
