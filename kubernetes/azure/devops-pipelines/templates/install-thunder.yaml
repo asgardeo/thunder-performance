@@ -107,18 +107,10 @@ steps:
           --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
           --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }} \
           --set deployment.startupProbe.initialDelaySeconds=0 \
-          --set deployment.startupProbe.periodSeconds=2 \
-          --set deployment.startupProbe.failureThreshold=15 \
-          --set deployment.startupProbe.failureThreshold=15 \
+          --set deployment.startupProbe.periodSeconds=1 \
           --set deployment.livenessProbe.periodSeconds=1 \
-          --set deployment.livenessProbe.initialDelaySeconds=10 \
-          --set deployment.livenessProbe.timeoutSeconds=5 \
-          --set deployment.livenessProbe.failureThreshold=5 \
-          --set deployment.readinessProbe.initialDelaySeconds=5 \
-          --set deployment.readinessProbe.periodSeconds=10 \
-          --set deployment.readinessProbe.timeoutSeconds=3 \
-          --set deployment.readinessProbe.timeoutSeconds=3 \
-          --set deployment.readinessProbe.failureThreshold=3 \
+          --set deployment.readinessProbe.initialDelaySeconds=0 \
+          --set deployment.readinessProbe.periodSeconds=1 \
           --set configuration.cache.disabled=false
 
         if [[ "$CACHE_ENABLED" == "true" || "$CACHE_ENABLED" == "True" ]]; then
@@ -140,31 +132,6 @@ steps:
         fi
 
         echo "Thunder Helm Chart installed successfully"
-
-        if [[ "$(THUNDER_HPA_ENABLED)" == "true" || "$(THUNDER_HPA_ENABLED)" == "True" ]]; then
-          echo "Patching HPA with aggressive scale-up behavior"
-          kubectl patch hpa ${{ parameters.RELEASE_NAME }}-thunderid-hpa \
-            --namespace ${{ parameters.NAMESPACE }} \
-            --type=merge \
-            --patch '{
-              "spec": {
-                "behavior": {
-                  "scaleUp": {
-                    "stabilizationWindowSeconds": 0,
-                    "selectPolicy": "Max",
-                    "policies": [
-                      {
-                        "type": "Percent",
-                        "value": 100,
-                        "periodSeconds": 15
-                      }
-                    ]
-                  }
-                }
-              }
-            }'
-          echo "HPA behavior patched successfully"
-        fi
     env:
       CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
       CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
