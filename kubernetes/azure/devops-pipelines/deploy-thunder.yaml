@@ -43,6 +43,10 @@ parameters:
     displayName: Install Redis Cache
     type: boolean
     default: true
+  - name: INSTALL_REDIS_INSIGHT
+    displayName: Install RedisInsight
+    type: boolean
+    default: true
   - name: POPULATE_TEST_DATA
     displayName: Populate Test Data
     type: boolean
@@ -140,6 +144,7 @@ jobs:
           RELEASE_NAME: $(REDIS_RELEASE_NAME)
           NAMESPACE: $(REDIS_NAMESPACE)
           REDIS_PASSWORD: $(REDIS-PASSWORD)
+          INSTALL_REDIS_INSIGHT: ${{ parameters.INSTALL_REDIS_INSIGHT }}
 
   - job: install_thunder
     displayName: Install Thunder
