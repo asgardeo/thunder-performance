@@ -135,7 +135,7 @@ steps:
 
         if [[ "$(THUNDER_HPA_ENABLED)" == "true" || "$(THUNDER_HPA_ENABLED)" == "True" ]]; then
           echo "Patching HPA with aggressive scale-up behavior"
-          kubectl patch hpa ${{ parameters.RELEASE_NAME }}-hpa \
+          kubectl patch hpa ${{ parameters.RELEASE_NAME }}-thunderid-hpa \
             --namespace ${{ parameters.NAMESPACE }} \
             --type=merge \
             --patch '{
