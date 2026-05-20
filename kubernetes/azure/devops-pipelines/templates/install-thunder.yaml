@@ -101,7 +101,7 @@ steps:
           --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
           --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }}
 
-        if [ "$CACHE_ENABLED" = "true" ]; then
+        if [[ "$CACHE_ENABLED" == "true" || "$CACHE_ENABLED" == "True" ]]; then
           helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
             --namespace ${{ parameters.NAMESPACE }} \
             --reuse-values \
