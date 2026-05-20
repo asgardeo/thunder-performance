@@ -36,6 +36,47 @@ on:
           - t3a.large
           - t3a.xlarge
           - t3a.2xlarge
+          - m8i.large
+          - m8i.xlarge
+          - m8i.2xlarge
+      NGINX_INSTANCE_TYPE:
+        description: 'Nginx VM instance type'
+        required: true
+        default: 't2.nano'
+        type: choice
+        options:
+          - t2.nano
+          - t2.micro
+          - t2.small
+          - t3a.nano
+          - t3a.micro
+          - t3a.small
+          - t3a.medium
+          - t3a.large
+          - t3a.xlarge
+          - t3a.2xlarge
+          - m8i.large
+          - m8i.xlarge
+          - m8i.2xlarge
+      BASTION_INSTANCE_TYPE:
+        description: 'Bastion VM instance type'
+        required: true
+        default: 't3a.large'
+        type: choice
+        options:
+          - t2.nano
+          - t2.micro
+          - t2.small
+          - t3a.nano
+          - t3a.micro
+          - t3a.small
+          - t3a.medium
+          - t3a.large
+          - t3a.xlarge
+          - t3a.2xlarge
+          - m8i.large
+          - m8i.xlarge
+          - m8i.2xlarge
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
         required: true
@@ -89,6 +130,16 @@ on:
         description: 'Thunder VM instance type'
         required: false
         default: 't2.nano'
+        type: string
+      NGINX_INSTANCE_TYPE:
+        description: 'Nginx VM instance type'
+        required: false
+        default: 't2.nano'
+        type: string
+      BASTION_INSTANCE_TYPE:
+        description: 'Bastion VM instance type'
+        required: false
+        default: 't3a.large'
         type: string
       ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
         description: 'Additional parameters for performance script'
@@ -229,6 +280,8 @@ jobs:
           WORKSPACE: ${{ github.workspace }}
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
           THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          NGINX_INSTANCE_TYPE: ${{ inputs.NGINX_INSTANCE_TYPE }}
+          BASTION_INSTANCE_TYPE: ${{ inputs.BASTION_INSTANCE_TYPE }}
           DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
           CONCURRENCY: ${{ inputs.CONCURRENCY }}
           DB_TYPE: 'postgres'

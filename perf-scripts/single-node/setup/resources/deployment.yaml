@@ -40,6 +40,9 @@ database:
           username: "asgthunder"
           password: "asgthunder"
           sslmode: "disable"
+          max_open_conns: 20
+          max_idle_conns: 20
+          conn_max_lifetime: 300
     runtime:
         type: "postgres"
         postgres:
@@ -49,6 +52,9 @@ database:
           username: "asgthunder"
           password: "asgthunder"
           sslmode: "disable"
+          max_open_conns: 20
+          max_idle_conns: 20
+          conn_max_lifetime: 300
     user:
         type: "postgres"
         postgres:
@@ -58,6 +64,9 @@ database:
           username: "asgthunder"
           password: "asgthunder"
           sslmode: "disable"
+          max_open_conns: 20
+          max_idle_conns: 20
+          conn_max_lifetime: 300
 
 cache:
   disabled: false
@@ -68,9 +77,6 @@ cache:
 jwt:
   issuer: "thunder"
 
-
 crypto:
   password_hashing:
-    algorithm: "PBKDF2"
-    pbkdf2:
-      iterations: 10000
+    algorithm: "SHA256"

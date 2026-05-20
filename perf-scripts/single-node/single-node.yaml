@@ -206,6 +206,9 @@ Resources:
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
       MultiAZ: 'false'
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
       Iops: !FindInMap [HighConcurrencyModeMap, !Ref EnableHighConcurrencyMode, DBIops]
       StorageType: io1
       DBParameterGroupName: !FindInMap [DBTypeMap, !Ref DBType, ParameterGroup]
@@ -582,6 +585,9 @@ Parameters:
       - t3a.large
       - t3a.xlarge
       - t3a.2xlarge
+      - m8i.large
+      - m8i.xlarge
+      - m8i.2xlarge
     ConstraintDescription: Must be a valid EC2 instance type
   NginxInstanceType:
     Type: String
@@ -597,6 +603,9 @@ Parameters:
       - t3a.large
       - t3a.xlarge
       - t3a.2xlarge
+      - m8i.large
+      - m8i.xlarge
+      - m8i.2xlarge
     ConstraintDescription: Must be a valid EC2 instance type
   DBUsername:
     Type: String
@@ -643,6 +652,11 @@ Parameters:
       - t3a.small
       - t3a.medium
       - t3a.large
+      - t3a.xlarge
+      - t3a.2xlarge
+      - m8i.large
+      - m8i.xlarge
+      - m8i.2xlarge
       - t3a.xlarge
       - t3a.2xlarge
     ConstraintDescription: Must be a valid EC2 instance type
