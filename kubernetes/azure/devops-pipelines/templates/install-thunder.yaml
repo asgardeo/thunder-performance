@@ -132,6 +132,31 @@ steps:
         fi
 
         echo "Thunder Helm Chart installed successfully"
+
+        if [[ "$(THUNDER_HPA_ENABLED)" == "true" || "$(THUNDER_HPA_ENABLED)" == "True" ]]; then
+          echo "Patching HPA with aggressive scale-up behavior"
+          kubectl patch hpa ${{ parameters.RELEASE_NAME }}-hpa \
+            --namespace ${{ parameters.NAMESPACE }} \
+            --type=merge \
+            --patch '{
+              "spec": {
+                "behavior": {
+                  "scaleUp": {
+                    "stabilizationWindowSeconds": 0,
+                    "selectPolicy": "Max",
+                    "policies": [
+                      {
+                        "type": "Percent",
+                        "value": 100,
+                        "periodSeconds": 15
+                      }
+                    ]
+                  }
+                }
+              }
+            }'
+          echo "HPA behavior patched successfully"
+        fi
     env:
       CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
       CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
