@@ -28,15 +28,15 @@ default_node_pool_count        = 2
 default_node_pool_os_disk_size = 64
 default_node_pool_max_pods     = 30
 default_node_pool_min_count    = 2
-default_node_pool_max_count    = 5
+default_node_pool_max_count    = 12
 
 # Postgres configuration
 postgres_server_version        = "17"
 postgres_server_storage_size   = 32768
 postgres_config_server_sku_name  = "GP_Standard_D2s_v3"
-postgres_runtime_server_sku_name = "GP_Standard_D2s_v3"
-postgres_user_server_sku_name    = "GP_Standard_D2s_v3"
+postgres_runtime_server_sku_name = "GP_Standard_D8s_v3"
+postgres_user_server_sku_name    = "GP_Standard_D4s_v3"
 
 # VM configuration
-vm_size             = "Standard_F32s_v2"
+vm_size             = "Standard_F64s_v2"
 vm_os_disk_size_gb  = "30"
