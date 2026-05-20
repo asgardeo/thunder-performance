@@ -65,31 +65,31 @@ parameters:
   - name: CONCURRENCY
     displayName: Concurrency
     type: number
-    default: 200
+    default: 500
   - name: TEST_DURATION
     displayName: Test Duration (minutes)
     type: number
-    default: 3
+    default: 15
   - name: WARM_UP_TIME
     displayName: Warm-up Time (minutes)
     type: number
-    default: 2
+    default: 3
   - name: USE_DELAYS
     displayName: Enable delays in testing
     type: boolean
-    default: true
+    default: false
   - name: THUNDER_REPLICAS
     displayName: Thunder Replicas
     type: string
-    default: '2'
+    default: '15'
   - name: THUNDER_CPU_LIMITS
     displayName: Thunder CPU Limits
     type: string
-    default: '1.5'
+    default: '3.5'
   - name: THUNDER_CPU_REQUESTS
     displayName: Thunder CPU Requests
     type: string
-    default: '1'
+    default: '3.5'
   - name: THUNDER_MEMORY_LIMITS
     displayName: Thunder Memory Limits
     type: string
@@ -97,7 +97,7 @@ parameters:
   - name: THUNDER_MEMORY_REQUESTS
     displayName: Thunder Memory Requests
     type: string
-    default: '256Mi'
+    default: '512Mi'
   - name: THUNDER_HPA_ENABLED
     displayName: Thunder HPA Enabled
     type: boolean
