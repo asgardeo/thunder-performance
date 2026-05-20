@@ -38,6 +38,9 @@ parameters:
   - name: RUN_SETUP_SCRIPT
     type: boolean
     default: false
+  - name: CACHE_ENABLED
+    type: boolean
+    default: false
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -73,3 +76,4 @@ steps:
       THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
       SKIP_SECURITY: ${{ parameters.SKIP_SECURITY }}
       RUN_SETUP_SCRIPT: ${{ parameters.RUN_SETUP_SCRIPT }}
+      CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}

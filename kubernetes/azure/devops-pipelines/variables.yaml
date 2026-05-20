@@ -51,6 +51,11 @@ variables:
   THUNDER_HPA_CPU_UTILIZATION: '65'
   THUNDER_HPA_MEMORY_UTILIZATION: '75'
 
+  # Redis Cache Configuration
+  REDIS_RELEASE_NAME: 'redis-perf'
+  REDIS_NAMESPACE: 'redis'
+  REDIS_ADDRESS: 'redis-perf-master.redis.svc.cluster.local:6379'
+
   # Database Configuration
   CONFIG_DB_TYPE: 'postgres'
   CONFIG_DB_NAME: 'configdb'

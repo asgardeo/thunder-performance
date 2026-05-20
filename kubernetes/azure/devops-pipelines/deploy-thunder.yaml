@@ -1,4 +1,4 @@
-# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+# Copyright (c) 2025-2026, WSO2 LLC. (https://www.wso2.com).
 #
 # WSO2 LLC. licenses this file to you under the Apache License,
 # Version 2.0 (the "License"); you may not use this file except
@@ -37,6 +37,10 @@ parameters:
     default: true
   - name: ADD_HOSTS_ENTRY
     displayName: Add Hosts Entry to VM
+    type: boolean
+    default: true
+  - name: INSTALL_REDIS
+    displayName: Install Redis Cache
     type: boolean
     default: true
   - name: POPULATE_TEST_DATA
@@ -127,9 +131,21 @@ jobs:
         parameters:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/backend
 
+  - job: install_redis
+    displayName: Install Redis Cache
+    condition: eq('${{ parameters.INSTALL_REDIS }}', true)
+    steps:
+      - template: './templates/install-redis.yaml'
+        parameters:
+          RELEASE_NAME: $(REDIS_RELEASE_NAME)
+          NAMESPACE: $(REDIS_NAMESPACE)
+          REDIS_PASSWORD: $(REDIS-PASSWORD)
+
   - job: install_thunder
     displayName: Install Thunder
-    dependsOn: setup_db_schema
+    dependsOn:
+      - setup_db_schema
+      - install_redis
     condition: eq('${{ parameters.INSTALL_THUNDER }}', true)
     steps:
       - checkout: thunder-repo
@@ -141,6 +157,7 @@ jobs:
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
           SKIP_SECURITY: 'true'
+          CACHE_ENABLED: ${{ parameters.INSTALL_REDIS }}
 
   - job: add_hosts_entry_to_vm
     displayName: Add Hosts Entry to VM
