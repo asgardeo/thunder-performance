@@ -38,5 +38,5 @@ postgres_runtime_server_sku_name = "GP_Standard_D2s_v3"
 postgres_user_server_sku_name    = "GP_Standard_D2s_v3"
 
 # VM configuration
-vm_size             = "Standard_F8s_v2"
+vm_size             = "Standard_F32s_v2"
 vm_os_disk_size_gb  = "30"
