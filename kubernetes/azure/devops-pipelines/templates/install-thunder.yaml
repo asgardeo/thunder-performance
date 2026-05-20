@@ -121,7 +121,7 @@ steps:
             helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
               --namespace ${{ parameters.NAMESPACE }} \
               --reuse-values \
-              --set configuration.cache.disabled=false \
+              --set configuration.cache.disabled=false
           fi
         fi
 
