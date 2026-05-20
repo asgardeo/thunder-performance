@@ -356,7 +356,6 @@ module "postgres-config-server-diagnostics" {
     { category_name = "PostgreSQLFlexTableStats" },
     { category_name = "PostgreSQLFlexDatabaseXacts" },
     { category_name = "PostgreSQLFlexPgBouncer" },
-    { category_name = "PostgreSQLFlexQueryStoreSQLText" },
   ]
   all_metrics_enabled = true
   depends_on = [
@@ -381,7 +380,6 @@ module "postgres-runtime-server-diagnostics" {
     { category_name = "PostgreSQLFlexTableStats" },
     { category_name = "PostgreSQLFlexDatabaseXacts" },
     { category_name = "PostgreSQLFlexPgBouncer" },
-    { category_name = "PostgreSQLFlexQueryStoreSQLText" },
   ]
   all_metrics_enabled = true
   depends_on = [
@@ -406,7 +404,6 @@ module "postgres-user-server-diagnostics" {
     { category_name = "PostgreSQLFlexTableStats" },
     { category_name = "PostgreSQLFlexDatabaseXacts" },
     { category_name = "PostgreSQLFlexPgBouncer" },
-    { category_name = "PostgreSQLFlexQueryStoreSQLText" },
   ]
   all_metrics_enabled = true
   depends_on = [
