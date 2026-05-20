@@ -21,7 +21,7 @@ locals {
     terraform   = "true"
   }
 
-  aks_node_pool_subnet_cidr       = cidrsubnet(var.virtual_network_address_space, 7, 0)
+  aks_node_pool_subnet_cidr       = cidrsubnet(var.virtual_network_address_space, 8, 1)
   aks_load_balancer_subnet_cidr   = cidrsubnet(var.virtual_network_address_space, 8, 2)
   service_cidr                    = cidrsubnet(var.virtual_network_address_space, 8, 3)
   dns_service_ip                  = cidrhost(local.service_cidr, 10)
