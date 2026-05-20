@@ -47,6 +47,17 @@ parameters:
     displayName: Install RedisInsight
     type: boolean
     default: true
+  - name: CACHE_ENABLED
+    displayName: Enable Cache
+    type: boolean
+    default: false
+  - name: CACHE_TYPE
+    displayName: Cache Type
+    type: string
+    default: 'redis'
+    values:
+      - in-memory
+      - redis
   - name: POPULATE_TEST_DATA
     displayName: Populate Test Data
     type: boolean
@@ -163,7 +174,8 @@ jobs:
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
           SKIP_SECURITY: 'true'
-          CACHE_ENABLED: ${{ parameters.INSTALL_REDIS }}
+          CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
+          CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
 
   - job: add_hosts_entry_to_vm
     displayName: Add Hosts Entry to VM

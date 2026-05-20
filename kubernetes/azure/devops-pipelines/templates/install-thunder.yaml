@@ -41,6 +41,12 @@ parameters:
   - name: CACHE_ENABLED
     type: boolean
     default: false
+  - name: CACHE_TYPE
+    type: string
+    default: 'redis'
+    values:
+      - in-memory
+      - redis
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -102,16 +108,24 @@ steps:
           --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }}
 
         if [[ "$CACHE_ENABLED" == "true" || "$CACHE_ENABLED" == "True" ]]; then
-          helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
-            --namespace ${{ parameters.NAMESPACE }} \
-            --reuse-values \
-            --set configuration.cache.disabled=false \
-            --set configuration.cache.type=redis \
-            --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
-            --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
-            --set configuration.cache.redis.keyPrefix=thunderid
+          if [[ "$CACHE_TYPE" == "redis" ]]; then
+            helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
+              --namespace ${{ parameters.NAMESPACE }} \
+              --reuse-values \
+              --set configuration.cache.disabled=false \
+              --set configuration.cache.type=redis \
+              --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
+              --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
+              --set configuration.cache.redis.keyPrefix=thunderid
+          elif [[ "$CACHE_TYPE" == "in-memory" ]]; then
+            helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
+              --namespace ${{ parameters.NAMESPACE }} \
+              --reuse-values \
+              --set configuration.cache.disabled=false \
+          fi
         fi
 
         echo "Thunder Helm Chart installed successfully"
     env:
       CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
+      CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
