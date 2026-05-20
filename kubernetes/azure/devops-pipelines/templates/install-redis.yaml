@@ -55,7 +55,7 @@ steps:
         echo "Redis Helm Chart installed successfully"
         echo "Redis is accessible at: ${{ parameters.RELEASE_NAME }}-master.${{ parameters.NAMESPACE }}.svc.cluster.local:6379"
 
-        if [ "$INSTALL_REDIS_INSIGHT" = "true" ]; then
+        if [[ "$INSTALL_REDIS_INSIGHT" == "true" || "$INSTALL_REDIS_INSIGHT" == "True" ]]; then
           echo "Deploying RedisInsight in namespace ${{ parameters.NAMESPACE }}"
           kubectl create deployment redisinsight \
             --namespace ${{ parameters.NAMESPACE }} \
