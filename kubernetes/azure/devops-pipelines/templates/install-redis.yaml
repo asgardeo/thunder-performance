@@ -55,29 +55,31 @@ steps:
         echo "Redis Helm Chart installed successfully"
         echo "Redis is accessible at: ${{ parameters.RELEASE_NAME }}-master.${{ parameters.NAMESPACE }}.svc.cluster.local:6379"
 
-        ${{ if eq(parameters.INSTALL_REDIS_INSIGHT, true) }}
-        echo "Deploying RedisInsight in namespace ${{ parameters.NAMESPACE }}"
-        kubectl create deployment redisinsight \
-          --namespace ${{ parameters.NAMESPACE }} \
-          --image redis/redisinsight:latest \
-          --replicas 1 \
-          --dry-run=client -o yaml \
-        | kubectl apply -f -
+        if [ "$INSTALL_REDIS_INSIGHT" = "true" ]; then
+          echo "Deploying RedisInsight in namespace ${{ parameters.NAMESPACE }}"
+          kubectl create deployment redisinsight \
+            --namespace ${{ parameters.NAMESPACE }} \
+            --image redis/redisinsight:latest \
+            --replicas 1 \
+            --dry-run=client -o yaml \
+          | kubectl apply -f -
 
-        kubectl set env deployment/redisinsight \
-          --namespace ${{ parameters.NAMESPACE }} \
-          RI_APP_HOST=0.0.0.0 \
-          RI_APP_PORT=5540
+          kubectl set env deployment/redisinsight \
+            --namespace ${{ parameters.NAMESPACE }} \
+            RI_APP_HOST=0.0.0.0 \
+            RI_APP_PORT=5540
 
-        kubectl expose deployment redisinsight \
-          --namespace ${{ parameters.NAMESPACE }} \
-          --name redisinsight-service \
-          --type ClusterIP \
-          --port 5540 \
-          --target-port 5540 \
-          --dry-run=client -o yaml \
-        | kubectl apply -f -
+          kubectl expose deployment redisinsight \
+            --namespace ${{ parameters.NAMESPACE }} \
+            --name redisinsight-service \
+            --type ClusterIP \
+            --port 5540 \
+            --target-port 5540 \
+            --dry-run=client -o yaml \
+          | kubectl apply -f -
 
-        echo "RedisInsight deployed successfully"
-        echo "Access via port-forward: kubectl port-forward svc/redisinsight-service 5540:5540 -n ${{ parameters.NAMESPACE }}"
-        ${{ end }}
+          echo "RedisInsight deployed successfully"
+          echo "Access via port-forward: kubectl port-forward svc/redisinsight-service 5540:5540 -n ${{ parameters.NAMESPACE }}"
+        fi
+    env:
+      INSTALL_REDIS_INSIGHT: ${{ parameters.INSTALL_REDIS_INSIGHT }}
