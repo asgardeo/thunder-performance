@@ -110,7 +110,8 @@ steps:
           --set deployment.startupProbe.periodSeconds=1 \
           --set deployment.livenessProbe.periodSeconds=1 \
           --set deployment.readinessProbe.initialDelaySeconds=0 \
-          --set deployment.readinessProbe.periodSeconds=1
+          --set deployment.readinessProbe.periodSeconds=1 \
+          --set configuration.cache.disabled=false
 
         if [[ "$CACHE_ENABLED" == "true" || "$CACHE_ENABLED" == "True" ]]; then
           if [[ "$CACHE_TYPE" == "redis" ]]; then
