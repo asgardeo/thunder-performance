@@ -1,0 +1,151 @@
+# Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+parameters:
+  - name: WORKING_DIRECTORY
+    type: string
+  - name: BASTION_USER
+    type: string
+    default: "azureuser"
+  # Target databases to clean up. Accepted values: 'all', 'runtime', 'user', 'config'.
+  - name: CLEANUP_TARGET
+    type: string
+    default: "all"
+    values:
+      - all
+      - runtime
+      - user
+      - config
+
+steps:
+  - template: ./utils/get-bastion-node-ip.yaml
+  - task: DownloadSecureFile@1
+    name: vmKey
+    displayName: "Download VM Key"
+    inputs:
+      secureFile: "azureVMSSHKey"
+
+  - task: AzureCLI@2
+    displayName: "Cleanup Database(s) [${{ parameters.CLEANUP_TARGET }}]"
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
+      workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
+      inlineScript: |
+        set -e
+        BASTION_USER=${{ parameters.BASTION_USER }}
+        BASTION_NODE_IP=$(BASTION_NODE_IP)
+        sudo chmod 400 $(vmKey.secureFilePath)
+        echo "Bastion User: $BASTION_USER, Bastion Node IP: $BASTION_NODE_IP"
+
+        POSTGRES_ADMIN_USERNAME=$(POSTGRES-ADMIN-USERNAME)
+        POSTGRES_ADMIN_PASSWORD=$(POSTGRES-ADMIN-PASSWORD)
+        RUNTIME_DB_NAME=$(RUNTIME_DB_NAME)
+        CONFIG_DB_NAME=$(CONFIG_DB_NAME)
+        USER_DB_NAME=$(USER_DB_NAME)
+        RUNTIME_DB_HOST=$(RUNTIME_DB_HOST)
+        CONFIG_DB_HOST=$(CONFIG_DB_HOST)
+        USER_DB_HOST=$(USER_DB_HOST)
+        RUNTIME_DB_PORT=$(RUNTIME_DB_PORT)
+        CONFIG_DB_PORT=$(CONFIG_DB_PORT)
+        USER_DB_PORT=$(USER_DB_PORT)
+
+        # ---------------------------------------------------------------
+        # SQL snippets per database
+        # ---------------------------------------------------------------
+
+        # runtimedb — tables: AUTHORIZATION_CODE, AUTHORIZATION_REQUEST,
+        #   FLOW_CONTEXT, WEBAUTHN_SESSION, ATTRIBUTE_CACHE, PAR_REQUEST
+        RUNTIME_CLEANUP_SQL="
+        TRUNCATE TABLE
+          \"AUTHORIZATION_CODE\",
+          \"AUTHORIZATION_REQUEST\",
+          \"FLOW_CONTEXT\",
+          \"WEBAUTHN_SESSION\",
+          \"ATTRIBUTE_CACHE\",
+          \"PAR_REQUEST\"
+        CASCADE;
+        "
+
+        # userdb — tables (FK-ordered, CASCADE handles the rest):
+        #   ENTITY_IDENTIFIER -> ENTITY
+        #   GROUP_MEMBER_REFERENCE -> GROUP
+        #   ENTITY, GROUP, ORGANIZATION_UNIT (no inbound FKs in schema)
+        USER_CLEANUP_SQL="
+        TRUNCATE TABLE
+          \"ENTITY_IDENTIFIER\",
+          \"GROUP_MEMBER_REFERENCE\",
+          \"ENTITY\",
+          \"GROUP\",
+          \"ORGANIZATION_UNIT\"
+        CASCADE;
+        "
+
+        # configdb — all tables; CASCADE handles FK ordering automatically.
+        #   FLOW_VERSION -> FLOW
+        #   ROLE_PERMISSION, ROLE_ASSIGNMENT -> ROLE
+        #   OAUTH_INBOUND_PROFILE -> INBOUND_CLIENT -> THEME / LAYOUT
+        #   RESOURCE, ACTION -> RESOURCE_SERVER
+        #   CERTIFICATE, IDP, NOTIFICATION_SENDER, ENTITY_TYPES, TRANSLATION (standalone)
+        CONFIG_CLEANUP_SQL="
+        TRUNCATE TABLE
+          \"FLOW_VERSION\",
+          \"FLOW\",
+          \"ROLE_PERMISSION\",
+          \"ROLE_ASSIGNMENT\",
+          \"ROLE\",
+          \"OAUTH_INBOUND_PROFILE\",
+          \"INBOUND_CLIENT\",
+          \"THEME\",
+          \"LAYOUT\",
+          \"ACTION\",
+          \"RESOURCE\",
+          \"RESOURCE_SERVER\",
+          \"CERTIFICATE\",
+          \"IDP\",
+          \"NOTIFICATION_SENDER\",
+          \"ENTITY_TYPES\",
+          \"TRANSLATION\"
+        CASCADE;
+        "
+
+        # ---------------------------------------------------------------
+        # Execute cleanup based on the requested target
+        # ---------------------------------------------------------------
+        CLEANUP_TARGET="${{ parameters.CLEANUP_TARGET }}"
+        echo "Cleanup target: $CLEANUP_TARGET"
+
+        REMOTE_CMD="export PGPASSWORD='$POSTGRES_ADMIN_PASSWORD'"
+
+        if [[ "$CLEANUP_TARGET" == "runtime" || "$CLEANUP_TARGET" == "all" ]]; then
+          REMOTE_CMD="$REMOTE_CMD && echo 'Cleaning up runtime DB...' \
+            && psql -h $RUNTIME_DB_HOST -p $RUNTIME_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $RUNTIME_DB_NAME -c '$RUNTIME_CLEANUP_SQL'"
+        fi
+
+        if [[ "$CLEANUP_TARGET" == "user" || "$CLEANUP_TARGET" == "all" ]]; then
+          REMOTE_CMD="$REMOTE_CMD && echo 'Cleaning up user DB...' \
+            && psql -h $USER_DB_HOST -p $USER_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $USER_DB_NAME -c '$USER_CLEANUP_SQL'"
+        fi
+
+        if [[ "$CLEANUP_TARGET" == "config" || "$CLEANUP_TARGET" == "all" ]]; then
+          REMOTE_CMD="$REMOTE_CMD && echo 'Cleaning up config DB...' \
+            && psql -h $CONFIG_DB_HOST -p $CONFIG_DB_PORT -U $POSTGRES_ADMIN_USERNAME -d $CONFIG_DB_NAME -c '$CONFIG_CLEANUP_SQL'"
+        fi
+
+        REMOTE_CMD="$REMOTE_CMD && echo 'Cleanup complete.'"
+
+        ssh -o StrictHostKeyChecking=no -i $(vmKey.secureFilePath) $BASTION_USER@$BASTION_NODE_IP "$REMOTE_CMD"

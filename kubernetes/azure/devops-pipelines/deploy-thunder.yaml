@@ -27,6 +27,19 @@ parameters:
     displayName: Create Nginx TLS Secret
     type: boolean
     default: true
+  - name: CLEANUP_DB
+    displayName: Cleanup Database(s) Before Setup
+    type: boolean
+    default: false
+  - name: CLEANUP_TARGET
+    displayName: Cleanup Target DB
+    type: string
+    default: 'all'
+    values:
+      - all
+      - runtime
+      - user
+      - config
   - name: SETUP_DB_SCHEMA
     displayName: Setup Database Schema
     type: boolean
@@ -127,6 +140,15 @@ jobs:
         parameters:
           LB_INTERNAL_IP: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP)
           LB_INTERNAL_SUBNET: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET)
+
+  - job: cleanup_db
+    displayName: Cleanup Database(s)
+    condition: eq('${{ parameters.CLEANUP_DB }}', true)
+    steps:
+      - template: './templates/cleanup-db.yaml'
+        parameters:
+          WORKING_DIRECTORY: $(Agent.BuildDirectory)
+          CLEANUP_TARGET: ${{ parameters.CLEANUP_TARGET }}
 
   - job: setup_db_schema
     displayName: Setup Database Schema
