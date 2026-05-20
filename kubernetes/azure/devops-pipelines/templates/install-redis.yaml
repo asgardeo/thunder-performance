@@ -55,6 +55,10 @@ steps:
         echo "Redis Helm Chart installed successfully"
         echo "Redis is accessible at: ${{ parameters.RELEASE_NAME }}-master.${{ parameters.NAMESPACE }}.svc.cluster.local:6379"
 
+        echo "Applying NetworkPolicy to allow ingress from Thunder (default namespace) to Redis"
+        kubectl apply -f kubernetes/azure/devops-pipelines/templates/redis-network-policy.yaml
+        echo "NetworkPolicy applied successfully"
+
         if [[ "$INSTALL_REDIS_INSIGHT" == "true" || "$INSTALL_REDIS_INSIGHT" == "True" ]]; then
           echo "Deploying RedisInsight in namespace ${{ parameters.NAMESPACE }}"
           kubectl create deployment redisinsight \

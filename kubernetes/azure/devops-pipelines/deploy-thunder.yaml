@@ -139,6 +139,7 @@ jobs:
     displayName: Install Redis Cache
     condition: eq('${{ parameters.INSTALL_REDIS }}', true)
     steps:
+      - checkout: self
       - template: './templates/install-redis.yaml'
         parameters:
           RELEASE_NAME: $(REDIS_RELEASE_NAME)
