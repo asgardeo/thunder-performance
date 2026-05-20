@@ -100,14 +100,18 @@ steps:
           --set configuration.crypto.passwordHashing.algorithm=$(THUNDER_PASSWORD_HASHING_ALGORITHM) \
           --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
           --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }}
-        ${{ if eq(parameters.CACHE_ENABLED, true) }}
-        helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
-          --namespace ${{ parameters.NAMESPACE }} \
-          --reuse-values \
-          --set configuration.cache.disabled=false \
-          --set configuration.cache.type=redis \
-          --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
-          --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
-          --set configuration.cache.redis.keyPrefix=thunderid
-        ${{ end }}
+
+        if [ "$CACHE_ENABLED" = "true" ]; then
+          helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
+            --namespace ${{ parameters.NAMESPACE }} \
+            --reuse-values \
+            --set configuration.cache.disabled=false \
+            --set configuration.cache.type=redis \
+            --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
+            --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
+            --set configuration.cache.redis.keyPrefix=thunderid
+        fi
+
         echo "Thunder Helm Chart installed successfully"
+    env:
+      CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
