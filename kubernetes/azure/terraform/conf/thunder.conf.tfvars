@@ -28,7 +28,7 @@ default_node_pool_count        = 2
 default_node_pool_os_disk_size = 64
 default_node_pool_max_pods     = 30
 default_node_pool_min_count    = 2
-default_node_pool_max_count    = 6
+default_node_pool_max_count    = 7
 
 # Postgres configuration
 postgres_server_version        = "17"
