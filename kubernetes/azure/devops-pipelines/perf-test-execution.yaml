@@ -65,7 +65,7 @@ parameters:
   - name: CONCURRENCY
     displayName: Concurrency
     type: number
-    default: 500
+    default: 10000
   - name: TEST_DURATION
     displayName: Test Duration (minutes)
     type: number
@@ -85,19 +85,19 @@ parameters:
   - name: THUNDER_CPU_LIMITS
     displayName: Thunder CPU Limits
     type: string
-    default: '3.5'
+    default: '4'
   - name: THUNDER_CPU_REQUESTS
     displayName: Thunder CPU Requests
     type: string
-    default: '3.5'
+    default: '4'
   - name: THUNDER_MEMORY_LIMITS
     displayName: Thunder Memory Limits
     type: string
-    default: '512Mi'
+    default: '2Gi'
   - name: THUNDER_MEMORY_REQUESTS
     displayName: Thunder Memory Requests
     type: string
-    default: '512Mi'
+    default: '2Gi'
   - name: THUNDER_HPA_ENABLED
     displayName: Thunder HPA Enabled
     type: boolean
