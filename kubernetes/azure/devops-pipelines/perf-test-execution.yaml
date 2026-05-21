@@ -102,6 +102,17 @@ parameters:
     displayName: Thunder HPA Enabled
     type: boolean
     default: true
+  - name: CACHE_ENABLED
+    displayName: Enable Cache
+    type: boolean
+    default: false
+  - name: CACHE_TYPE
+    displayName: Cache Type
+    type: string
+    default: 'redis'
+    values:
+      - in-memory
+      - redis
   - name: BUILD_PURPOSE
     displayName: Perf-Test purpose
     type: string
@@ -131,6 +142,11 @@ variables:
     value: ${{parameters.THUNDER_MEMORY_REQUESTS}}
   - name: THUNDER_HPA_ENABLED
     ${{ if eq(parameters.THUNDER_HPA_ENABLED, true) }}:
+      value: 'true'
+    ${{ else }}:
+      value: 'false'
+  - name: CACHE_ENABLED
+    ${{ if eq(parameters.CACHE_ENABLED, true) }}:
       value: 'true'
     ${{ else }}:
       value: 'false'
@@ -203,9 +219,24 @@ jobs:
             fi
             echo "Postgres Server started successfully"
 
+  - job: install_redis
+    displayName: Install Redis Cache
+    dependsOn: scale_up_env
+    condition: and(always(), eq(${{ parameters.CACHE_ENABLED }}, True), eq('${{ parameters.CACHE_TYPE }}', 'redis'))
+    steps:
+      - checkout: self
+      - template: './templates/install-redis.yaml'
+        parameters:
+          RELEASE_NAME: $(REDIS_RELEASE_NAME)
+          NAMESPACE: $(REDIS_NAMESPACE)
+          REDIS_PASSWORD: $(REDIS-PASSWORD)
+          INSTALL_REDIS_INSIGHT: false
+
   - job: reinstall_thunder
     displayName: Reinstall Thunder
-    dependsOn: scale_up_env
+    dependsOn:
+      - scale_up_env
+      - install_redis
     condition: always()  # Always run to ensure Thunder is reinstalled
     steps:
       - checkout: thunder-helm-repo
@@ -216,6 +247,8 @@ jobs:
           THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
+          CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
+          CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
 
   - job: thunder_performance_test
     displayName: Thunder performance test

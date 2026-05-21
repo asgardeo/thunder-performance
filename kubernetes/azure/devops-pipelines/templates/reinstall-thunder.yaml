@@ -19,37 +19,43 @@ parameters:
     type: string
   - name: RELEASE_NAME
     type: string
-    default: 'thunder-perf'
+    default: "thunder-perf"
   - name: NAMESPACE
     type: string
-    default: 'default'
+    default: "default"
   - name: THUNDER_IMAGE_REGISTRY
     type: string
-    default: 'ghcr.io/asgardeo'
+    default: "ghcr.io/asgardeo"
   - name: THUNDER_IMAGE_REPOSITORY
     type: string
-    default: 'thunder'
+    default: "thunder"
   - name: THUNDER_IMAGE_TAG
     type: string
-    default: '0.7.0'
+    default: "0.7.0"
   - name: SKIP_SECURITY
     type: string
-    default: 'false'
+    default: "false"
   - name: RUN_SETUP_SCRIPT
     type: boolean
     default: false
   - name: CACHE_ENABLED
     type: boolean
     default: false
+  - name: CACHE_TYPE
+    type: string
+    default: "redis"
+    values:
+      - in-memory
+      - redis
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
   - task: AzureCLI@2
-    displayName: 'Uninstall Thunder'
+    displayName: "Uninstall Thunder"
     inputs:
       azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
       workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
       inlineScript: |
         if ! helm list -n ${{ parameters.NAMESPACE }} -q --filter "^${{ parameters.RELEASE_NAME }}$" | grep -q "^${{ parameters.RELEASE_NAME }}$"; then
@@ -77,3 +83,4 @@ steps:
       SKIP_SECURITY: ${{ parameters.SKIP_SECURITY }}
       RUN_SETUP_SCRIPT: ${{ parameters.RUN_SETUP_SCRIPT }}
       CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
+      CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
