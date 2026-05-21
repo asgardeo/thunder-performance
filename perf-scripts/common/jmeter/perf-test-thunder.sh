@@ -61,7 +61,7 @@ test_duration=$default_test_duration
 default_warm_up_time=5
 warm_up_time=$default_warm_up_time
 # Heap size of JMeter Client
-default_jmeter_client_heap_size=8G
+default_jmeter_client_heap_size=32G
 jmeter_client_heap_size=$default_jmeter_client_heap_size
 
 # Scenario names to include
@@ -581,7 +581,7 @@ function test_scenarios() {
 
             before_execute_test_scenario "$db_type"
 
-            export JVM_ARGS="-Xms$jmeter_client_heap_size -Xmx$jmeter_client_heap_size -Xlog:gc:$report_location/jmeter_gc.log $JMETER_JVM_ARGS"
+            export JVM_ARGS="-Xms$jmeter_client_heap_size -Xmx$jmeter_client_heap_size -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Xlog:gc:$report_location/jmeter_gc.log $JMETER_JVM_ARGS"
 
             local jmeter_command="jmeter -n -t $script_dir/$jmx_file"
             for param in "${jmeter_params[@]}"; do
