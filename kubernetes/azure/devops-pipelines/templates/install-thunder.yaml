@@ -122,7 +122,8 @@ steps:
               --set configuration.cache.type=redis \
               --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
               --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
-              --set configuration.cache.redis.keyPrefix=thunderid
+              --set configuration.cache.redis.db=0 \
+              --set configuration.cache.redis.key_prefix="thunderid:"
           elif [[ "$CACHE_TYPE" == "in-memory" ]]; then
             helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
               --namespace ${{ parameters.NAMESPACE }} \
