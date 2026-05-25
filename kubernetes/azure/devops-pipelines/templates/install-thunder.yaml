@@ -122,7 +122,7 @@ steps:
               --reuse-values \
               --set configuration.cache.disabled=false \
               --set configuration.cache.type=redis \
-              --set configuration.cache.redis.address=$(REDIS_CLUSTER_IP:6379) \
+              --set configuration.cache.redis.address="${REDIS_CLUSTER_IP}:6379" \
               --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
               --set configuration.cache.redis.db=0 \
               --set configuration.cache.redis.key_prefix="thunderid:"
