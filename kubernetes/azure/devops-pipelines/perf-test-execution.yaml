@@ -102,6 +102,13 @@ parameters:
     displayName: Thunder HPA Enabled
     type: boolean
     default: true
+  - name: RUNTIME_DB_TYPE
+    displayName: Runtime Database Type
+    type: string
+    default: 'postgres'
+    values:
+      - postgres
+      - redis
   - name: CACHE_ENABLED
     displayName: Enable Cache
     type: boolean
@@ -145,6 +152,8 @@ variables:
       value: 'true'
     ${{ else }}:
       value: 'false'
+  - name: RUNTIME_DB_TYPE
+    value: ${{parameters.RUNTIME_DB_TYPE}}
   - name: CACHE_ENABLED
     ${{ if eq(parameters.CACHE_ENABLED, true) }}:
       value: 'true'

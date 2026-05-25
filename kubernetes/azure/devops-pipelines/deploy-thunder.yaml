@@ -52,6 +52,13 @@ parameters:
     displayName: Add Hosts Entry to VM
     type: boolean
     default: true
+  - name: RUNTIME_DB_TYPE
+    displayName: Runtime Database Type
+    type: string
+    default: 'postgres'
+    values:
+      - postgres
+      - redis
   - name: CACHE_ENABLED
     displayName: Enable Cache
     type: boolean
@@ -111,6 +118,8 @@ variables:
     value: ${{parameters.PERFORMANCE_REPO}}
   - name: PERFORMANCE_REPO_BRANCH
     value: ${{parameters.PERFORMANCE_REPO_BRANCH}}
+  - name: RUNTIME_DB_TYPE
+    value: ${{parameters.RUNTIME_DB_TYPE}}
 
 resources:
   repositories:

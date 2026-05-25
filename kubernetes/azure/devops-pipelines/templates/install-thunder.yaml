@@ -60,6 +60,28 @@ steps:
       inlineScript: |
         set -e
         echo "Installing Thunder Helm Chart"
+
+        RUNTIME_DB_FLAGS=""
+        if [[ "$(RUNTIME_DB_TYPE)" == "redis" ]]; then
+          echo "Configuring Runtime DB with Redis backend"
+          RUNTIME_DB_FLAGS="--set configuration.database.runtime.type=redis \
+            --set configuration.database.runtime.redis.address=$(REDIS_ADDRESS) \
+            --set configuration.database.runtime.redis.password=$(REDIS-PASSWORD) \
+            --set configuration.database.runtime.redis.db=1 \
+            --set configuration.database.runtime.redis.key_prefix=$(RUNTIME_DB_REDIS_KEY_PREFIX)"
+        else
+          echo "Configuring Runtime DB with Postgres backend"
+          RUNTIME_DB_FLAGS="--set configuration.database.runtime.type=$(RUNTIME_DB_TYPE) \
+            --set configuration.database.runtime.postgres.name=$(RUNTIME_DB_NAME) \
+            --set configuration.database.runtime.postgres.hostname=$(RUNTIME_DB_HOST) \
+            --set configuration.database.runtime.postgres.port=$(RUNTIME_DB_PORT) \
+            --set configuration.database.runtime.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
+            --set configuration.database.runtime.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
+            --set configuration.database.runtime.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
+            --set configuration.database.runtime.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
+            --set configuration.database.runtime.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME)"
+        fi
+
         helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
           --namespace ${{ parameters.NAMESPACE }} \
           --set deployment.replicaCount=$(THUNDER_REPLICAS) \
@@ -84,15 +106,7 @@ steps:
           --set configuration.database.config.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
           --set configuration.database.config.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
           --set configuration.database.config.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
-          --set configuration.database.runtime.type=$(RUNTIME_DB_TYPE) \
-          --set configuration.database.runtime.postgres.name=$(RUNTIME_DB_NAME) \
-          --set configuration.database.runtime.postgres.hostname=$(RUNTIME_DB_HOST) \
-          --set configuration.database.runtime.postgres.port=$(RUNTIME_DB_PORT) \
-          --set configuration.database.runtime.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
-          --set configuration.database.runtime.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
-          --set configuration.database.runtime.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
-          --set configuration.database.runtime.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
-          --set configuration.database.runtime.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
+          $RUNTIME_DB_FLAGS \
           --set configuration.database.user.type=$(USER_DB_TYPE) \
           --set configuration.database.user.postgres.name=$(USER_DB_NAME) \
           --set configuration.database.user.postgres.hostname=$(USER_DB_HOST) \
