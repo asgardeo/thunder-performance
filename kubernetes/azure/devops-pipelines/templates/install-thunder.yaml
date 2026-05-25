@@ -115,12 +115,14 @@ steps:
 
         if [[ "$CACHE_ENABLED" == "true" || "$CACHE_ENABLED" == "True" ]]; then
           if [[ "$CACHE_TYPE" == "redis" ]]; then
+            REDIS_CLUSTER_IP=$(kubectl get svc $(REDIS_RELEASE_NAME)-master -n $(REDIS_NAMESPACE) -o jsonpath='{.spec.clusterIP}')
+            echo "Resolved Redis ClusterIP: $REDIS_CLUSTER_IP"
             helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
               --namespace ${{ parameters.NAMESPACE }} \
               --reuse-values \
               --set configuration.cache.disabled=false \
               --set configuration.cache.type=redis \
-              --set configuration.cache.redis.address=$(REDIS_ADDRESS) \
+              --set configuration.cache.redis.address=$(REDIS_CLUSTER_IP:6379) \
               --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
               --set configuration.cache.redis.db=0 \
               --set configuration.cache.redis.key_prefix="thunderid:"
