@@ -54,7 +54,7 @@ variables:
   # Redis Cache Configuration
   REDIS_RELEASE_NAME: 'redis-perf'
   REDIS_NAMESPACE: 'redis'
-  REDIS_ADDRESS: 'redis-perf-master.redis.svc.cluster.local:6379'
+  REDIS_ADDRESS: '10.0.3.207:6379'
 
   # Redis Resource Configuration
   REDIS_CPU_REQUESTS: '1'
