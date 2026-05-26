@@ -54,7 +54,7 @@ steps:
         autoscaling:
           enabled: ${{ parameters.AUTOSCALING_ENABLED }}
           minReplicas: ${{ parameters.NO_OF_REPLICAS }}
-          maxReplicas: 15
+          maxReplicas: 12
           targetCPUUtilizationPercentage: 80
           targetMemoryUtilizationPercentage: 80
         service:
