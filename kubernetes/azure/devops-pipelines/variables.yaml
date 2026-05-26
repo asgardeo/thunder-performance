@@ -26,8 +26,8 @@ variables:
   INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP: "10.0.2.5"
   INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET: "snet-aksinternallbthunder-$(PADDING)"
   TLS_SECRET_NAME: "thunder-tls"
-  THUNDER_KUBERNETES_INGRESS: "thunder-perf-ingress"
-  THUNDER_HOSTNAME: "thunder.local"
+  THUNDER_KUBERNETES_INGRESS: "thunder-perf-thunderid-ingress"
+  THUNDER_HOSTNAME: "thunderid.local"
   DATABASE_HOSTNAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
   SKIP_SECURITY: 'true'
 
@@ -37,7 +37,10 @@ variables:
   THUNDER_CPU_REQUESTS: '1'
   THUNDER_MEMORY_LIMITS: '512Mi'
   THUNDER_MEMORY_REQUESTS: '256Mi'
-  
+
+  # Thunder Crypto Configuration
+  THUNDER_PASSWORD_HASHING_ALGORITHM: 'SHA256'
+
   # HPA and Cache Configuration
   THUNDER_HPA_ENABLED: 'true'
   THUNDER_HPA_MAX_REPLICAS: '10'
@@ -45,10 +48,10 @@ variables:
   THUNDER_HPA_MEMORY_UTILIZATION: '75'
 
   # Database Configuration
-  THUNDER_DB_TYPE: 'postgres'
-  THUNDER_DB_NAME: 'thunderdb'
-  THUNDER_DB_HOST: $(DATABASE_HOSTNAME)
-  THUNDER_DB_PORT: '5432'
+  CONFIG_DB_TYPE: 'postgres'
+  CONFIG_DB_NAME: 'configdb'
+  CONFIG_DB_HOST: $(DATABASE_HOSTNAME)
+  CONFIG_DB_PORT: '5432'
   RUNTIME_DB_TYPE: 'postgres'
   RUNTIME_DB_NAME: 'runtimedb'
   RUNTIME_DB_HOST: $(DATABASE_HOSTNAME)
@@ -57,3 +60,8 @@ variables:
   USER_DB_NAME: 'userdb'
   USER_DB_HOST: $(DATABASE_HOSTNAME)
   USER_DB_PORT: '5432'
+
+  # Database Connection Pool Configuration
+  DB_MAX_OPEN_CONNS: '10'
+  DB_MAX_IDLE_CONNS: '10'
+  DB_CONN_MAX_LIFETIME: '3600'

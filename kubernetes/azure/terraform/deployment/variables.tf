@@ -190,10 +190,10 @@ variable "postgres_server_sku_name" {
 }
 
 # Database name variables
-variable "thunder_db_name" {
+variable "config_db_name" {
   description = "The name of the Thunder database"
   type        = string
-  default     = "thunderdb"
+  default     = "configdb"
 }
 
 variable "runtime_db_name" {

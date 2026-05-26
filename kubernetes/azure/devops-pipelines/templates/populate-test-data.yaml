@@ -54,6 +54,7 @@ steps:
       THUNDER_HOST_NAME: $(THUNDER_HOSTNAME)
       POPULATE_TEST_DATA: "true"
       RUN_MODE: "NONE"
+      USE_DELAYS: "false"
       CONCURRENCY: 10
       BASTION_NODE_IP: $(BASTION_NODE_IP)
       WORKSPACE: ${{ parameters.WORKING_DIRECTORY }}

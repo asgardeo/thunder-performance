@@ -46,7 +46,7 @@ parameters:
   - name: THUNDER_REPO
     type: string
     displayName: "Thunder Repository"
-    default: "asgardeo/thunder"
+    default: "thunder-id/thunderid"
   - name: THUNDER_REPO_BRANCH
     type: string
     displayName: "Thunder Repository Branch"
@@ -62,15 +62,15 @@ parameters:
   - name: THUNDER_IMAGE_REGISTRY
     displayName: Thunder Image Registry
     type: string
-    default: "ghcr.io/asgardeo"
+    default: "ghcr.io/thunder-id"
   - name: THUNDER_IMAGE_REPOSITORY
     displayName: Thunder Image Repository
     type: string
-    default: "thunder"
+    default: "thunderid"
   - name: THUNDER_IMAGE_TAG
     displayName: Thunder Image Tag
     type: string
-    default: "0.7.0"
+    default: "0.38.0"
 
 pool:
   vmImage: 'ubuntu-latest'
