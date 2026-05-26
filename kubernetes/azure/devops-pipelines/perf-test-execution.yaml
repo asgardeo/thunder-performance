@@ -81,7 +81,7 @@ parameters:
   - name: THUNDER_REPLICAS
     displayName: Thunder Replicas
     type: string
-    default: '3'
+    default: '15'
   - name: THUNDER_CPU_LIMITS
     displayName: Thunder CPU Limits
     type: string

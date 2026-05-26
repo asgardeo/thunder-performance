@@ -33,7 +33,7 @@ parameters:
     type: string
   - name: NO_OF_REPLICAS
     type: string
-    default: '5'
+    default: '12'
   - name: AUTOSCALING_ENABLED
     type: string
     default: 'true'
@@ -54,7 +54,7 @@ steps:
         autoscaling:
           enabled: ${{ parameters.AUTOSCALING_ENABLED }}
           minReplicas: ${{ parameters.NO_OF_REPLICAS }}
-          maxReplicas: 8
+          maxReplicas: 20
           targetCPUUtilizationPercentage: 80
           targetMemoryUtilizationPercentage: 80
         service:
