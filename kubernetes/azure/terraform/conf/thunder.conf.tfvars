@@ -24,7 +24,7 @@ padding              = "002"
 
 kubernetes_version             = "1.33"
 default_node_pool_vm_size      = "Standard_F32s_v2"
-default_node_pool_count        = 2
+default_node_pool_count        = 3
 default_node_pool_os_disk_size = 64
 default_node_pool_max_pods     = 30
 default_node_pool_min_count    = 3
