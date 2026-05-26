@@ -96,7 +96,6 @@ module "aks-cluster" {
 
   # Default node pool configuration
   default_node_pool_name                         = var.default_node_pool_name
-  default_node_pool_temporary_name_for_rotation  = var.default_node_pool_temporary_name_for_rotation
   default_node_pool_vm_size                      = var.default_node_pool_vm_size
   default_node_pool_count                        = var.default_node_pool_count
   default_node_pool_os_disk_size_gb              = var.default_node_pool_os_disk_size
