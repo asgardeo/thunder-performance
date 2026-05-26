@@ -122,6 +122,12 @@ variable "default_node_pool_name" {
   default     = "default"
 }
 
+variable "default_node_pool_temporary_name_for_rotation" {
+  description = "A temporary name used for the default node pool during rotation when updating immutable node pool properties"
+  type        = string
+  default     = "rotation"
+}
+
 variable "default_node_pool_vm_size" {
   description = "The VM size for the default node pool"
   type        = string
