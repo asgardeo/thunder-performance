@@ -74,6 +74,14 @@ parameters:
     displayName: Populate Test Data
     type: boolean
     default: true
+  - name: SEED_USERS
+    displayName: Seed Test Users into User DB
+    type: boolean
+    default: false
+  - name: SEED_USERS_COUNT
+    displayName: Number of users to seed
+    type: number
+    default: 50000000
   - name: THUNDER_REPO
     type: string
     displayName: "Thunder Repository"
@@ -221,3 +229,16 @@ jobs:
       - template: './templates/populate-test-data.yaml'
         parameters:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-performance/perf-scripts
+
+  - job: seed_users
+    displayName: Seed Test Users
+    dependsOn:
+      - install_thunder
+      - setup_db_schema
+    condition: eq('${{ parameters.SEED_USERS }}', true)
+    steps:
+      - checkout: thunder-performance
+        path: "thunder-performance"
+      - template: './templates/seed-users.yaml'
+        parameters:
+          SEED_USERS_COUNT: ${{ parameters.SEED_USERS_COUNT }}
