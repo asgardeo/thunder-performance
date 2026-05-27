@@ -179,7 +179,7 @@ module "postgres-user-server" {
   postgresql_server_version        = var.postgres_server_version
   postgresql_server_admin_username = var.postgres_server_admin_username
   postgresql_server_admin_password = var.postgres_server_admin_password
-  storage_size                     = var.postgres_server_storage_size
+  storage_size                     = var.postgres_userdb_server_storage_size
   sku_name                         = var.postgres_user_server_sku_name
   tags                             = local.default_tags
 }

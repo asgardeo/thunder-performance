@@ -183,6 +183,12 @@ variable "postgres_server_storage_size" {
   default     = 32768
 }
 
+variable "postgres_userdb_server_storage_size" {
+  description = "The storage size in GB for the Postgres server"
+  type        = number
+  default     = 131072
+}
+
 variable "postgres_config_server_sku_name" {
   description = "The SKU name for the Postgres config server"
   type        = string

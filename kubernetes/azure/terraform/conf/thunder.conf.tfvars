@@ -23,20 +23,21 @@ padding              = "002"
 # AKS configuration
 
 kubernetes_version             = "1.33"
-default_node_pool_vm_size      = "Standard_F32s_v2"
-default_node_pool_count        = 3
+default_node_pool_vm_size      = "Standard_F64s_v2"
+default_node_pool_count        = 2
 default_node_pool_os_disk_size = 64
 default_node_pool_max_pods     = 30
-default_node_pool_min_count    = 3
-default_node_pool_max_count    = 6
+default_node_pool_min_count    = 2
+default_node_pool_max_count    = 4
 
 # Postgres configuration
 postgres_server_version        = "17"
 postgres_server_storage_size   = 32768
+postgres_userdb_server_storage_size = 131072
 postgres_config_server_sku_name  = "GP_Standard_D8s_v3"
-postgres_runtime_server_sku_name = "GP_Standard_D16s_v3"
+postgres_runtime_server_sku_name = "GP_Standard_D8s_v3"
 postgres_user_server_sku_name    = "GP_Standard_D8s_v3"
 
 # VM configuration
-vm_size             = "Standard_F64s_v2"
+vm_size             = "Standard_F72s_v2"
 vm_os_disk_size_gb  = "30"

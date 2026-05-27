@@ -33,7 +33,7 @@ parameters:
     type: string
   - name: NO_OF_REPLICAS
     type: string
-    default: '10'
+    default: '7'
   - name: AUTOSCALING_ENABLED
     type: string
     default: 'true'
@@ -46,15 +46,15 @@ steps:
         replicaCount: ${{ parameters.NO_OF_REPLICAS }}
         resources:
           limits:
-            cpu: 2
-            memory: 1000Mi
+            cpu: 4
+            memory: 4Gi
           requests:
-            cpu: 2
-            memory: 1000Mi
+            cpu: 4
+            memory: 4Gi
         autoscaling:
           enabled: ${{ parameters.AUTOSCALING_ENABLED }}
           minReplicas: ${{ parameters.NO_OF_REPLICAS }}
-          maxReplicas: 12
+          maxReplicas: 10
           targetCPUUtilizationPercentage: 80
           targetMemoryUtilizationPercentage: 80
         service:
