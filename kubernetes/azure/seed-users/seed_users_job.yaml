@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-users
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed-users
+          image: python:3.12-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install psycopg2-binary &&
+              python /scripts/seed_users_fast.py \
+                --dsn "host=${DB_HOST} port=5432 dbname=userdb user=${DB_USER} password=${DB_PASSWORD} sslmode=require" \
+                --config-db-host ${CONFIG_DB_HOST} \
+                --config-db-user ${CONFIG_DB_USER} \
+                --config-db-password ${CONFIG_DB_PASSWORD} \
+                ${EXTRA_ARGS}
+          env:
+            - name: DB_HOST
+              value: ""
+            - name: DB_USER
+              value: ""
+            - name: DB_PASSWORD
+              value: ""
+            - name: CONFIG_DB_HOST
+              value: ""
+            - name: CONFIG_DB_USER
+              value: ""
+            - name: CONFIG_DB_PASSWORD
+              value: ""
+            # To seed:  --num-users 10000000
+            # To delete: --delete
+            - name: EXTRA_ARGS
+              value: "--num-users 50000000"
+          resources:
+            requests:
+              cpu: "4"
+              memory: "4Gi"
+            limits:
+              cpu: "4"
+              memory: "4Gi"
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: seed-users-script

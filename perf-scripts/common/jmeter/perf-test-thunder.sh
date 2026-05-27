@@ -447,7 +447,7 @@ function run_test_data_scripts() {
 
     echo "Running test data setup scripts"
     echo "=========================================================================================="
-    declare -a scripts=("TestData_Thunder_Add_Applications.jmx" "TestData_Thunder_Add_Users.jmx")
+    declare -a scripts=("TestData_Thunder_Add_Applications.jmx")
     declare -ag additional_jmeter_params=("jwtTokenUserPassword=$jwt_token_user_password" "jwtTokenClientSecret=$jwt_token_client_secret")
     run_jmeter_scripts "${scripts[@]}"
 }

@@ -1,0 +1,148 @@
+# Copyright (c) 2025-2026, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+parameters:
+  - name: SEED_USERS_COUNT
+    type: number
+    default: 50000000
+  - name: NAMESPACE
+    type: string
+    default: "default"
+
+steps:
+  - template: ./utils/set-aks-credentials.yaml
+
+  - task: AzureCLI@2
+    displayName: "Seed Test Users into User DB"
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
+      inlineScript: |
+        set -e
+
+        NAMESPACE="${{ parameters.NAMESPACE }}"
+        SCRIPT_PATH="$(Agent.BuildDirectory)/thunder-performance/kubernetes/azure/seed-users"
+
+        echo "Creating ConfigMap from seed script..."
+        kubectl create configmap seed-users-script \
+          --from-file=seed_users_fast.py="${SCRIPT_PATH}/seed_users_fast.py" \
+          --namespace "${NAMESPACE}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        echo "Applying seed-users Job..."
+        kubectl apply -f - --namespace "${NAMESPACE}" <<EOF
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: seed-users
+        spec:
+          backoffLimit: 2
+          ttlSecondsAfterFinished: 300
+          template:
+            spec:
+              restartPolicy: Never
+              containers:
+                - name: seed-users
+                  image: python:3.12-slim
+                  command:
+                    - /bin/sh
+                    - -c
+                    - |
+                      pip install psycopg2-binary &&
+                      python /scripts/seed_users_fast.py \
+                        --dsn "host=$(USER_DB_HOST) port=$(USER_DB_PORT) dbname=$(USER_DB_NAME) user=$(POSTGRES-ADMIN-USERNAME) password=$(POSTGRES-ADMIN-PASSWORD) sslmode=require" \
+                        --config-db-host $(CONFIG_DB_HOST) \
+                        --config-db-user $(POSTGRES-ADMIN-USERNAME) \
+                        --config-db-password $(POSTGRES-ADMIN-PASSWORD) \
+                        --num-users ${{ parameters.SEED_USERS_COUNT }}
+                  resources:
+                    requests:
+                      cpu: "4"
+                      memory: "4Gi"
+                    limits:
+                      cpu: "4"
+                      memory: "4Gi"
+                  volumeMounts:
+                    - name: script
+                      mountPath: /scripts
+              volumes:
+                - name: script
+                  configMap:
+                    name: seed-users-script
+        EOF
+
+        echo "Waiting for seed-users Job to complete (timeout: 3h)..."
+        kubectl wait job/seed-users \
+          --for=condition=complete \
+          --timeout=10800s \
+          --namespace "${NAMESPACE}"
+
+        echo "Fetching seed-users Job logs..."
+        kubectl logs job/seed-users --namespace "${NAMESPACE}"
+
+        echo "Verifying seeded user count..."
+        ACTUAL_COUNT=$(kubectl run verify-seed --rm -i --restart=Never \
+          --image=postgres:16-alpine -- \
+          psql "host=$(USER_DB_HOST) port=$(USER_DB_PORT) dbname=$(USER_DB_NAME) user=$(POSTGRES-ADMIN-USERNAME) password=$(POSTGRES-ADMIN-PASSWORD) sslmode=require" \
+          --tuples-only --no-align \
+          -c "SELECT count(*) FROM \"ENTITY\" WHERE DEPLOYMENT_ID='default-deployment' AND TYPE='customer';" \
+          2>/dev/null | tr -d '[:space:]')
+        echo "  Seeded user count: ${ACTUAL_COUNT}"
+        if [[ "${ACTUAL_COUNT}" -lt "${{ parameters.SEED_USERS_COUNT }}" ]]; then
+          echo "##vso[task.logissue type=warning]Expected ${{ parameters.SEED_USERS_COUNT }} users but found ${ACTUAL_COUNT}."
+        else
+          echo "  Count verified: ${ACTUAL_COUNT} users present."
+        fi
+
+        echo "Checking indexes on ENTITY and ENTITY_IDENTIFIER..."
+        MISSING_INDEXES=$(kubectl run check-indexes --rm -i --restart=Never \
+          --image=postgres:16-alpine -- \
+          psql "host=$(USER_DB_HOST) port=$(USER_DB_PORT) dbname=$(USER_DB_NAME) user=$(POSTGRES-ADMIN-USERNAME) password=$(POSTGRES-ADMIN-PASSWORD) sslmode=require" \
+          --tuples-only --no-align \
+          -c "SELECT indexname FROM pg_indexes WHERE tablename IN ('ENTITY', 'ENTITY_IDENTIFIER') AND indexname IN ('idx_entity_category_deployment','idx_entity_ou_deployment','idx_entity_identifier_lookup');" \
+          2>/dev/null)
+        EXPECTED_INDEXES="idx_entity_category_deployment idx_entity_ou_deployment idx_entity_identifier_lookup"
+        INDEXES_TO_CREATE=""
+        for idx in $EXPECTED_INDEXES; do
+          if ! echo "${MISSING_INDEXES}" | grep -q "${idx}"; then
+            INDEXES_TO_CREATE="${INDEXES_TO_CREATE} ${idx}"
+          fi
+        done
+
+        if [[ -n "${INDEXES_TO_CREATE}" ]]; then
+          echo "##vso[task.logissue type=warning]Missing indexes detected:${INDEXES_TO_CREATE}. Recreating..."
+          kubectl run fix-indexes --rm -i --restart=Never \
+            --image=postgres:16-alpine -- \
+            psql "host=$(USER_DB_HOST) port=$(USER_DB_PORT) dbname=$(USER_DB_NAME) user=$(POSTGRES-ADMIN-USERNAME) password=$(POSTGRES-ADMIN-PASSWORD) sslmode=require" \
+            -c "
+              CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_entity_category_deployment
+                ON public.\"ENTITY\" USING btree (deployment_id, category);
+              CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_entity_ou_deployment
+                ON public.\"ENTITY\" USING btree (deployment_id, ou_id);
+              CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_entity_identifier_lookup
+                ON public.\"ENTITY_IDENTIFIER\" USING btree (name, value);
+            "
+          echo "  Indexes recreated successfully."
+        else
+          echo "  All indexes present."
+        fi
+
+        echo "Cleaning up Job and ConfigMap..."
+        kubectl delete job seed-users --namespace "${NAMESPACE}" --ignore-not-found
+        kubectl delete configmap seed-users-script --namespace "${NAMESPACE}" --ignore-not-found
+
+        echo "User seeding completed successfully."
