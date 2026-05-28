@@ -85,7 +85,18 @@ steps:
                     name: seed-users-script
         EOF
 
-        echo "Waiting for seed-users Job pod to start..."
+        echo "Waiting for seed-users Job pod to be created..."
+        for i in $(seq 1 60); do
+          POD_COUNT=$(kubectl get pods --selector=job-name=seed-users --namespace "${NAMESPACE}" --no-headers 2>/dev/null | wc -l | tr -d '[:space:]')
+          if [[ "${POD_COUNT}" -gt 0 ]]; then
+            echo "  Pod found after ${i}s."
+            break
+          fi
+          echo "  No pod yet, retrying in 5s... (${i}/60)"
+          sleep 5
+        done
+
+        echo "Waiting for seed-users Job pod to be Ready..."
         kubectl wait pod \
           --for=condition=Ready \
           --selector=job-name=seed-users \
