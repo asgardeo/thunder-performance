@@ -232,6 +232,7 @@ jobs:
 
   - job: seed_users
     displayName: Seed Test Users
+    timeoutInMinutes: 240
     dependsOn:
       - install_thunder
       - setup_db_schema

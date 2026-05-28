@@ -85,14 +85,21 @@ steps:
                     name: seed-users-script
         EOF
 
+        echo "Waiting for seed-users Job pod to start..."
+        kubectl wait pod \
+          --for=condition=Ready \
+          --selector=job-name=seed-users \
+          --timeout=300s \
+          --namespace "${NAMESPACE}"
+
+        echo "Streaming seed-users Job logs..."
+        kubectl logs job/seed-users --namespace "${NAMESPACE}" --follow
+
         echo "Waiting for seed-users Job to complete (timeout: 3h)..."
         kubectl wait job/seed-users \
           --for=condition=complete \
           --timeout=10800s \
           --namespace "${NAMESPACE}"
-
-        echo "Fetching seed-users Job logs..."
-        kubectl logs job/seed-users --namespace "${NAMESPACE}"
 
         echo "Verifying seeded user count..."
         ACTUAL_COUNT=$(kubectl run verify-seed --rm -i --restart=Never \
