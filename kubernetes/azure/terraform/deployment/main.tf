@@ -139,9 +139,9 @@ module "private-dns-postgres" {
   tags                  = local.default_tags
 }
 
-module "postgres-server" {
+module "postgres-config-server" {
   source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
-  server_name                      = join("-", [var.project, var.environment, var.location, var.padding])
+  server_name                      = join("-", [var.project, "config", var.environment, var.location, var.padding])
   resource_group_name              = module.resource-group.resource_group_name
   subnet_id                        = module.postgres-vm-subnet.subnet_id
   private_dns_zone_id              = module.private-dns-postgres.private_dns_zone_id
@@ -150,26 +150,56 @@ module "postgres-server" {
   postgresql_server_admin_username = var.postgres_server_admin_username
   postgresql_server_admin_password = var.postgres_server_admin_password
   storage_size                     = var.postgres_server_storage_size
-  sku_name                         = var.postgres_server_sku_name
+  sku_name                         = var.postgres_config_server_sku_name
   tags                             = local.default_tags
 }
 
 module "postgres-config-db" {
   source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Database?ref=v2.18.10"
   database_full_name = var.config_db_name
-  server_id          = module.postgres-server.postgresql_server_id
+  server_id          = module.postgres-config-server.postgresql_server_id
+}
+
+module "postgres-runtime-server" {
+  source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
+  server_name                      = join("-", [var.project, "runtime", var.environment, var.location, var.padding])
+  resource_group_name              = module.resource-group.resource_group_name
+  subnet_id                        = module.postgres-vm-subnet.subnet_id
+  private_dns_zone_id              = module.private-dns-postgres.private_dns_zone_id
+  location                         = var.location
+  postgresql_server_version        = var.postgres_server_version
+  postgresql_server_admin_username = var.postgres_server_admin_username
+  postgresql_server_admin_password = var.postgres_server_admin_password
+  storage_size                     = var.postgres_server_storage_size
+  sku_name                         = var.postgres_runtime_server_sku_name
+  tags                             = local.default_tags
 }
 
 module "postgres-runtime-db" {
   source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Database?ref=v2.18.10"
   database_full_name = var.runtime_db_name
-  server_id          = module.postgres-server.postgresql_server_id
+  server_id          = module.postgres-runtime-server.postgresql_server_id
+}
+
+module "postgres-user-server" {
+  source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
+  server_name                      = join("-", [var.project, "user", var.environment, var.location, var.padding])
+  resource_group_name              = module.resource-group.resource_group_name
+  subnet_id                        = module.postgres-vm-subnet.subnet_id
+  private_dns_zone_id              = module.private-dns-postgres.private_dns_zone_id
+  location                         = var.location
+  postgresql_server_version        = var.postgres_server_version
+  postgresql_server_admin_username = var.postgres_server_admin_username
+  postgresql_server_admin_password = var.postgres_server_admin_password
+  storage_size                     = var.postgres_userdb_server_storage_size
+  sku_name                         = var.postgres_user_server_sku_name
+  tags                             = local.default_tags
 }
 
 module "postgres-user-db" {
   source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Database?ref=v2.18.10"
   database_full_name = var.user_db_name
-  server_id          = module.postgres-server.postgresql_server_id
+  server_id          = module.postgres-user-server.postgresql_server_id
 }
 
 # VM

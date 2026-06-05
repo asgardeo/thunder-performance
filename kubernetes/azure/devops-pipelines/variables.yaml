@@ -22,13 +22,17 @@ variables:
   RESOURCE_GROUP_NAME: 'rg-$(PROJECT)-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
   AKS_CLUSTER_NAME: 'aks-$(PROJECT)-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
   VM_NAME: 'vm$(PROJECT)-$(ENVIRONMENT)-runner-$(LOCATION)-$(PADDING)'
-  POSTGRES_SERVER_NAME: 'postgresql-$(PROJECT)-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
+  POSTGRES_CONFIG_SERVER_NAME: 'postgresql-$(PROJECT)-config-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
+  POSTGRES_RUNTIME_SERVER_NAME: 'postgresql-$(PROJECT)-runtime-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
+  POSTGRES_USER_SERVER_NAME: 'postgresql-$(PROJECT)-user-$(ENVIRONMENT)-$(LOCATION)-$(PADDING)'
+  CONFIG_DB_HOSTNAME: '$(POSTGRES_CONFIG_SERVER_NAME).postgres.database.azure.com'
+  RUNTIME_DB_HOSTNAME: '$(POSTGRES_RUNTIME_SERVER_NAME).postgres.database.azure.com'
+  USER_DB_HOSTNAME: '$(POSTGRES_USER_SERVER_NAME).postgres.database.azure.com'
   INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP: "10.0.2.5"
   INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET: "snet-aksinternallbthunder-$(PADDING)"
   TLS_SECRET_NAME: "thunder-tls"
   THUNDER_KUBERNETES_INGRESS: "thunder-perf-thunderid-ingress"
   THUNDER_HOSTNAME: "thunderid.local"
-  DATABASE_HOSTNAME: 'postgresql-thunder-perf-eastus2-001.postgres.database.azure.com'
   SKIP_SECURITY: 'true'
 
   # Thunder Deployment Configuration
@@ -50,15 +54,15 @@ variables:
   # Database Configuration
   CONFIG_DB_TYPE: 'postgres'
   CONFIG_DB_NAME: 'configdb'
-  CONFIG_DB_HOST: $(DATABASE_HOSTNAME)
+  CONFIG_DB_HOST: $(CONFIG_DB_HOSTNAME)
   CONFIG_DB_PORT: '5432'
   RUNTIME_DB_TYPE: 'postgres'
   RUNTIME_DB_NAME: 'runtimedb'
-  RUNTIME_DB_HOST: $(DATABASE_HOSTNAME)
+  RUNTIME_DB_HOST: $(RUNTIME_DB_HOSTNAME)
   RUNTIME_DB_PORT: '5432'
   USER_DB_TYPE: 'postgres'
   USER_DB_NAME: 'userdb'
-  USER_DB_HOST: $(DATABASE_HOSTNAME)
+  USER_DB_HOST: $(USER_DB_HOSTNAME)
   USER_DB_PORT: '5432'
 
   # Database Connection Pool Configuration
