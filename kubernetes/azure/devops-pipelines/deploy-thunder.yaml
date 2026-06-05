@@ -27,15 +27,12 @@ parameters:
     displayName: Create Nginx TLS Secret
     type: boolean
     default: true
-  - name: CLEANUP_DB
-    displayName: Cleanup Database(s) Before Setup
-    type: boolean
-    default: false
   - name: CLEANUP_TARGET
-    displayName: Cleanup Target DB
+    displayName: Cleanup Database(s) Before Setup
     type: string
-    default: 'all'
+    default: 'none'
     values:
+      - none
       - all
       - runtime
       - user
@@ -59,29 +56,22 @@ parameters:
     values:
       - postgres
       - redis
-  - name: CACHE_ENABLED
-    displayName: Enable Cache
-    type: boolean
-    default: false
-  - name: CACHE_TYPE
-    displayName: Cache Type
+  - name: CACHE_MODE
+    displayName: Cache Mode
     type: string
-    default: 'redis'
+    default: 'disabled'
     values:
+      - disabled
       - in-memory
       - redis
   - name: POPULATE_TEST_DATA
     displayName: Populate Test Data
     type: boolean
     default: true
-  - name: SEED_USERS
-    displayName: Seed Test Users into User DB
-    type: boolean
-    default: false
   - name: SEED_USERS_COUNT
-    displayName: Number of users to seed
+    displayName: Seed Users Count (0 to skip)
     type: number
-    default: 50000000
+    default: 0
   - name: THUNDER_REPO
     type: string
     displayName: "Thunder Repository"
@@ -160,7 +150,7 @@ jobs:
 
   - job: cleanup_db
     displayName: Cleanup Database(s)
-    condition: eq('${{ parameters.CLEANUP_DB }}', true)
+    condition: ne('${{ parameters.CLEANUP_TARGET }}', 'none')
     steps:
       - template: './templates/cleanup-db.yaml'
         parameters:
@@ -178,8 +168,8 @@ jobs:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/backend
 
   - job: install_redis
-    displayName: Install Redis Cache
-    condition: and(eq('${{ parameters.CACHE_ENABLED }}', true), eq('${{ parameters.CACHE_TYPE }}', 'redis'))
+    displayName: Install Redis
+    condition: or(eq('${{ parameters.CACHE_MODE }}', 'redis'), eq('${{ parameters.RUNTIME_DB_TYPE }}', 'redis'))
     steps:
       - checkout: self
       - template: './templates/install-redis.yaml'
@@ -205,8 +195,7 @@ jobs:
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
           SKIP_SECURITY: 'true'
-          CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
-          CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
+          CACHE_MODE: ${{ parameters.CACHE_MODE }}
 
   - job: add_hosts_entry_to_vm
     displayName: Add Hosts Entry to VM
@@ -236,7 +225,7 @@ jobs:
     dependsOn:
       - install_thunder
       - setup_db_schema
-    condition: eq('${{ parameters.SEED_USERS }}', true)
+    condition: ne(${{ parameters.SEED_USERS_COUNT }}, 0)
     steps:
       - checkout: thunder-performance
         path: "thunder-performance"
