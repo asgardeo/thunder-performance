@@ -41,34 +41,38 @@ steps:
         echo "Creating namespace ${{ parameters.NAMESPACE }} if it does not exist"
         kubectl create namespace ${{ parameters.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
 
-        echo "Adding Bitnami Helm repository"
-        helm repo add bitnami https://charts.bitnami.com/bitnami
-        helm repo update
+        if helm list -n ${{ parameters.NAMESPACE }} -q --filter "^${{ parameters.RELEASE_NAME }}$" | grep -q "^${{ parameters.RELEASE_NAME }}$"; then
+          echo "Redis release ${{ parameters.RELEASE_NAME }} already exists. Skipping installation to preserve existing data."
+        else
+          echo "Adding Bitnami Helm repository"
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
 
-        echo "Installing Redis Helm Chart"
-        helm upgrade --install ${{ parameters.RELEASE_NAME }} bitnami/redis \
-          --namespace ${{ parameters.NAMESPACE }} \
-          --values kubernetes/azure/devops-pipelines/templates/redis-values.yaml \
-          --set auth.password=${{ parameters.REDIS_PASSWORD }} \
-          --set architecture=replication \
-          --set master.persistence.enabled=false \
-          --set replica.persistence.enabled=false \
-          --set master.resources.requests.cpu=$(REDIS_CPU_REQUESTS) \
-          --set master.resources.requests.memory=$(REDIS_MEMORY_REQUESTS) \
-          --set master.resources.limits.cpu=$(REDIS_CPU_LIMITS) \
-          --set master.resources.limits.memory=$(REDIS_MEMORY_LIMITS) \
-          --set replica.resources.requests.cpu=$(REDIS_REPLICA_CPU_REQUESTS) \
-          --set replica.resources.requests.memory=$(REDIS_REPLICA_MEMORY_REQUESTS) \
-          --set replica.resources.limits.cpu=$(REDIS_REPLICA_CPU_LIMITS) \
-          --set replica.resources.limits.memory=$(REDIS_REPLICA_MEMORY_LIMITS) \
-          --set replica.autoscaling.enabled=true \
-          --set replica.autoscaling.minReplicas=$(REDIS_REPLICA_HPA_MIN_REPLICAS) \
-          --set replica.autoscaling.maxReplicas=$(REDIS_REPLICA_HPA_MAX_REPLICAS) \
-          --set replica.autoscaling.targetCPU=$(REDIS_REPLICA_HPA_CPU_UTILIZATION) \
-          --set replica.autoscaling.targetMemory=$(REDIS_REPLICA_HPA_MEMORY_UTILIZATION) \
-          --wait --timeout 5m
-        echo "Redis Helm Chart installed successfully"
-        echo "Redis is accessible at: ${{ parameters.RELEASE_NAME }}-master.${{ parameters.NAMESPACE }}.svc.cluster.local:6379"
+          echo "Installing Redis Helm Chart"
+          helm upgrade --install ${{ parameters.RELEASE_NAME }} bitnami/redis \
+            --namespace ${{ parameters.NAMESPACE }} \
+            --values kubernetes/azure/devops-pipelines/templates/redis-values.yaml \
+            --set auth.password=${{ parameters.REDIS_PASSWORD }} \
+            --set architecture=replication \
+            --set master.persistence.enabled=false \
+            --set replica.persistence.enabled=false \
+            --set master.resources.requests.cpu=$(REDIS_CPU_REQUESTS) \
+            --set master.resources.requests.memory=$(REDIS_MEMORY_REQUESTS) \
+            --set master.resources.limits.cpu=$(REDIS_CPU_LIMITS) \
+            --set master.resources.limits.memory=$(REDIS_MEMORY_LIMITS) \
+            --set replica.resources.requests.cpu=$(REDIS_REPLICA_CPU_REQUESTS) \
+            --set replica.resources.requests.memory=$(REDIS_REPLICA_MEMORY_REQUESTS) \
+            --set replica.resources.limits.cpu=$(REDIS_REPLICA_CPU_LIMITS) \
+            --set replica.resources.limits.memory=$(REDIS_REPLICA_MEMORY_LIMITS) \
+            --set replica.autoscaling.enabled=true \
+            --set replica.autoscaling.minReplicas=$(REDIS_REPLICA_HPA_MIN_REPLICAS) \
+            --set replica.autoscaling.maxReplicas=$(REDIS_REPLICA_HPA_MAX_REPLICAS) \
+            --set replica.autoscaling.targetCPU=$(REDIS_REPLICA_HPA_CPU_UTILIZATION) \
+            --set replica.autoscaling.targetMemory=$(REDIS_REPLICA_HPA_MEMORY_UTILIZATION) \
+            --wait --timeout 5m
+          echo "Redis Helm Chart installed successfully"
+          echo "Redis is accessible at: ${{ parameters.RELEASE_NAME }}-master.${{ parameters.NAMESPACE }}.svc.cluster.local:6379"
+        fi
 
         echo "Applying NetworkPolicy to allow ingress from Thunder (default namespace) to Redis"
         kubectl apply -f kubernetes/azure/devops-pipelines/templates/redis-network-policy.yaml

@@ -109,15 +109,12 @@ parameters:
     values:
       - postgres
       - redis
-  - name: CACHE_ENABLED
-    displayName: Enable Cache
-    type: boolean
-    default: false
-  - name: CACHE_TYPE
-    displayName: Cache Type
+  - name: CACHE_MODE
+    displayName: Cache Mode
     type: string
-    default: 'redis'
+    default: 'disabled'
     values:
+      - disabled
       - in-memory
       - redis
   - name: BUILD_PURPOSE
@@ -154,11 +151,6 @@ variables:
       value: 'false'
   - name: RUNTIME_DB_TYPE
     value: ${{parameters.RUNTIME_DB_TYPE}}
-  - name: CACHE_ENABLED
-    ${{ if eq(parameters.CACHE_ENABLED, true) }}:
-      value: 'true'
-    ${{ else }}:
-      value: 'false'
   - name: PYTHON_VERSION
     value: 3.9
 
@@ -229,9 +221,9 @@ jobs:
             echo "Postgres Server started successfully"
 
   - job: install_redis
-    displayName: Install Redis Cache
+    displayName: Install Redis
     dependsOn: scale_up_env
-    condition: and(always(), eq(${{ parameters.CACHE_ENABLED }}, True), eq('${{ parameters.CACHE_TYPE }}', 'redis'))
+    condition: and(always(), or(eq('${{ parameters.CACHE_MODE }}', 'redis'), eq('${{ parameters.RUNTIME_DB_TYPE }}', 'redis')))
     steps:
       - checkout: self
       - template: './templates/install-redis.yaml'
@@ -256,8 +248,7 @@ jobs:
           THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
-          CACHE_ENABLED: ${{ parameters.CACHE_ENABLED }}
-          CACHE_TYPE: ${{ parameters.CACHE_TYPE }}
+          CACHE_MODE: ${{ parameters.CACHE_MODE }}
 
   - job: thunder_performance_test
     displayName: Thunder performance test
