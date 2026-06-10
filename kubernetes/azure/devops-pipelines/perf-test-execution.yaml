@@ -102,6 +102,21 @@ parameters:
     displayName: Thunder HPA Enabled
     type: boolean
     default: true
+  - name: RUNTIME_DB_TYPE
+    displayName: Runtime Database Type
+    type: string
+    default: 'postgres'
+    values:
+      - postgres
+      - redis
+  - name: CACHE_MODE
+    displayName: Cache Mode
+    type: string
+    default: 'disabled'
+    values:
+      - disabled
+      - in-memory
+      - redis
   - name: BUILD_PURPOSE
     displayName: Perf-Test purpose
     type: string
@@ -134,6 +149,8 @@ variables:
       value: 'true'
     ${{ else }}:
       value: 'false'
+  - name: RUNTIME_DB_TYPE
+    value: ${{parameters.RUNTIME_DB_TYPE}}
   - name: PYTHON_VERSION
     value: 3.9
 
@@ -203,9 +220,24 @@ jobs:
             fi
             echo "Postgres Server started successfully"
 
+  - job: install_redis
+    displayName: Install Redis
+    dependsOn: scale_up_env
+    condition: and(always(), or(eq('${{ parameters.CACHE_MODE }}', 'redis'), eq('${{ parameters.RUNTIME_DB_TYPE }}', 'redis')))
+    steps:
+      - checkout: self
+      - template: './templates/install-redis.yaml'
+        parameters:
+          RELEASE_NAME: $(REDIS_RELEASE_NAME)
+          NAMESPACE: $(REDIS_NAMESPACE)
+          REDIS_PASSWORD: $(REDIS-PASSWORD)
+          INSTALL_REDIS_INSIGHT: false
+
   - job: reinstall_thunder
     displayName: Reinstall Thunder
-    dependsOn: scale_up_env
+    dependsOn:
+      - scale_up_env
+      - install_redis
     condition: always()  # Always run to ensure Thunder is reinstalled
     steps:
       - checkout: thunder-helm-repo
@@ -216,6 +248,7 @@ jobs:
           THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
+          CACHE_MODE: ${{ parameters.CACHE_MODE }}
 
   - job: thunder_performance_test
     displayName: Thunder performance test

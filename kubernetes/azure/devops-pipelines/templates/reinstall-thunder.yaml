@@ -38,6 +38,13 @@ parameters:
   - name: RUN_SETUP_SCRIPT
     type: boolean
     default: false
+  - name: CACHE_MODE
+    type: string
+    default: "disabled"
+    values:
+      - disabled
+      - in-memory
+      - redis
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -73,3 +80,4 @@ steps:
       THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
       SKIP_SECURITY: ${{ parameters.SKIP_SECURITY }}
       RUN_SETUP_SCRIPT: ${{ parameters.RUN_SETUP_SCRIPT }}
+      CACHE_MODE: ${{ parameters.CACHE_MODE }}
