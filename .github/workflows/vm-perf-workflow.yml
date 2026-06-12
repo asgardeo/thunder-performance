@@ -378,7 +378,7 @@ jobs:
           retention-days: 30
 
       - name: Publish test results to GitHub
-        if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true && startsWith(inputs.THUNDER_PACK_URL, 'https://github.com/asgardeo/thunder/releases/download/')
+        if: inputs.PUSH_BENCHMARKS_TO_GITHUB == true && startsWith(inputs.THUNDER_PACK_URL, 'https://github.com/thunder-id/thunderid/releases/download/')
         env:
           DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
           THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
