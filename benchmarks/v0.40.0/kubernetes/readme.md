@@ -157,5 +157,3 @@ Data: [authorization-code-10000conc-50M-d16s-userdb.csv](authorization-code-1000
 | Authorization Code Grant Type | 10000 | 3 Perform authentication | 5096962 | 0 | 0.00 | 7063.03 | 324.41 | 1511.00 |
 | Authorization Code Grant Type | 10000 | 4 Obtain authorization code | 5096814 | 0 | 0.00 | 7079.51 | 17.67 | 32.00 |
 | Authorization Code Grant Type | 10000 | 5 Obtain access token | 5096809 | 0 | 0.00 | 7061.24 | 370.91 | 1759.00 |
-</content>
-</invoke>
