@@ -1,0 +1,24 @@
+Scenario Name,Heap Size,Concurrent Users,Label,# Samples,Error Count,Error %,Throughput (Requests/sec),Average Response Time (ms),Standard Deviation of Response Time (ms),Minimum Response Time (ms),Maximum Response Time (ms),75th Percentile of Response Time (ms),90th Percentile of Response Time (ms),95th Percentile of Response Time (ms),98th Percentile of Response Time (ms),99th Percentile of Response Time (ms),99.9th Percentile of Response Time (ms),Received (KB/sec),Sent (KB/sec),,,WSO2 Thunder 1 GC Throughput (%),WSO2 Thunder 1 Memory Footprint (M),Average WSO2 Thunder 1 Memory Footprint After Full GC (M),Standard Deviation of WSO2 Thunder 1 Memory Footprint After Full GC (M),WSO2 Thunder 2 GC Throughput (%),WSO2 Thunder 2 Memory Footprint (M),Average WSO2 Thunder 2 Memory Footprint After Full GC (M),Standard Deviation of WSO2 Thunder 2 Memory Footprint After Full GC (M),JMeter Client GC Throughput (%),JMeter Client Memory Footprint (M),Average JMeter Client Memory Footprint After Full GC (M),Standard Deviation of JMeter Client Memory Footprint After Full GC (M),WSO2 Thunder 1 Load Average - Last 1 minute,WSO2 Thunder 1 Load Average - Last 5 minutes,WSO2 Thunder 1 Load Average - Last 15 minutes,WSO2 Thunder 2 Load Average - Last 1 minute,WSO2 Thunder 2 Load Average - Last 5 minutes,WSO2 Thunder 2 Load Average - Last 15 minutes,JMeter Client Load Average - Last 1 minute,JMeter Client Load Average - Last 5 minutes,JMeter Client Load Average - Last 15 minutes
+Authorization Code Grant Type,N/A,10000,1 Send request to authorize endpoint,5096688,0,0,7061.05,417.63,1441.23,2,9242,93,281,1991,7327,7583,8255,5914.83,1874.09,,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,,,
+Authorization Code Grant Type,N/A,10000,2 Start Authentication Flow,5096908,0,0,7070.08,165.56,543.22,1,3693,45,123,771,2751,2879,3199,18931.81,2518.53,,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,,,
+Authorization Code Grant Type,N/A,10000,3 Perform authentication,5096962,0,0,7063.03,324.41,1084.04,5,7059,84,224,1511,5503,5727,6239,8849.47,3708.55,,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,,,
+Authorization Code Grant Type,N/A,10000,4 Obtain authorization code,5096814,0,0,7079.51,17.67,12.27,1,557,20,26,32,43,65,119,2509.63,8979.18,,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,,,
+Authorization Code Grant Type,N/A,10000,5 Obtain access token,5096809,0,0,7061.24,370.91,1262.85,4,8176,87,253,1759,6399,6655,7295,7975.98,3367.48,,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,,,
+
+
+K8s Spec:
+"Node Pool: F64s_v2 x 4, in-use: F64s_v2 x 3
+"Thunder Pods: 4 vCore + 2Gi, min-pods:25, max-pods:32, running-pods: 25
+
+"In-Cluster Redis Pods: 
+Redis-master: 16 vCore + 32Gi
+Redis-replica: 6 vCore + 8Gi, min-pods:5, max-pods:10, running-pods: 5
+
+"Nginx Pods: 4 vCore + 4Gi, min-pods:7, max-pods:10, running-pods: 7
+
+"VM Spec: F72s_v2, Heap Size:32g
+
+"DB Specs:
+Config: D8s_v3
+User: D16s_v3 (50M)
+Runtime: Redis
