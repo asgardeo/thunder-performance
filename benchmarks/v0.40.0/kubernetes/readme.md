@@ -49,7 +49,7 @@ Run: https://dev.azure.com/WSO2-Thunder/thunder-performance/_build/results?build
 - Nodes: 5 nodes (F32s_v2)
 - Thunder Pods: 4 vCore + 2Gi, min-pods: 15, max-pods: 32, running: 32
 - Heap Size: 4g
-- Database: Postgres (legacy DB)
+- Database: Postgres
 - Caching: In-Memory
 
 | Scenario Name | Concurrent Users | Label | # Samples | Error Count | Error % | Throughput (Requests/sec) | Average Response Time (ms) | 95th Percentile of Response Time (ms) |
