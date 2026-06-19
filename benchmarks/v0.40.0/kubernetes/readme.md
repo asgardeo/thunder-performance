@@ -42,8 +42,6 @@ Total Throughput (Requests/sec): 34316.43
 
 Data: [client-credentials-10000conc.csv](client-credentials-10000conc.csv)
 
-Run: https://dev.azure.com/WSO2-Thunder/thunder-performance/_build/results?buildId=1144&view=results
-
 **K8s Spec**
 
 - Nodes: 5 nodes (F32s_v2)
