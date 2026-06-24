@@ -39,6 +39,21 @@ parameters:
     displayName: Add Hosts Entry to VM
     type: boolean
     default: true
+  - name: RUNTIME_DB_TYPE
+    displayName: Runtime Database Type
+    type: string
+    default: 'postgres'
+    values:
+      - postgres
+      - redis
+  - name: CACHE_MODE
+    displayName: Cache Mode
+    type: string
+    default: 'disabled'
+    values:
+      - disabled
+      - in-memory
+      - redis
   - name: POPULATE_TEST_DATA
     displayName: Populate Test Data
     type: boolean
@@ -87,6 +102,8 @@ variables:
     value: ${{parameters.PERFORMANCE_REPO}}
   - name: PERFORMANCE_REPO_BRANCH
     value: ${{parameters.PERFORMANCE_REPO_BRANCH}}
+  - name: RUNTIME_DB_TYPE
+    value: ${{parameters.RUNTIME_DB_TYPE}}
 
 resources:
   repositories:
@@ -127,9 +144,23 @@ jobs:
         parameters:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/backend
 
+  - job: install_redis
+    displayName: Install Redis
+    condition: or(eq('${{ parameters.CACHE_MODE }}', 'redis'), eq('${{ parameters.RUNTIME_DB_TYPE }}', 'redis'))
+    steps:
+      - checkout: self
+      - template: './templates/install-redis.yaml'
+        parameters:
+          RELEASE_NAME: $(REDIS_RELEASE_NAME)
+          NAMESPACE: $(REDIS_NAMESPACE)
+          REDIS_PASSWORD: $(REDIS-PASSWORD)
+          INSTALL_REDIS_INSIGHT: true
+
   - job: install_thunder
     displayName: Install Thunder
-    dependsOn: setup_db_schema
+    dependsOn:
+      - setup_db_schema
+      - install_redis
     condition: eq('${{ parameters.INSTALL_THUNDER }}', true)
     steps:
       - checkout: thunder-repo
@@ -141,6 +172,7 @@ jobs:
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
           SKIP_SECURITY: 'true'
+          CACHE_MODE: ${{ parameters.CACHE_MODE }}
 
   - job: add_hosts_entry_to_vm
     displayName: Add Hosts Entry to VM
