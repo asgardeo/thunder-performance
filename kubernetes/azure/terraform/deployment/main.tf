@@ -160,6 +160,54 @@ module "postgres-config-db" {
   server_id          = module.postgres-config-server.postgresql_server_id
 }
 
+module "postgres-config-server-configuration" {
+  source                        = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Configuration?ref=v2.18.10"
+  postgresql_flexible_server_id = module.postgres-config-server.postgresql_server_id
+  server_configurations = {
+    track_io_timing = {
+      property = "track_io_timing"
+      settings = "on"
+    }
+    pg_stat_statements_track = {
+      property = "pg_stat_statements.track"
+      settings = "all"
+    }
+    pg_stat_statements_max = {
+      property = "pg_stat_statements.max"
+      settings = "10000"
+    }
+    track_activity_query_size = {
+      property = "track_activity_query_size"
+      settings = "4096"
+    }
+  }
+  depends_on = [module.postgres-config-server]
+}
+
+module "postgres-config-server-diagnostics" {
+  source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Resource-Monitoring-Diagnostic-Setting?ref=v2.19.0"
+  log_setting_name   = join("-", [var.project, "config", var.environment, var.location, var.padding])
+  target_resource_id = module.postgres-config-server.postgresql_server_id
+  archival_locations = {
+    archival_storage_account_id = ""
+    log_analytics_workspace_id  = module.log-analytics-workspace.log_analytics_workspace_id
+  }
+  required_log_categories = [
+    { category_name = "PostgreSQLLogs" },
+    { category_name = "PostgreSQLFlexSessions" },
+    { category_name = "PostgreSQLFlexQueryStoreRuntime" },
+    { category_name = "PostgreSQLFlexQueryStoreWaitStats" },
+    { category_name = "PostgreSQLFlexTableStats" },
+    { category_name = "PostgreSQLFlexDatabaseXacts" },
+    { category_name = "PostgreSQLFlexPgBouncer" },
+  ]
+  all_metrics_enabled = true
+  depends_on = [
+    module.postgres-config-server,
+    module.log-analytics-workspace
+  ]
+}
+
 module "postgres-runtime-server" {
   source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
   server_name                      = join("-", [var.project, "runtime", var.environment, var.location, var.padding])
@@ -181,6 +229,54 @@ module "postgres-runtime-db" {
   server_id          = module.postgres-runtime-server.postgresql_server_id
 }
 
+module "postgres-runtime-server-configuration" {
+  source                        = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Configuration?ref=v2.18.10"
+  postgresql_flexible_server_id = module.postgres-runtime-server.postgresql_server_id
+  server_configurations = {
+    track_io_timing = {
+      property = "track_io_timing"
+      settings = "on"
+    }
+    pg_stat_statements_track = {
+      property = "pg_stat_statements.track"
+      settings = "all"
+    }
+    pg_stat_statements_max = {
+      property = "pg_stat_statements.max"
+      settings = "10000"
+    }
+    track_activity_query_size = {
+      property = "track_activity_query_size"
+      settings = "4096"
+    }
+  }
+  depends_on = [module.postgres-runtime-server]
+}
+
+module "postgres-runtime-server-diagnostics" {
+  source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Resource-Monitoring-Diagnostic-Setting?ref=v2.19.0"
+  log_setting_name   = join("-", [var.project, "runtime", var.environment, var.location, var.padding])
+  target_resource_id = module.postgres-runtime-server.postgresql_server_id
+  archival_locations = {
+    archival_storage_account_id = ""
+    log_analytics_workspace_id  = module.log-analytics-workspace.log_analytics_workspace_id
+  }
+  required_log_categories = [
+    { category_name = "PostgreSQLLogs" },
+    { category_name = "PostgreSQLFlexSessions" },
+    { category_name = "PostgreSQLFlexQueryStoreRuntime" },
+    { category_name = "PostgreSQLFlexQueryStoreWaitStats" },
+    { category_name = "PostgreSQLFlexTableStats" },
+    { category_name = "PostgreSQLFlexDatabaseXacts" },
+    { category_name = "PostgreSQLFlexPgBouncer" },
+  ]
+  all_metrics_enabled = true
+  depends_on = [
+    module.postgres-runtime-server,
+    module.log-analytics-workspace
+  ]
+}
+
 module "postgres-user-server" {
   source                           = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server?ref=v2.18.10"
   server_name                      = join("-", [var.project, "user", var.environment, var.location, var.padding])
@@ -200,6 +296,54 @@ module "postgres-user-db" {
   source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Database?ref=v2.18.10"
   database_full_name = var.user_db_name
   server_id          = module.postgres-user-server.postgresql_server_id
+}
+
+module "postgres-user-server-configuration" {
+  source                        = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/PostgreSQL-Flexible-Server-Configuration?ref=v2.18.10"
+  postgresql_flexible_server_id = module.postgres-user-server.postgresql_server_id
+  server_configurations = {
+    track_io_timing = {
+      property = "track_io_timing"
+      settings = "on"
+    }
+    pg_stat_statements_track = {
+      property = "pg_stat_statements.track"
+      settings = "all"
+    }
+    pg_stat_statements_max = {
+      property = "pg_stat_statements.max"
+      settings = "10000"
+    }
+    track_activity_query_size = {
+      property = "track_activity_query_size"
+      settings = "4096"
+    }
+  }
+  depends_on = [module.postgres-user-server]
+}
+
+module "postgres-user-server-diagnostics" {
+  source             = "git::https://github.com/wso2/azure-terraform-modules.git//modules/azurerm/Resource-Monitoring-Diagnostic-Setting?ref=v2.19.0"
+  log_setting_name   = join("-", [var.project, "user", var.environment, var.location, var.padding])
+  target_resource_id = module.postgres-user-server.postgresql_server_id
+  archival_locations = {
+    archival_storage_account_id = ""
+    log_analytics_workspace_id  = module.log-analytics-workspace.log_analytics_workspace_id
+  }
+  required_log_categories = [
+    { category_name = "PostgreSQLLogs" },
+    { category_name = "PostgreSQLFlexSessions" },
+    { category_name = "PostgreSQLFlexQueryStoreRuntime" },
+    { category_name = "PostgreSQLFlexQueryStoreWaitStats" },
+    { category_name = "PostgreSQLFlexTableStats" },
+    { category_name = "PostgreSQLFlexDatabaseXacts" },
+    { category_name = "PostgreSQLFlexPgBouncer" },
+  ]
+  all_metrics_enabled = true
+  depends_on = [
+    module.postgres-user-server,
+    module.log-analytics-workspace
+  ]
 }
 
 # VM
