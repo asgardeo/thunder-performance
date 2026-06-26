@@ -211,7 +211,7 @@
             &quot;id&quot;: &quot;basic_auth&quot;,&#xd;
             &quot;type&quot;: &quot;TASK_EXECUTION&quot;,&#xd;
             &quot;executor&quot;: {&#xd;
-                &quot;name&quot;: &quot;BasicAuthExecutor&quot;&#xd;
+                &quot;name&quot;: &quot;CredentialsAuthExecutor&quot;&#xd;
             },&#xd;
             &quot;onSuccess&quot;: &quot;auth_assert&quot;,&#xd;
             &quot;onIncomplete&quot;: &quot;prompt_credentials&quot;&#xd;

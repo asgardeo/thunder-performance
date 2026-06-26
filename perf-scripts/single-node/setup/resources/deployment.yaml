@@ -26,8 +26,8 @@ gate_client:
   error_path: "/error"
 
 tls:
-  cert_file: "repository/resources/security/server.cert"
-  key_file: "repository/resources/security/server.key"
+  cert_file: "config/certs/server.cert"
+  key_file: "config/certs/server.key"
   min_version: "1.2"
 
 database:
