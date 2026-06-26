@@ -21,7 +21,7 @@
 
 function update_postgres_config() {
 
-    sed -i "s|{db_hostname}|$db_instance_ip|g" "$carbon_home/repository/conf/deployment.yaml" || echo "Editing deployment.yaml file failed!"
+    sed -i "s|{db_hostname}|$db_instance_ip|g" "$carbon_home/deployment.yaml" || echo "Editing deployment.yaml file failed!"
 }
 
 function usage() {
@@ -80,7 +80,7 @@ carbon_home=$(realpath ~/thunder)
 echo ""
 echo "Adding deployment yaml file to the pack..."
 echo "-------------------------------------------"
-cp resources/deployment.yaml "$carbon_home"/repository/conf/deployment.yaml
+cp resources/deployment.yaml "$carbon_home"/deployment.yaml
 
 echo ""
 echo "Applying basic parameter changes..."
