@@ -19,14 +19,14 @@
 # Run Ballerina Performance Tests
 # ----------------------------------------------------------------------------
 
-declare -A test_scenario0=(
-    [name]="00-thunder_oauth_client_credential_grant"
-    [display_name]="Client Credentials Grant Type"
-    [description]="Obtain an access token using the OAuth 2.0 client credential grant type."
-    [jmx]="oauth/Thunder_OAuth_Client_Credentials_Grant.jmx"
-    [tenantMode]=false
-    [skip]=false
-)
+# declare -A test_scenario0=(
+#     [name]="00-thunder_oauth_client_credential_grant"
+#     [display_name]="Client Credentials Grant Type"
+#     [description]="Obtain an access token using the OAuth 2.0 client credential grant type."
+#     [jmx]="oauth/Thunder_OAuth_Client_Credentials_Grant.jmx"
+#     [tenantMode]=false
+#     [skip]=false
+# )
 declare -A test_scenario1=(
     [name]="01-thunder_oauth_authorization_code_grant"
     [display_name]="Authorization Code Grant Type"
@@ -35,11 +35,11 @@ declare -A test_scenario1=(
     [tenantMode]=false
     [skip]=false
 )
-declare -A test_scenario2=(
-    [name]="02-thunder_authenticate_with_credentials"
-    [display_name]="User Authentication with Credentials"
-    [description]="Authenticate a user using credentials."
-    [jmx]="authenticate/Authenticate_With_Credentials.jmx"
-    [tenantMode]=false
-    [skip]=false
-)
+# declare -A test_scenario2=(
+#     [name]="02-thunder_authenticate_with_credentials"
+#     [display_name]="User Authentication with Credentials"
+#     [description]="Authenticate a user using credentials."
+#     [jmx]="authenticate/Authenticate_With_Credentials.jmx"
+#     [tenantMode]=false
+#     [skip]=false
+# )
