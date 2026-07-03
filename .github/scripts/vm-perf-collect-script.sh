@@ -17,25 +17,12 @@
 #
 # ----------------------------------------------------------------------------
 # Download results.zip from the bastion via rsync (resumable + verified) and
-# generate summary artifacts (summary.csv, summary.md).
+# generate summary artifacts. Rsync is resumable and end-to-end verified via
+# --partial + --append-verify, wrapped in a 3-attempt retry with backoff so
+# multi-GB transfers survive transient network issues.
 #
 # Required env:
-#   WORKSPACE            - GHA workspace (used to locate perf-scripts tree).
-#   DEPLOYMENT           - e.g. single-node.
-#   BASTION_IP           - bastion public IP.
-#   KEY_FILE             - path to PEM.
-#   MANIFEST_DIR         - path to the downloaded manifest artifact directory
-#                          (contains manifest.json + cf-test-metadata.json).
-#   RESULTS_DIR_NAME     - name of the results-* dir to create (must start with "results-"
-#                          to match downstream glob patterns).
-#
-# The rsync retry loop handles multi-GB transfers over unstable networks:
-#   --partial            keep partial file on failure for the next attempt to resume from
-#   --append-verify      resume by appending, then verify the whole file end-to-end
-#   --timeout=180        fail an idle rsync within 3min so the retry can kick in
-#   -e "ssh ..."         controls the ssh transport (keepalives, connect timeout)
-# 3 attempts with exponential backoff. Resume + verify means each retry only
-# re-transfers what wasn't already delivered.
+#   WORKSPACE, DEPLOYMENT, BASTION_IP, KEY_FILE, MANIFEST_DIR, RESULTS_DIR_NAME
 # ----------------------------------------------------------------------------
 
 set -euo pipefail
@@ -65,9 +52,6 @@ echo ""
 echo "Extracting Thunder Performance Distribution into $RESULTS_DIR"
 tar -xf "$DEPLOYMENT_DIR"/target/performance-thunder-singlenode-*.tar.gz -C "$RESULTS_DIR"
 
-# ---------------------------------------------------------------------------
-# Download results.zip from bastion — resumable + verified, with retry
-# ---------------------------------------------------------------------------
 echo ""
 echo "Downloading results.zip from bastion via rsync..."
 echo "  source: ubuntu@${BASTION_IP}:/home/ubuntu/results.zip"
@@ -108,9 +92,6 @@ fi
 result_size=$(stat -c %s "$RESULTS_DIR/results.zip")
 echo "Downloaded results.zip: $result_size bytes"
 
-# ---------------------------------------------------------------------------
-# Extract results and generate summary artifacts
-# ---------------------------------------------------------------------------
 echo ""
 echo "Creating summary.csv..."
 echo "============================================"
@@ -126,8 +107,7 @@ echo "Creating summary results markdown file..."
 ./jmeter/create-summary-markdown.py --json-files cf-test-metadata.json results/test-metadata.json --column-names \
     "Concurrent Users" "95th Percentile of Response Time (ms)"
 
-# Cleanup intermediate files — matches start-performance.sh's tail behavior so that
-# the uploaded artifact structure is consistent with the current single-workflow flow.
+# Cleanup — mirrors start-performance.sh's post-run cleanup for artifact parity.
 rm -rf cf-test-metadata.json cloudformation/ common/ gcviewer.jar is/ jmeter/ jtl-splitter/ netty-service/ payloads/ sar/ setup/ results/ thunder/restart-thunder.sh summary/
 
 echo ""

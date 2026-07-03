@@ -49,7 +49,7 @@ echo "$cmd"
 
 echo "perf_test_start_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-# Detached mode: start-performance.sh will nohup-launch JMeter on the bastion and exit early.
+# Detached mode: start-performance.sh will launch JMeter on the bastion (via setsid --fork) and exit early.
 export DETACHED_RUN=1
 eval $cmd
 kickoff_rc=$?
