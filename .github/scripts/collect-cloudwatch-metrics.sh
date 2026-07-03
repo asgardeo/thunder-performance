@@ -59,9 +59,12 @@ echo "    Output dir  : $METRICS_DIR"
 echo "=========================================================="
 
 # --- EC2 instances ---
-# Basic monitoring (5-min period) is free; covers CPU, network, and disk I/O.
+# Basic monitoring (5-min period, free) covers CPU and network. Disk I/O
+# metrics under AWS/EC2 are empty for EBS-backed instances — for those we
+# look up the attached EBS volume IDs and query AWS/EBS separately below.
 # Memory is not available without the CloudWatch Agent.
 EC2_METRICS=(CPUUtilization NetworkIn NetworkOut DiskReadOps DiskWriteOps DiskReadBytes DiskWriteBytes)
+EBS_METRICS=(VolumeReadOps VolumeWriteOps VolumeReadBytes VolumeWriteBytes VolumeQueueLength)
 
 for node_info in \
     "thunder:${THUNDER_INSTANCE_ID:-}" \
@@ -96,6 +99,58 @@ for node_info in \
     done
 
     echo "Saved $node_name EC2 metrics → $output_file"
+done
+
+# --- EBS volumes attached to each EC2 instance ---
+# EC2 basic monitoring exposes DiskReadOps etc. only for instance-store volumes.
+# EBS-backed instances (which these all are) emit VolumeReadOps etc. under
+# AWS/EBS, keyed by VolumeId — hence this separate loop.
+for node_info in \
+    "thunder:${THUNDER_INSTANCE_ID:-}" \
+    "nginx:${NGINX_INSTANCE_ID:-}" \
+    "bastion:${BASTION_INSTANCE_ID:-}"; do
+
+    node_name="${node_info%%:*}"
+    instance_id="${node_info##*:}"
+
+    if [[ -z "$instance_id" ]]; then
+        echo "Skipping $node_name EBS metrics: instance ID not set."
+        continue
+    fi
+
+    # An instance can have multiple volumes; aggregate them all under a single CSV.
+    volume_ids=$(aws ec2 describe-instances \
+        --instance-ids "$instance_id" \
+        --query 'Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId' \
+        --output text 2>/dev/null)
+
+    if [[ -z "$volume_ids" ]]; then
+        echo "Skipping $node_name EBS metrics: no EBS volumes found for $instance_id."
+        continue
+    fi
+
+    output_file="$METRICS_DIR/${node_name}-ebs.csv"
+    echo "Timestamp,Metric,VolumeId,Average" > "$output_file"
+
+    for vol in $volume_ids; do
+        for metric in "${EBS_METRICS[@]}"; do
+            aws cloudwatch get-metric-statistics \
+                --namespace AWS/EBS \
+                --metric-name "$metric" \
+                --dimensions Name=VolumeId,Value="$vol" \
+                --start-time "$START_TIME" \
+                --end-time "$END_TIME" \
+                --period 300 \
+                --statistics Average \
+                --query 'sort_by(Datapoints, &Timestamp)[*].[Timestamp, Average]' \
+                --output text 2>/dev/null \
+            | while IFS=$'\t' read -r ts avg; do
+                echo "$ts,$metric,$vol,$avg"
+            done >> "$output_file"
+        done
+    done
+
+    echo "Saved $node_name EBS metrics → $output_file"
 done
 
 # --- RDS instance ---

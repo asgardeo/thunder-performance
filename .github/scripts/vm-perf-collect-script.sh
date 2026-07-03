@@ -92,6 +92,19 @@ fi
 result_size=$(stat -c %s "$RESULTS_DIR/results.zip")
 echo "Downloaded results.zip: $result_size bytes"
 
+# ---- Long-run metrics CSV (produced by long-run-sampler.sh on the bastion) ----
+# Best-effort: absent for older triggers or when the sampler never wrote a row.
+echo ""
+echo "Downloading long-run-metrics.csv from bastion (best-effort)..."
+if rsync -av --timeout=60 \
+    -e "$ssh_transport" \
+    "ubuntu@${BASTION_IP}:/home/ubuntu/long-run-metrics.csv" \
+    "$RESULTS_DIR/long-run-metrics.csv" 2>&1; then
+    echo "long-run-metrics.csv downloaded ($(stat -c %s "$RESULTS_DIR/long-run-metrics.csv") bytes)."
+else
+    echo "WARN: long-run-metrics.csv not present on bastion (older trigger or sampler failure) — skipping long-run analysis."
+fi
+
 echo ""
 echo "Creating summary.csv..."
 echo "============================================"
@@ -107,7 +120,27 @@ echo "Creating summary results markdown file..."
 ./jmeter/create-summary-markdown.py --json-files cf-test-metadata.json results/test-metadata.json --column-names \
     "Concurrent Users" "95th Percentile of Response Time (ms)"
 
+# ---- Latency drift analysis (uses per-scenario jtls.zip under results/) ----
+# Writes to $RESULTS_DIR/latency-drift/<scenario>/ so outputs survive the cleanup below.
+# matplotlib is required for the plots; install if not already present.
+echo ""
+echo "Ensuring matplotlib is installed for analysis scripts..."
+pip install -q matplotlib || echo "WARN: pip install matplotlib failed — charts may not render."
+
+echo ""
+echo "Analyzing latency drift..."
+RESULTS_DIR="$RESULTS_DIR" python3 "$WORKSPACE"/.github/scripts/analyze-latency-drift.py \
+    || echo "WARN: latency drift analysis failed."
+
+# ---- Long-run trend charts (uses long-run-metrics.csv from bastion) ----
+# No-op if the CSV wasn't downloaded (older trigger).
+echo ""
+echo "Generating long-run trend charts..."
+RESULTS_DIR="$RESULTS_DIR" python3 "$WORKSPACE"/.github/scripts/generate-long-run-charts.py \
+    || echo "WARN: long-run chart generation failed."
+
 # Cleanup — mirrors start-performance.sh's post-run cleanup for artifact parity.
+# latency-drift/ and long-run/ live at $RESULTS_DIR (not inside results/) so they survive.
 rm -rf cf-test-metadata.json cloudformation/ common/ gcviewer.jar is/ jmeter/ jtl-splitter/ netty-service/ payloads/ sar/ setup/ results/ thunder/restart-thunder.sh summary/
 
 echo ""

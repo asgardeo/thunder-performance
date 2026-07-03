@@ -284,6 +284,11 @@ jobs:
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/summary.md
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/instance-ids.txt
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/cloudwatch/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/latency-drift/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/latency-drift.json
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-metrics.csv
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-summary.json
           retention-days: 30
           if-no-files-found: warn
 
