@@ -231,7 +231,7 @@ jobs:
             -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
             -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
             ubuntu@"${BASTION_NODE_IP}" \
-            'if pgrep -f run-performance-tests.sh >/dev/null; then
+            'if pgrep -f "[r]un-performance-tests.sh" >/dev/null; then
                echo RUNNING
              else
                echo DEAD
@@ -418,7 +418,7 @@ jobs:
             echo ""
             echo '```bash'
             echo "ssh -i ./key.pem -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} \\"
-            echo "  'echo \"process: \$(pgrep -f run-performance-tests || echo DEAD)\"; echo \"log last modified: \$(stat -c %y /home/ubuntu/run.log)\"'"
+            echo "  'echo \"process: \$(pgrep -f \"[r]un-performance-tests\" || echo DEAD)\"; echo \"log last modified: \$(stat -c %y /home/ubuntu/run.log)\"'"
             echo '```'
             echo ""
             echo "If \`process: DEAD\` and \`run.log\` hasn't been touched in >5 min, the test crashed. Retrieve \`run.log\` for diagnosis, then tear down the stack."

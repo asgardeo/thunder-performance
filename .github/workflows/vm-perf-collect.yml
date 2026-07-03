@@ -159,7 +159,7 @@ jobs:
             -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
             -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
             ubuntu@"${BASTION_IP}" \
-            'if pgrep -f run-performance-tests.sh >/dev/null; then
+            'if pgrep -f "[r]un-performance-tests.sh" >/dev/null; then
                echo STATUS=RUNNING
                exit 0
              fi
