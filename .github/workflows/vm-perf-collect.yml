@@ -225,7 +225,11 @@ jobs:
           bash .github/scripts/vm-perf-collect-script.sh
 
       - name: Collect CloudWatch Metrics
-        if: always() && steps.parse-manifest.outputs.thunder_id != ''
+        # Only run if precheck confirmed the test is READY. perf_test_end_time is
+        # only set in the READY branch, so this guards against running against a
+        # test that's still in progress. `always()` lets it run even if the collect
+        # script failed after precheck succeeded.
+        if: always() && steps.precheck.outputs.perf_test_end_time != '' && steps.parse-manifest.outputs.thunder_id != ''
         env:
           WORKSPACE: ${{ github.workspace }}
           DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
@@ -242,7 +246,8 @@ jobs:
           python3 .github/scripts/generate-metrics-charts.py || echo "WARN: Chart generation failed."
 
       - name: Publish Job Summary
-        if: always()
+        # Same gate as CloudWatch — only summarize if we confirmed the test finished.
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
         env:
           WORKSPACE: ${{ github.workspace }}
           DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
@@ -264,7 +269,17 @@ jobs:
           python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
 
       - name: Delete CloudFormation Stack
-        if: always() && steps.parse-manifest.outputs.stack_id != ''
+        # Only tear down when BOTH:
+        #   - precheck confirmed the test is READY (perf_test_end_time is set), AND
+        #   - the collect step actually succeeded (rsync + summary all worked).
+        # If collect failed partway (e.g. rsync exhausted retries, corrupt zip),
+        # leave the stack up so the operator can debug on the bastion, fix the
+        # underlying issue, and re-run collect. They can always tear down manually
+        # via the AWS console or `aws cloudformation delete-stack`.
+        #
+        # !cancelled() lets this run when a non-fatal downstream step (e.g. CloudWatch)
+        # errored, but blocks it if the operator manually cancelled the workflow.
+        if: ${{ !cancelled() && steps.collect.outcome == 'success' && steps.parse-manifest.outputs.stack_id != '' }}
         env:
           STACK_ID: ${{ steps.parse-manifest.outputs.stack_id }}
         run: |
@@ -272,7 +287,7 @@ jobs:
           bash .github/scripts/delete-cf-stack.sh
 
       - name: Upload summary artifacts
-        if: always()
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
         uses: actions/upload-artifact@v4
         with:
           name: performance-test-results-${{ inputs.TRIGGER_RUN_NUMBER }}
@@ -285,7 +300,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload full results artifacts
-        if: always()
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
         uses: actions/upload-artifact@v4
         with:
           name: performance-test-results-full-${{ inputs.TRIGGER_RUN_NUMBER }}
