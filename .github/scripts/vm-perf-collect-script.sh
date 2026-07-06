@@ -117,8 +117,13 @@ wget -q http://sourceforge.net/projects/gcviewer/files/gcviewer-1.35.jar/downloa
 
 echo ""
 echo "Creating summary results markdown file..."
+# Non-fatal: the shared Jinja template errors out when summary.csv has no data rows
+# (e.g. when jtl-splitter didn't run so no results-measurement-summary.json exists).
+# The rest of the collect flow (CloudWatch, latency drift, long-run analysis, teardown)
+# should still complete.
 ./jmeter/create-summary-markdown.py --json-files cf-test-metadata.json results/test-metadata.json --column-names \
-    "Concurrent Users" "95th Percentile of Response Time (ms)"
+    "Concurrent Users" "95th Percentile of Response Time (ms)" \
+    || echo "WARN: create-summary-markdown.py failed — summary.md will not be produced. summary.csv is unaffected."
 
 # ---- Latency drift analysis (uses per-scenario jtls.zip under results/) ----
 # Writes to $RESULTS_DIR/latency-drift/<scenario>/ so outputs survive the cleanup below.

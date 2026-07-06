@@ -119,15 +119,57 @@ def rows_from_jtl_zip(zip_path):
                 continue
             with zf.open(name) as f:
                 text = io.TextIOWrapper(f, encoding="utf-8", errors="replace")
-                reader = csv.DictReader(text)
-                for row in reader:
-                    try:
-                        ts_ms = int(row["timeStamp"])
-                        elapsed_ms = int(row["elapsed"])
-                        success = row.get("success", "").lower() == "true"
-                    except (ValueError, KeyError):
-                        continue
-                    yield ts_ms, elapsed_ms, success
+                yield from _rows_from_csv_reader(csv.DictReader(text))
+
+
+def rows_from_raw_jtl(jtl_path):
+    """Yield (ts_ms, elapsed_ms, success) tuples from a plain JMeter CSV JTL file.
+
+    Fallback used when jtl-splitter didn't run so the post-warmup jtls.zip is
+    missing but the raw results.jtl is present.
+    """
+    with open(jtl_path, "r", encoding="utf-8", errors="replace") as f:
+        yield from _rows_from_csv_reader(csv.DictReader(f))
+
+
+def _rows_from_csv_reader(reader):
+    for row in reader:
+        try:
+            ts_ms = int(row["timeStamp"])
+            elapsed_ms = int(row["elapsed"])
+            success = row.get("success", "").lower() == "true"
+        except (ValueError, KeyError):
+            continue
+        yield ts_ms, elapsed_ms, success
+
+
+def find_scenario_sources(results_root):
+    """Return list of (scenario_name, source_path, source_type) tuples.
+
+    Prefers jtls.zip (post-splitter, warmup-trimmed). Falls back to raw
+    results.jtl for scenarios where jtl-splitter didn't run — the raw JTL
+    includes warmup data, so bucketed metrics for the first warmup window
+    will be less representative.
+    """
+    sources = []
+    seen_dirs = set()
+
+    zip_paths = sorted(glob.glob(f"{results_root}/results/**/jtls.zip", recursive=True))
+    for zp in zip_paths:
+        seen_dirs.add(str(Path(zp).parent))
+        rel = Path(zp).relative_to(Path(results_root) / "results")
+        name = str(rel.parent) if str(rel.parent) not in (".", "") else Path(zp).stem
+        sources.append((name, zp, "zip"))
+
+    raw_paths = sorted(glob.glob(f"{results_root}/results/**/results.jtl", recursive=True))
+    for rp in raw_paths:
+        if str(Path(rp).parent) in seen_dirs:
+            continue
+        rel = Path(rp).relative_to(Path(results_root) / "results")
+        name = str(rel.parent) if str(rel.parent) not in (".", "") else Path(rp).stem
+        sources.append((name, rp, "raw"))
+
+    return sources
 
 
 def write_csv(path, buckets):
@@ -176,27 +218,27 @@ def slope_for_p95(buckets):
 
 
 def main():
-    zip_paths = sorted(glob.glob(f"{RESULTS_DIR}/results/**/jtls.zip", recursive=True))
-    if not zip_paths:
-        print(f"No jtls.zip files found under {RESULTS_DIR}/results/. Nothing to analyze.")
+    sources = find_scenario_sources(RESULTS_DIR)
+    if not sources:
+        print(f"No jtls.zip or results.jtl found under {RESULTS_DIR}/results/. Nothing to analyze.")
         return
 
     summary = {"bucket_seconds": BUCKET_SECONDS, "scenarios": []}
 
-    for zip_path in zip_paths:
-        # Scenario name = relative path from results/ up to the parent dir of jtls.zip
-        rel = Path(zip_path).relative_to(Path(RESULTS_DIR) / "results")
-        scenario_name = str(rel.parent) if str(rel.parent) not in (".", "") else Path(zip_path).stem
-
-        print(f"Analyzing {scenario_name} → {zip_path}")
+    for scenario_name, source_path, source_type in sources:
+        print(f"Analyzing {scenario_name} ({source_type}) → {source_path}")
         try:
-            buckets = analyze_jtl_rows(rows_from_jtl_zip(zip_path))
+            if source_type == "zip":
+                rows_iter = rows_from_jtl_zip(source_path)
+            else:
+                rows_iter = rows_from_raw_jtl(source_path)
+            buckets = analyze_jtl_rows(rows_iter)
         except (zipfile.BadZipFile, OSError) as e:
-            print(f"  WARN: could not read {zip_path}: {e}")
+            print(f"  WARN: could not read {source_path}: {e}")
             continue
 
         if not buckets:
-            print(f"  WARN: no valid rows in {zip_path}")
+            print(f"  WARN: no valid rows in {source_path}")
             continue
 
         # Write outputs OUTSIDE results/ so they survive the collect script's cleanup.
@@ -213,6 +255,7 @@ def main():
         slope_ms_per_hour, r_squared = slope_for_p95(buckets)
         summary["scenarios"].append({
             "scenario": scenario_name,
+            "source_type": source_type,
             "buckets": len(buckets),
             "total_requests": sum(b["count"] for b in buckets),
             "p95_slope_ms_per_hour": round(slope_ms_per_hour, 3),
