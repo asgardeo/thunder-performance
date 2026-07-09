@@ -73,7 +73,7 @@
         <collectionProp name="HeaderManager.headers">
           <elementProp name="Authorization" elementType="Header">
             <stringProp name="Header.name">Authorization</stringProp>
-            <stringProp name="Header.value">Bearer ${__P(adminAccessToken,)}</stringProp>
+            <stringProp name="Header.value">${__P(adminAuthHeader,)}</stringProp>
           </elementProp>
         </collectionProp>
       </HeaderManager>
@@ -471,7 +471,7 @@ vars.put('code_challenge', challenge)</stringProp>
             <stringProp name="parameters"></stringProp>
             <stringProp name="script">def token = vars.get('access_token')
 if (token != null &amp;&amp; token.trim().length() &gt; 0) {
-    props.put('adminAccessToken', token)
+    props.put('adminAuthHeader', 'Bearer ' + token)
 } else {
     log.error('Admin access token was empty; seeding will fail.')
     prev.setSuccessful(false)
