@@ -84,17 +84,6 @@ idpCount=1
 userCount=1000
 deployment=""
 
-# Admin credentials used to obtain a token for seeding test data via the
-# management APIs. These match Thunder's in-process bootstrap defaults.
-admin_username="admin"
-admin_password="admin"
-# OAuth2 client and redirect URI seeded by Thunder's bootstrap for the Console
-# app. The redirect URI is derived from the server hostname:port in
-# deployment.yaml (thunder.wso2.com:8090) and must match exactly.
-admin_client_id="CONSOLE"
-admin_redirect_uri="https://thunder.wso2.com:8090/console"
-admin_scope="system"
-
 # Use delays inside tests to mimic user input
 use_delay=true
 
@@ -434,95 +423,6 @@ function print_durations() {
 # performance test is aborted. Seeding into a fresh database should be ~0%.
 seed_max_err_pct=1
 
-# Obtain an admin access token for seeding test data via Thunder's management APIs.
-#
-# The management endpoints require a Bearer token with the `system` scope. This
-# drives the app-native authorization-code + PKCE flow against the bootstrapped
-# Console client to mint such a token.
-#
-# All diagnostics go to stderr; only the access token is written to stdout so the
-# caller can capture it with: token="$(get_admin_token)".
-function get_admin_token() {
-
-    local base="https://${lb_host}:${is_port}"
-
-    # 1. PKCE parameters (base64url, no padding).
-    local code_verifier code_challenge
-    code_verifier=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n')
-    code_challenge=$(printf '%s' "$code_verifier" | openssl dgst -sha256 -binary \
-        | openssl base64 | tr '+/' '-_' | tr -d '=\n')
-
-    # 2. Initiate the authorization request; capture the 302 Location header.
-    local location
-    location=$(curl -sk -o /dev/null -D - -G "${base}/oauth2/authorize" \
-        --data-urlencode "client_id=${admin_client_id}" \
-        --data-urlencode "redirect_uri=${admin_redirect_uri}" \
-        --data-urlencode "response_type=code" \
-        --data-urlencode "scope=${admin_scope}" \
-        --data-urlencode "state=perf" \
-        --data-urlencode "code_challenge=${code_challenge}" \
-        --data-urlencode "code_challenge_method=S256" \
-        | grep -i '^location:' | tail -1 | sed 's/^[Ll]ocation:[[:space:]]*//' | tr -d '\r')
-
-    local auth_id execution_id
-    auth_id=$(printf '%s' "$location" | sed -n 's/.*[?&]authId=\([^&]*\).*/\1/p')
-    execution_id=$(printf '%s' "$location" | sed -n 's/.*[?&]executionId=\([^&]*\).*/\1/p')
-    if [[ -z "$auth_id" || -z "$execution_id" ]]; then
-        echo "ERROR: Failed to obtain admin token: no authId/executionId from /oauth2/authorize." >&2
-        echo "       Location header was: '${location}'" >&2
-        exit 1
-    fi
-
-    # 3. Drive the flow to the credentials prompt.
-    local step1 challenge_token
-    step1=$(curl -sk -X POST "${base}/flow/execute" -H 'Content-Type: application/json' \
-        -d "{\"executionId\":\"${execution_id}\"}")
-    challenge_token=$(printf '%s' "$step1" | jq -r '.challengeToken // empty')
-
-    # 4. Submit admin credentials; expect a completed flow with a signed assertion.
-    local step2 flow_status assertion
-    step2=$(curl -sk -X POST "${base}/flow/execute" -H 'Content-Type: application/json' \
-        -d "{\"executionId\":\"${execution_id}\",\"action\":\"action_001\",\"challengeToken\":\"${challenge_token}\",\"inputs\":{\"username\":\"${admin_username}\",\"password\":\"${admin_password}\"}}")
-    flow_status=$(printf '%s' "$step2" | jq -r '.flowStatus // empty')
-    assertion=$(printf '%s' "$step2" | jq -r '.assertion // empty')
-    if [[ "$flow_status" != "COMPLETE" || -z "$assertion" ]]; then
-        echo "ERROR: Admin authentication flow did not complete (status='${flow_status}')." >&2
-        echo "       Response: ${step2}" >&2
-        exit 1
-    fi
-
-    # 5. Complete authorization to obtain the authorization code.
-    local callback redirect_with_code code
-    callback=$(curl -sk -X POST "${base}/oauth2/auth/callback" -H 'Content-Type: application/json' \
-        -d "{\"authId\":\"${auth_id}\",\"assertion\":\"${assertion}\"}")
-    redirect_with_code=$(printf '%s' "$callback" | jq -r '.redirect_uri // empty')
-    code=$(printf '%s' "$redirect_with_code" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')
-    if [[ -z "$code" ]]; then
-        echo "ERROR: Failed to obtain authorization code from /oauth2/auth/callback." >&2
-        echo "       Response: ${callback}" >&2
-        exit 1
-    fi
-
-    # 6. Exchange the code for an access token (public client -> PKCE, no secret).
-    local token_resp access_token
-    token_resp=$(curl -sk -X POST "${base}/oauth2/token" \
-        -H 'Content-Type: application/x-www-form-urlencoded' \
-        --data-urlencode "grant_type=authorization_code" \
-        --data-urlencode "code=${code}" \
-        --data-urlencode "redirect_uri=${admin_redirect_uri}" \
-        --data-urlencode "client_id=${admin_client_id}" \
-        --data-urlencode "code_verifier=${code_verifier}")
-    access_token=$(printf '%s' "$token_resp" | jq -r '.access_token // empty')
-    if [[ -z "$access_token" ]]; then
-        echo "ERROR: Failed to obtain access token from /oauth2/token." >&2
-        echo "       Response: ${token_resp}" >&2
-        exit 1
-    fi
-
-    echo "Successfully obtained admin access token for test-data seeding." >&2
-    printf '%s' "$access_token"
-}
-
 # Abort the run if a seeding script did not create its resources. JMeter exits 0
 # even when every request fails, so without this a broken bootstrap would produce
 # a green pipeline with empty benchmarks.
@@ -577,11 +477,11 @@ function run_test_data_scripts() {
 
     echo "Running test data setup scripts"
     echo "=========================================================================================="
-    # Seeding calls the management APIs, which require an admin token.
-    local admin_access_token
-    admin_access_token="$(get_admin_token)"
+    # Seeding calls the management APIs, which require authorization. The setup
+    # plans obtain an admin token themselves (via the Console client) before
+    # creating resources, so no token needs to be passed in here.
     declare -a scripts=("TestData_Thunder_Add_Applications.jmx" "TestData_Thunder_Add_Users.jmx")
-    declare -ag additional_jmeter_params=("jwtTokenUserPassword=$jwt_token_user_password" "jwtTokenClientSecret=$jwt_token_client_secret" "adminAccessToken=$admin_access_token")
+    declare -ag additional_jmeter_params=("jwtTokenUserPassword=$jwt_token_user_password" "jwtTokenClientSecret=$jwt_token_client_secret")
     run_jmeter_scripts "${scripts[@]}"
 }
 
