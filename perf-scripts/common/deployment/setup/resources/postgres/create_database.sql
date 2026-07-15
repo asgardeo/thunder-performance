@@ -17,6 +17,7 @@
 create database "configdb";
 create database "runtimedb";
 create database "userdb";
+create database "operationdb";
 
 \c configdb
 \i /home/ubuntu/thunder/dbscripts/configdb/postgres.sql
@@ -24,4 +25,6 @@ create database "userdb";
 \i /home/ubuntu/thunder/dbscripts/runtimedb/postgres.sql
 \c userdb
 \i /home/ubuntu/thunder/dbscripts/userdb/postgres.sql
+\c operationdb
+\i /home/ubuntu/thunder/dbscripts/operationdb/postgres.sql
 
