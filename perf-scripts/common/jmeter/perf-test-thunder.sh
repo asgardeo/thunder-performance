@@ -91,6 +91,12 @@ use_delay=true
 jwt_token_client_secret=""
 jwt_token_user_password=""
 
+# Gates the Direct API (/auth/**) since Thunder v0.48.0; sent as the Direct-Auth-Secret
+# header. Must match server.security.direct_auth_secret in the deployment.yaml under
+# perf-scripts/<deployment>/setup/resources/.
+default_direct_auth_secret="asgthunder-perf-direct-auth-secret"
+direct_auth_secret=$default_direct_auth_secret
+
 # Token Type
 token_issuer="Opaque"
 
@@ -120,7 +126,7 @@ function usage() {
     echo "   [-g <no_of_nodes>] [-f <deployment>] [-n <no_of_tenants>]"
     echo "   [-s <sp_count>] [-q <idp_count>] [-u <user_count>]"
     echo "   [-k <jwt_token_client_secret>] [-o <jwt_token_user_password>]"
-    echo "   [-x <enable_burst>] [-y <token_issuer>]"
+    echo "   [-x <enable_burst>] [-y <token_issuer>] [-a <direct_auth_secret>]"
     echo "   [-t] [-p <is_port>] [-b <db_type>] [-z <use_delay>] [-h]"
     echo ""
     echo "-c: Concurrency levels to test. You can give multiple options to specify multiple levels. Default \"$default_concurrent_users\"."
@@ -140,6 +146,7 @@ function usage() {
     echo "-o: JWT token user password."
     echo "-x: Enable burst traffic."
     echo "-y: Token issuer type. Use Opaque (default) or JWT."
+    echo "-a: Direct Auth Secret gating the Direct API (/auth/**). Default \"$default_direct_auth_secret\"."
     echo "-t: Estimate time without executing tests."
     echo "-p: Thunder Port. Default $default_is_port."
     echo "-b: Database type."
@@ -148,7 +155,7 @@ function usage() {
     echo ""
 }
 
-while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:h" opts; do
+while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:a:h" opts; do
     case $opts in
     c)
         concurrent_users+=("${OPTARG}")
@@ -212,6 +219,9 @@ while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:h" opts; do
         ;;
     y)
         token_issuer=${OPTARG}
+        ;;
+    a)
+        direct_auth_secret=${OPTARG}
         ;;
     h)
         usage
@@ -602,7 +612,7 @@ function test_scenarios() {
             mkdir -p "$report_location"
 
             time=$(expr "$test_duration" \* 60)
-            declare -a jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$is_port" "noOfNodes=$noOfNodes" "noOfBurst=$burstTraffic" "deployment=$deployment" "userCount=$userCount" "useDelay=$use_delay")
+            declare -a jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$is_port" "noOfNodes=$noOfNodes" "noOfBurst=$burstTraffic" "deployment=$deployment" "userCount=$userCount" "useDelay=$use_delay" "directAuthSecret=$direct_auth_secret")
 
             local tenantMode=${scenario[tenantMode]}
             if [ "$tenantMode" = true ]; then

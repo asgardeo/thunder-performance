@@ -17,6 +17,12 @@
 server:
   hostname: "thunder.wso2.com"
   port: 8090
+  security:
+    # Gates the Direct API (/auth/**) since Thunder v0.48.0. Pinned here so the JMeter
+    # client can send the matching Direct-Auth-Secret header; setup.sh honours an existing
+    # value instead of generating a random one. Must match direct_auth_secret in
+    # perf-scripts/common/jmeter/perf-test-thunder.sh.
+    direct_auth_secret: "asgthunder-perf-direct-auth-secret"
 
 gate_client:
   hostname: "thunder.wso2.com"
