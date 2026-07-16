@@ -32,9 +32,6 @@ parameters:
   - name: THUNDER_IMAGE_TAG
     type: string
     default: '0.7.0'
-  - name: SKIP_SECURITY
-    type: string
-    default: 'false'
   - name: RUN_SETUP_SCRIPT
     type: boolean
     default: false
@@ -71,5 +68,4 @@ steps:
       THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
       THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
       THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
-      SKIP_SECURITY: ${{ parameters.SKIP_SECURITY }}
       RUN_SETUP_SCRIPT: ${{ parameters.RUN_SETUP_SCRIPT }}
