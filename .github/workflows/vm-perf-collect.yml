@@ -1,4 +1,4 @@
-name: VM Performance Test - Collect Results
+name: Collect results of long-running test
 
 # Downloads results.zip from the bastion of a completed vm-perf-trigger run,
 # generates the summary artifacts, collects CloudWatch metrics, publishes the
@@ -50,14 +50,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Locate trigger workflow run
+      - name: Locate trigger run
         id: locate-trigger
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TRIGGER_RUN_NUMBER: ${{ inputs.TRIGGER_RUN_NUMBER }}
         run: |
-          # Find the trigger workflow run that has the requested `github.run_number`.
-          # We look at recent workflow_dispatch runs of vm-perf-trigger.yml.
+          # Look up the databaseId (run ID) for the given trigger run number.
           run_id=$(gh run list \
             --workflow=vm-perf-trigger.yml \
             --limit 100 \
@@ -95,12 +94,11 @@ jobs:
           echo "Manifest downloaded:"
           ls -la "$MANIFEST_DIR"
 
-      - name: Parse manifest into env vars
+      - name: Parse manifest into step outputs
         id: parse-manifest
         run: |
           m="$MANIFEST_DIR/manifest.json"
           # Each entry is: <output_key>|<jq_path>|<required?>
-          # jq -r produces plain strings; a "null" or empty result on a required field aborts.
           fields=(
             "stack_name|.stack_name|1"
             "stack_id|.stack_id|1"
@@ -138,7 +136,7 @@ jobs:
             "$RESOURCES_DIR/thunder-perf-test.pem" --only-show-errors --no-progress
           chmod 400 "$RESOURCES_DIR/thunder-perf-test.pem"
 
-      - name: Verify stack still exists
+      - name: Verify CloudFormation stack exists
         env:
           STACK_NAME: ${{ steps.parse-manifest.outputs.stack_name }}
         run: |
@@ -148,7 +146,7 @@ jobs:
           fi
           echo "Stack '$STACK_NAME' exists."
 
-      - name: Precheck bastion — test finished, results.zip present
+      - name: Precheck bastion status
         id: precheck
         timeout-minutes: 3
         env:
@@ -159,7 +157,7 @@ jobs:
             -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
             -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
             ubuntu@"${BASTION_IP}" \
-            'if pgrep -f run-performance-tests.sh >/dev/null; then
+            'if pgrep -f "[r]un-performance-tests.sh" >/dev/null; then
                echo STATUS=RUNNING
                exit 0
              fi
@@ -176,7 +174,7 @@ jobs:
              echo END_TIME=${end_iso}
              echo SIZE=${size}')
 
-          # Redact any accidental AWS access-key pattern before printing.
+          # Belt-and-suspenders: redact AKIA-pattern strings before printing.
           echo "$precheck_output" | sed -E 's/AKIA[0-9A-Z]{16}/AKIA****REDACTED****/g'
 
           status=$(echo "$precheck_output" | grep '^STATUS=' | head -1 | cut -d= -f2)
@@ -225,7 +223,8 @@ jobs:
           bash .github/scripts/vm-perf-collect-script.sh
 
       - name: Collect CloudWatch Metrics
-        if: always() && steps.parse-manifest.outputs.thunder_id != ''
+        # Runs only if precheck confirmed READY. always() covers collect-step failures.
+        if: always() && steps.precheck.outputs.perf_test_end_time != '' && steps.parse-manifest.outputs.thunder_id != ''
         env:
           WORKSPACE: ${{ github.workspace }}
           DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
@@ -242,7 +241,7 @@ jobs:
           python3 .github/scripts/generate-metrics-charts.py || echo "WARN: Chart generation failed."
 
       - name: Publish Job Summary
-        if: always()
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
         env:
           WORKSPACE: ${{ github.workspace }}
           DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
@@ -264,7 +263,11 @@ jobs:
           python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
 
       - name: Delete CloudFormation Stack
-        if: always() && steps.parse-manifest.outputs.stack_id != ''
+        # Only tear down when collect succeeded — leaves the stack up on collect
+        # failure so the operator can debug and retry. !cancelled() lets this run
+        # when a downstream step (e.g. CloudWatch) errored but blocks it on
+        # manual workflow cancellation.
+        if: ${{ !cancelled() && steps.collect.outcome == 'success' && steps.parse-manifest.outputs.stack_id != '' }}
         env:
           STACK_ID: ${{ steps.parse-manifest.outputs.stack_id }}
         run: |
@@ -272,7 +275,7 @@ jobs:
           bash .github/scripts/delete-cf-stack.sh
 
       - name: Upload summary artifacts
-        if: always()
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
         uses: actions/upload-artifact@v4
         with:
           name: performance-test-results-${{ inputs.TRIGGER_RUN_NUMBER }}
@@ -281,11 +284,16 @@ jobs:
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/summary.md
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/instance-ids.txt
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/cloudwatch/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/latency-drift/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/latency-drift.json
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-metrics.csv
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-summary.json
           retention-days: 30
           if-no-files-found: warn
 
       - name: Upload full results artifacts
-        if: always()
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
         uses: actions/upload-artifact@v4
         with:
           name: performance-test-results-full-${{ inputs.TRIGGER_RUN_NUMBER }}

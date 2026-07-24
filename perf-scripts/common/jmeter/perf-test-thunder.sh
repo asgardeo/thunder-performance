@@ -354,13 +354,23 @@ function write_server_metrics() {
     if [[ -n $ssh_host_alias ]]; then
         command_prefix="ssh -o SendEnv=LC_TIME $ssh_host_alias"
     fi
-    $command_prefix ss -s >"$report_location"/"$ssh_host"_ss.txt
-    $command_prefix uptime >"$report_location"/"$ssh_host"_uptime.txt
-    $command_prefix sar -q >"$report_location"/"$ssh_host"_loadavg.txt
-    $command_prefix sar -A >"$report_location"/"$ssh_host"_sar.txt
-    $command_prefix top -bn 1 >"$report_location"/"$ssh_host"_top.txt
+    # Non-fatal: metric-collection failures (e.g. sar when sysstat's data collector
+    # isn't running) must not abort the post-test cleanup chain under `set -e`.
+    # Redirect stderr into the same file so the failure reason is preserved, and
+    # emit a WARN to stdout so it's visible in the test log.
+    $command_prefix ss -s >"$report_location"/"$ssh_host"_ss.txt 2>&1 \
+        || echo "WARN: 'ss -s' failed for ${ssh_host} (exit $?); see ${ssh_host}_ss.txt"
+    $command_prefix uptime >"$report_location"/"$ssh_host"_uptime.txt 2>&1 \
+        || echo "WARN: 'uptime' failed for ${ssh_host} (exit $?); see ${ssh_host}_uptime.txt"
+    $command_prefix sar -q >"$report_location"/"$ssh_host"_loadavg.txt 2>&1 \
+        || echo "WARN: 'sar -q' failed for ${ssh_host} (exit $?); see ${ssh_host}_loadavg.txt"
+    $command_prefix sar -A >"$report_location"/"$ssh_host"_sar.txt 2>&1 \
+        || echo "WARN: 'sar -A' failed for ${ssh_host} (exit $?); see ${ssh_host}_sar.txt"
+    $command_prefix top -bn 1 >"$report_location"/"$ssh_host"_top.txt 2>&1 \
+        || echo "WARN: 'top -bn 1' failed for ${ssh_host} (exit $?); see ${ssh_host}_top.txt"
     if [[ -n $pgrep_pattern ]]; then
-        $command_prefix ps u -p \`pgrep -f "$pgrep_pattern"\` >"$report_location"/"$ssh_host_alias"_ps.txt
+        $command_prefix ps u -p \`pgrep -f "$pgrep_pattern"\` >"$report_location"/"$ssh_host_alias"_ps.txt 2>&1 \
+            || echo "WARN: 'ps u' failed for ${ssh_host} (exit $?); see ${ssh_host_alias}_ps.txt"
     fi
 }
 

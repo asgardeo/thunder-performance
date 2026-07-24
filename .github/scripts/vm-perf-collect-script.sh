@@ -17,25 +17,12 @@
 #
 # ----------------------------------------------------------------------------
 # Download results.zip from the bastion via rsync (resumable + verified) and
-# generate summary artifacts (summary.csv, summary.md).
+# generate summary artifacts. Rsync is resumable and end-to-end verified via
+# --partial + --append-verify, wrapped in a 3-attempt retry with backoff so
+# multi-GB transfers survive transient network issues.
 #
 # Required env:
-#   WORKSPACE            - GHA workspace (used to locate perf-scripts tree).
-#   DEPLOYMENT           - e.g. single-node.
-#   BASTION_IP           - bastion public IP.
-#   KEY_FILE             - path to PEM.
-#   MANIFEST_DIR         - path to the downloaded manifest artifact directory
-#                          (contains manifest.json + cf-test-metadata.json).
-#   RESULTS_DIR_NAME     - name of the results-* dir to create (must start with "results-"
-#                          to match downstream glob patterns).
-#
-# The rsync retry loop handles multi-GB transfers over unstable networks:
-#   --partial            keep partial file on failure for the next attempt to resume from
-#   --append-verify      resume by appending, then verify the whole file end-to-end
-#   --timeout=180        fail an idle rsync within 3min so the retry can kick in
-#   -e "ssh ..."         controls the ssh transport (keepalives, connect timeout)
-# 3 attempts with exponential backoff. Resume + verify means each retry only
-# re-transfers what wasn't already delivered.
+#   WORKSPACE, DEPLOYMENT, BASTION_IP, KEY_FILE, MANIFEST_DIR, RESULTS_DIR_NAME
 # ----------------------------------------------------------------------------
 
 set -euo pipefail
@@ -65,9 +52,6 @@ echo ""
 echo "Extracting Thunder Performance Distribution into $RESULTS_DIR"
 tar -xf "$DEPLOYMENT_DIR"/target/performance-thunder-singlenode-*.tar.gz -C "$RESULTS_DIR"
 
-# ---------------------------------------------------------------------------
-# Download results.zip from bastion — resumable + verified, with retry
-# ---------------------------------------------------------------------------
 echo ""
 echo "Downloading results.zip from bastion via rsync..."
 echo "  source: ubuntu@${BASTION_IP}:/home/ubuntu/results.zip"
@@ -108,9 +92,19 @@ fi
 result_size=$(stat -c %s "$RESULTS_DIR/results.zip")
 echo "Downloaded results.zip: $result_size bytes"
 
-# ---------------------------------------------------------------------------
-# Extract results and generate summary artifacts
-# ---------------------------------------------------------------------------
+# ---- Long-run metrics CSV (produced by long-run-sampler.sh on the bastion) ----
+# Best-effort: absent for older triggers or when the sampler never wrote a row.
+echo ""
+echo "Downloading long-run-metrics.csv from bastion (best-effort)..."
+if rsync -av --timeout=60 \
+    -e "$ssh_transport" \
+    "ubuntu@${BASTION_IP}:/home/ubuntu/long-run-metrics.csv" \
+    "$RESULTS_DIR/long-run-metrics.csv" 2>&1; then
+    echo "long-run-metrics.csv downloaded ($(stat -c %s "$RESULTS_DIR/long-run-metrics.csv") bytes)."
+else
+    echo "WARN: long-run-metrics.csv not present on bastion (older trigger or sampler failure) — skipping long-run analysis."
+fi
+
 echo ""
 echo "Creating summary.csv..."
 echo "============================================"
@@ -123,11 +117,35 @@ wget -q http://sourceforge.net/projects/gcviewer/files/gcviewer-1.35.jar/downloa
 
 echo ""
 echo "Creating summary results markdown file..."
+# Non-fatal: the shared Jinja template errors out when summary.csv has no data rows
+# (e.g. when jtl-splitter didn't run so no results-measurement-summary.json exists).
+# The rest of the collect flow (CloudWatch, latency drift, long-run analysis, teardown)
+# should still complete.
 ./jmeter/create-summary-markdown.py --json-files cf-test-metadata.json results/test-metadata.json --column-names \
-    "Concurrent Users" "95th Percentile of Response Time (ms)"
+    "Concurrent Users" "95th Percentile of Response Time (ms)" \
+    || echo "WARN: create-summary-markdown.py failed — summary.md will not be produced. summary.csv is unaffected."
 
-# Cleanup intermediate files — matches start-performance.sh's tail behavior so that
-# the uploaded artifact structure is consistent with the current single-workflow flow.
+# ---- Latency drift analysis (uses per-scenario jtls.zip under results/) ----
+# Writes to $RESULTS_DIR/latency-drift/<scenario>/ so outputs survive the cleanup below.
+# matplotlib is required for the plots; install if not already present.
+echo ""
+echo "Ensuring matplotlib is installed for analysis scripts..."
+pip install -q matplotlib || echo "WARN: pip install matplotlib failed — charts may not render."
+
+echo ""
+echo "Analyzing latency drift..."
+RESULTS_DIR="$RESULTS_DIR" python3 "$WORKSPACE"/.github/scripts/analyze-latency-drift.py \
+    || echo "WARN: latency drift analysis failed."
+
+# ---- Long-run trend charts (uses long-run-metrics.csv from bastion) ----
+# No-op if the CSV wasn't downloaded (older trigger).
+echo ""
+echo "Generating long-run trend charts..."
+RESULTS_DIR="$RESULTS_DIR" python3 "$WORKSPACE"/.github/scripts/generate-long-run-charts.py \
+    || echo "WARN: long-run chart generation failed."
+
+# Cleanup — mirrors start-performance.sh's post-run cleanup for artifact parity.
+# latency-drift/ and long-run/ live at $RESULTS_DIR (not inside results/) so they survive.
 rm -rf cf-test-metadata.json cloudformation/ common/ gcviewer.jar is/ jmeter/ jtl-splitter/ netty-service/ payloads/ sar/ setup/ results/ thunder/restart-thunder.sh summary/
 
 echo ""

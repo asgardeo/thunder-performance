@@ -1,10 +1,10 @@
-name: VM Performance Test on AWS (Detached, for >6h runs)
+name: Trigger long-running test
 
-# Kicks off a long-running JMeter test on the bastion and exits.
-# The JMeter run continues on the bastion after this workflow completes.
-# Retrieving results, viewing logs mid-run, and tearing down the CloudFormation
-# stack are all manual in this phase — see the trigger run's job summary for
-# copy-paste commands and AWS Console links.
+# Kicks off a long-running JMeter test on the bastion and exits without waiting.
+# When the test finishes, run "Collect results of long-running test" with this
+# run's number to retrieve results, generate the summary, and tear down the
+# CloudFormation stack. The trigger's job summary shows the exact command and
+# a fully manual fallback flow.
 
 on:
   workflow_dispatch:
@@ -197,7 +197,7 @@ jobs:
           chmod +x .github/scripts/create-cf-stack.sh
           bash .github/scripts/create-cf-stack.sh
 
-      - name: Execute VM Performance Test (Detached)
+      - name: Launch JMeter on bastion (detached)
         id: execute-perf-test
         timeout-minutes: 15
         env:
@@ -218,27 +218,27 @@ jobs:
           chmod +x .github/scripts/vm-perf-trigger-script.sh
           bash .github/scripts/vm-perf-trigger-script.sh
 
-      - name: Verify JMeter is running on the bastion
+      - name: Verify JMeter is running
         id: verify-jmeter
         timeout-minutes: 3
         env:
           BASTION_NODE_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
         run: |
-          # Give nohup a moment to actually invoke the script and start the process.
+          # Give setsid a moment to fork the JMeter process before we check for it.
           sleep 20
           set +x
           verify_output=$(ssh -i "${RESOURCES_DIR}/thunder-perf-test.pem" \
             -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
             -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
             ubuntu@"${BASTION_NODE_IP}" \
-            'if pgrep -f run-performance-tests.sh >/dev/null; then
+            'if pgrep -f "[r]un-performance-tests.sh" >/dev/null; then
                echo RUNNING
              else
                echo DEAD
                echo "--- run.log tail ---"
                tail -n 50 /home/ubuntu/run.log 2>/dev/null || echo "(no run.log yet)"
              fi')
-          # Filter any accidental AWS access-key pattern before printing (belt-and-suspenders).
+          # Belt-and-suspenders: redact AKIA-pattern strings before printing.
           echo "$verify_output" | sed -E 's/AKIA[0-9A-Z]{16}/AKIA****REDACTED****/g'
           echo "$verify_output" | head -1 | grep -q RUNNING || {
             echo "::error::JMeter is NOT running on the bastion. See the log tail above for the crash reason."
@@ -246,7 +246,7 @@ jobs:
           }
           echo "verify_status=RUNNING" >> "$GITHUB_OUTPUT"
 
-      - name: Emit manifest artifact
+      - name: Build manifest.json
         env:
           WORKSPACE: ${{ github.workspace }}
           RUN_NUMBER: ${{ github.run_number }}
@@ -328,15 +328,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: manifest-${{ github.run_number }}
-          # cf-test-metadata.json is written by create-cf-stack.sh; collect uses it
-          # in create-summary-markdown.py to render instance types in the report.
+          # cf-test-metadata.json is consumed by the collect workflow.
           path: |
             ${{ github.workspace }}/manifest.json
             ${{ github.workspace }}/cf-test-metadata.json
           retention-days: 90
           if-no-files-found: error
 
-      - name: Publish trigger summary
+      - name: Publish job summary
         env:
           RUN_NUMBER: ${{ github.run_number }}
           STACK_ID: ${{ steps.create-cf-stack.outputs.stack_id }}
@@ -356,26 +355,21 @@ jobs:
           stack_name=$(echo "$STACK_ID" | awk -F/ '{print $(NF-1)}')
 
           {
-            echo "## VM Perf Trigger — Run #${RUN_NUMBER}"
+            echo "## Trigger long-running test — Run #${RUN_NUMBER}"
             echo ""
             echo "**Status:** Kickoff complete. JMeter is running detached on the bastion."
-            echo "**Verification:** \`RUNNING\` (process confirmed on bastion after 20s)."
             echo ""
-            echo "> AWS resources are still running. Tear them down manually when the test is done — see **Cleanup** below."
-            echo ">"
-            echo "> Cancelling THIS workflow does NOT stop the running test. To stop the test early, see **Cancel test early** below."
+            echo "> Cancelling THIS workflow does NOT stop the running test — the JMeter process is detached from GHA. See **Cancel the test** below to stop it."
             echo ""
             echo "### When the test finishes"
             echo ""
-            echo "**Automated (recommended)** — one command retrieves results, generates the summary, tears down the CloudFormation stack, and uploads GHA artifacts:"
+            echo "Run the collect workflow with this run number. It retrieves \`results.zip\`, generates the summary, uploads GHA artifacts, and tears down the CloudFormation stack:"
             echo ""
             echo '```bash'
             echo "gh workflow run vm-perf-collect.yml -f TRIGGER_RUN_NUMBER=${RUN_NUMBER}"
             echo '```'
             echo ""
-            echo "You can also click **Actions → VM Performance Test - Collect Results → Run workflow** and paste \`${RUN_NUMBER}\` as the trigger run number."
-            echo ""
-            echo "**Manual** — do it by hand (see the sections below for the individual steps: retrieve results, view metrics, tear down stack)."
+            echo "Or click **Actions → Collect results of long-running test → Run workflow** and paste \`${RUN_NUMBER}\`."
             echo ""
             echo "### Test handles"
             echo ""
@@ -387,7 +381,6 @@ jobs:
             echo "| Test started (UTC) | \`${PERF_TEST_START_TIME}\` |"
             echo "| Concurrency | \`${CONCURRENCY}\` |"
             echo "| Additional params | \`${ADDITIONAL_PARAMS}\` |"
-            echo "| PEM key on S3 | \`s3://performance-thunder/keys/thunder-perf-test.pem\` |"
             echo "| results.zip on bastion | \`/home/ubuntu/results.zip\` (created when JMeter finishes) |"
             echo "| Live log on bastion | \`/home/ubuntu/run.log\` |"
             echo ""
@@ -400,59 +393,62 @@ jobs:
             echo "| Thunder | \`${THUNDER_INSTANCE_ID}\` | ${THUNDER_INSTANCE_TYPE} | [EC2 → Monitoring](https://us-west-1.console.aws.amazon.com/ec2/home?region=us-west-1#InstanceDetails:instanceId=${THUNDER_INSTANCE_ID}) |"
             echo "| RDS     | \`${RDS_INSTANCE_ID}\` | ${DB_INSTANCE_TYPE} | [RDS → Monitoring](https://us-west-1.console.aws.amazon.com/rds/home?region=us-west-1#database:id=${RDS_INSTANCE_ID}) |"
             echo ""
-            echo "### Fetch the PEM key (once per machine)"
+            echo "<details><summary><b>Access the bastion (tail logs, health check, cancel, manual retrieval)</b></summary>"
+            echo ""
+            echo "#### Fetch the PEM key (once per machine)"
             echo ""
             echo '```bash'
             echo "aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem ./key.pem"
             echo "chmod 400 ./key.pem"
             echo '```'
             echo ""
-            echo "### Watch progress live"
+            echo "#### Watch progress live"
+            echo ""
+            echo '```bash'
+            echo "ssh -i ./key.pem -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} tail -f /home/ubuntu/run.log"
+            echo '```'
+            echo ""
+            echo "#### Health check"
             echo ""
             echo '```bash'
             echo "ssh -i ./key.pem -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} \\"
-            echo "  tail -f /home/ubuntu/run.log"
+            echo "  'echo \"process: \$(pgrep -f \"[r]un-performance-tests\" || echo DEAD)\"; echo \"log last modified: \$(stat -c %y /home/ubuntu/run.log)\"'"
             echo '```'
             echo ""
-            echo "### Health check (run periodically if you're unsure)"
+            echo "If \`process: DEAD\` and \`run.log\` hasn't been touched in >5 min, the test crashed. Retrieve \`run.log\` for diagnosis, then run the collect workflow (it will tear down the stack)."
+            echo ""
+            echo "#### Cancel the test"
             echo ""
             echo '```bash'
-            echo "ssh -i ./key.pem -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} \\"
-            echo "  'echo \"process: \$(pgrep -f run-performance-tests || echo DEAD)\"; echo \"log last modified: \$(stat -c %y /home/ubuntu/run.log)\"'"
+            echo "ssh -i ./key.pem ubuntu@${BASTION_IP} 'pkill -f run-performance-tests.sh'"
             echo '```'
             echo ""
-            echo "If \`process: DEAD\` and \`run.log\` hasn't been touched in >5 min, the test crashed. Retrieve \`run.log\` for diagnosis, then tear down the stack."
+            echo "This stops JMeter on the bastion but leaves the CloudFormation stack running. Use the collect workflow (or the manual teardown below) to delete AWS resources."
             echo ""
-            echo "### Retrieve results when done (manual)"
-            echo ""
-            echo "For the automated flow see **When the test finishes** above."
+            echo "#### Manually retrieve results"
             echo ""
             echo '```bash'
             echo "scp -i ./key.pem ubuntu@${BASTION_IP}:/home/ubuntu/results.zip ."
             echo "unzip results.zip"
             echo '```'
             echo ""
-            echo "### View CloudWatch metrics"
+            echo "</details>"
             echo ""
-            echo "Click any **Monitoring** link in the instance table above. Set the time range to start at \`${PERF_TEST_START_TIME}\` and end at the time \`results.zip\` appeared on the bastion."
+            echo "<details><summary><b>Manually tear down the CloudFormation stack</b></summary>"
             echo ""
-            echo "### Cancel test early"
+            echo "Only needed if you skipped the collect workflow. Collect tears the stack down automatically as its last step."
             echo ""
-            echo '```bash'
-            echo "ssh -i ./key.pem ubuntu@${BASTION_IP} 'pkill -f run-performance-tests.sh'"
-            echo '```'
+            echo "**AWS Console:** [CloudFormation → ${stack_name}](https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-1#/stacks/stackinfo?stackId=${stack_name}) → Delete"
             echo ""
-            echo "Then follow **Cleanup** below to delete the stack."
-            echo ""
-            echo "### Cleanup (manual)"
-            echo ""
-            echo "The automated \`vm-perf-collect.yml\` workflow tears down the stack for you (with \`if: always()\`). Only use these commands if you're doing a manual flow."
-            echo ""
-            echo "**Option 1 — AWS Console:** [CloudFormation → ${stack_name}](https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-1#/stacks/stackinfo?stackId=${stack_name}) → Delete"
-            echo ""
-            echo "**Option 2 — CLI:**"
+            echo "**CLI:**"
             echo ""
             echo '```bash'
             echo "aws cloudformation delete-stack --stack-name ${stack_name} --region us-west-1"
             echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "### View CloudWatch metrics"
+            echo ""
+            echo "Click any **Monitoring** link in the instance table above. Set the time range to start at \`${PERF_TEST_START_TIME}\` and end at the time \`results.zip\` appeared on the bastion."
           } >> "$GITHUB_STEP_SUMMARY"

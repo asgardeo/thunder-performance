@@ -237,18 +237,29 @@ scp_bastion_cmd "run-performance-tests.sh" "/home/ubuntu/workspace/jmeter"
 #
 # Detach mechanics:
 #   - `ssh -n` disconnects the local stdin so ssh doesn't wait on it.
-#   - `setsid --fork` on the remote side forks JMeter into a new session that is
-#     detached from ssh's channel; the immediate parent that ssh is watching exits
-#     right after the fork, so the ssh call returns while JMeter keeps running.
-#   - `</dev/null >run.log 2>&1` gives the child its own stdio so no fd traces back
-#     to ssh's pipe.
+#   - `setsid --fork` on the remote side forks into a new session detached from
+#     ssh's channel; the parent exits immediately so the ssh call returns.
+#   - `</dev/null >log 2>&1` gives the child its own stdio, no fd traces back to ssh.
+#
+# Two processes are launched in this mode: the long-run sampler (RSS/DB/log
+# growth snapshots every 5 min) and run-performance-tests.sh. Both are
+# independent setsid sessions. The sampler exits by itself when it sees
+# run-performance-tests.sh has finished.
 if [[ -n "${DETACHED_RUN:-}" ]]; then
     echo ""
-    echo "Detached mode: launching JMeter in background on the bastion..."
+    echo "Detached mode: staging long-run sampler on the bastion..."
+    echo "============================================"
+    scp_bastion_cmd "../common/long-run-sampler.sh" "/home/ubuntu/long-run-sampler.sh"
+
+    echo ""
+    echo "Detached mode: launching sampler and JMeter in background on the bastion..."
     echo "============================================"
     ssh -n -i "$key_file" -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
         ubuntu@"$bastion_node_ip" \
-        "chmod +x /home/ubuntu/workspace/jmeter/run-performance-tests.sh && setsid --fork /home/ubuntu/workspace/jmeter/run-performance-tests.sh -p 443 ${run_performance_tests_options[*]} </dev/null >/home/ubuntu/run.log 2>&1"
+        "chmod +x /home/ubuntu/long-run-sampler.sh /home/ubuntu/workspace/jmeter/run-performance-tests.sh && \
+         RDS_HOST='$rds_host' DB_USER='$db_username' DB_PASSWORD='$db_password' \
+           setsid --fork /home/ubuntu/long-run-sampler.sh </dev/null >/home/ubuntu/long-run-sampler.log 2>&1; \
+         setsid --fork /home/ubuntu/workspace/jmeter/run-performance-tests.sh -p 443 ${run_performance_tests_options[*]} </dev/null >/home/ubuntu/run.log 2>&1"
     echo "Detached run launched. Skipping foreground JMeter execution and result collection."
     exit 0
 fi
