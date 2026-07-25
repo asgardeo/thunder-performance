@@ -79,6 +79,12 @@ estimated_processing_time_in_between_tests=$default_estimated_processing_time_in
 default_thunder_port=8090
 thunder_port=$default_thunder_port
 
+# Secret sent in the Direct-Auth-Secret header to reach the Direct API (/auth/**). Must match
+# server.security.directAuthSecret in the deployed chart (THUNDER_DIRECT_AUTH_SECRET in
+# variables.yaml). Without it the authenticate-with-credentials scenario gets 401 on every request.
+default_direct_auth_secret="asgthunder-perf-direct-auth-secret"
+direct_auth_secret=$default_direct_auth_secret
+
 # Start time of the test
 test_start_time=$(date +%s)
 # Scenario specific counters
@@ -521,7 +527,7 @@ function test_scenarios() {
             echo "Report location is $report_location"
             mkdir -p "$report_location"
             time=$(expr "$test_duration" \* 60)
-            declare -ag jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$thunder_port" "useDelay=$use_delay")
+            declare -ag jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$thunder_port" "useDelay=$use_delay" "directAuthSecret=$direct_auth_secret")
             local tenantMode=${scenario[tenantMode]}
             if [ "$tenantMode" = true ]; then
                   jmeter_params+=" -JtenantMode=true -JnoOfTenants=$noOfTenants -JspCount=$spCount -JuserCount=$userCount"
@@ -548,7 +554,10 @@ function test_scenarios() {
 
             write_server_metrics jmeter
 
-            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s
+            # Filter jtl-splitter's noisy per-row "more columns than expected" CSV warnings
+            # (emitted once per failed sample); the real error rate is in the JMeter summary.
+            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s \
+                2>&1 | grep -v "has more columns than expected" || true
 
             # after_execute_test_scenario
 

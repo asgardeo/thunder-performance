@@ -48,6 +48,14 @@ variables:
   THUNDER_ADMIN_USERNAME: 'admin'
   THUNDER_ADMIN_PASSWORD: 'admin'
 
+  # ReadWriteMany storage class for the setup-job PVCs (certs, secrets), shared across replicas.
+  # The default RWO Azure Disk class cannot attach to pods on multiple nodes, which blocks
+  # replicaCount > 1 and HPA scale-out. azurefile-csi is the built-in AKS RWX class.
+  THUNDER_SETUP_STORAGE_CLASS: 'azurefile-csi'
+
+  # Must match default_direct_auth_secret in perf-scripts/common/jmeter/perf-test-thunder.sh.
+  THUNDER_DIRECT_AUTH_SECRET: 'asgthunder-perf-direct-auth-secret'
+
   # HPA and Cache Configuration
   THUNDER_HPA_ENABLED: 'true'
   THUNDER_HPA_MAX_REPLICAS: '10'
@@ -60,19 +68,19 @@ variables:
   CONFIG_DB_HOST: $(CONFIG_DB_HOSTNAME)
   CONFIG_DB_PORT: '5432'
   RUNTIME_DB_TYPE: 'postgres'
-  RUNTIME_DB_NAME: 'runtimedb'
+  RUNTIME_DB_NAME: 'runtime_transient'
   RUNTIME_DB_HOST: $(RUNTIME_DB_HOSTNAME)
   RUNTIME_DB_PORT: '5432'
+  RUNTIME_PERSISTENT_DB_TYPE: 'postgres'
+  RUNTIME_PERSISTENT_DB_NAME: 'runtime_persistent'
+  RUNTIME_PERSISTENT_DB_HOST: $(RUNTIME_DB_HOSTNAME)
+  RUNTIME_PERSISTENT_DB_PORT: '5432'
   USER_DB_TYPE: 'postgres'
-  USER_DB_NAME: 'userdb'
+  USER_DB_NAME: 'entitydb'
   USER_DB_HOST: $(USER_DB_HOSTNAME)
   USER_DB_PORT: '5432'
   # SSL mode used when connecting to the Postgres servers (Azure Postgres enforces SSL).
   DB_SSL_MODE: 'require'
-
-  # Consent (OpenFGC) is disabled for the perf environment (configuration.consent.enabled=false
-  # in install-thunder.yaml). The perf scenarios do not exercise consent, and the bundled consent
-  # server was the source of repeated bootstrap/deploy failures, so it is left out entirely.
 
   # Database Connection Pool Configuration
   DB_MAX_OPEN_CONNS: '10'

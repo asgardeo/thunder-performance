@@ -215,15 +215,21 @@ variable "config_db_name" {
 }
 
 variable "runtime_db_name" {
-  description = "The name of the Runtime database"
+  description = "The name of the Runtime (transient) database"
   type        = string
-  default     = "runtimedb"
+  default     = "runtime_transient"
+}
+
+variable "runtime_persistent_db_name" {
+  description = "The name of the Runtime persistent database (co-located on the runtime Postgres server)"
+  type        = string
+  default     = "runtime_persistent"
 }
 
 variable "user_db_name" {
-  description = "The name of the User database"
+  description = "The name of the Entity database"
   type        = string
-  default     = "userdb"
+  default     = "entitydb"
 }
 
 # VM variables

@@ -70,7 +70,7 @@ parameters:
   - name: THUNDER_IMAGE_TAG
     displayName: Thunder Image Tag
     type: string
-    default: "0.47.0"
+    default: "1.0.0-alpha"
 
 pool:
   vmImage: 'ubuntu-latest'

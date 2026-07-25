@@ -32,9 +32,12 @@ parameters:
   - name: THUNDER_IMAGE_TAG
     type: string
     default: '0.7.0'
+  # Reinstall uninstalls Thunder first, which drops the certs PVC holding crypto.key. Setup must
+  # run on the fresh install to regenerate certs/crypto.key, otherwise Thunder crash-loops with
+  # "crypto.key: no such file or directory". Mirrors install-thunder.yaml's default.
   - name: RUN_SETUP_SCRIPT
     type: boolean
-    default: false
+    default: true
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
