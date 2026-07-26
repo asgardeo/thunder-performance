@@ -43,7 +43,7 @@ cd pre-provisioned
 echo ""
 echo "Building project..."
 echo "=========================================================="
-mvn clean install
+mvn clean install -B -ntp
 
 echo ""
 echo "Starting test..."

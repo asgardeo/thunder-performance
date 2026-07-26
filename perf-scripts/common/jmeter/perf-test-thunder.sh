@@ -648,7 +648,10 @@ function test_scenarios() {
 
             write_server_metrics jmeter
 
-            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s
+            # Filter jtl-splitter's noisy per-row "more columns than expected" CSV warnings
+            # (emitted once per failed sample); the real error rate is in the JMeter summary.
+            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s \
+                2>&1 | grep -v "has more columns than expected" || true
 
             echo ""
             echo "Zipping JTL files in $report_location"
