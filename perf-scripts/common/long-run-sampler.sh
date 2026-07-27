@@ -18,10 +18,16 @@
 # ----------------------------------------------------------------------------
 # Long-run sampler for detached perf tests.
 #
-# Runs on the bastion alongside run-performance-tests.sh. Every 300s samples:
-#   Thunder host  — RSS / VSZ of thunderid, disk used/avail (/), log-dir size
-#   RDS runtimedb — pg_database_size + row counts for runtime tables
+# Runs on the bastion alongside run-performance-tests.sh. Every SAMPLE_INTERVAL_SECONDS samples:
+#   Thunder host           — RSS / VSZ of thunderid, disk used/avail (/), log-dir size
+#   RDS runtime_transient  — pg_database_size + row counts for the runtime tables it holds
+#   RDS runtime_persistent — pg_database_size + row counts for the runtime tables it holds
 # Appends one CSV row per iteration to /home/ubuntu/long-run-metrics.csv.
+#
+# Per-table counts (count_<table>) are exact COUNT(*)s. Runtime tables live across two DBs
+# (runtime_transient + runtime_persistent), so per DB we first ask which of RUNTIME_TABLES it has
+# (via to_regclass) then COUNT(*) only those — a static reference to a table not in that DB is a
+# parse-time error. A table in neither DB yields an empty cell.
 #
 # Exits when run-performance-tests.sh is no longer running (60s startup grace).
 # Failed samples log a WARN and continue with empty values in that row.
@@ -46,24 +52,42 @@ THUNDER_HOME="/home/ubuntu/thunder"
 
 export PGPASSWORD="$DB_PASSWORD"
 
-# ----- Runtime tables of interest (schema: backend/dbscripts/runtimedb/postgres.sql) -----
+# ----- Runtime tables of interest (v1.0.0-alpha schema) -----
+# runtime_transient has both standalone tables AND a partitioned RUNTIME_STORE 
+# runtime_persistent holds sessions/tokens/consent.
 RUNTIME_TABLES=(
+    # runtime_transient - standalone tables
     AUTHORIZATION_CODE
     AUTHORIZATION_REQUEST
     CIBA_AUTH_REQUEST
-    FLOW_CONTEXT
     WEBAUTHN_SESSION
-    ATTRIBUTE_CACHE
     PAR_REQUEST
     JTI_RECORD
-    OPENID4VP_REQUEST_STATE
-    OPENID4VCI_NONCE
-    OPENID4VCI_CREDENTIAL_OFFER
+    # runtime_transient - RUNTIME_STORE partitions
+    RUNTIME_STORE_ATTRIBUTE_CACHE
+    RUNTIME_STORE_FLOW_STATE
+    RUNTIME_STORE_AUTHZ_CODE
+    RUNTIME_STORE_AUTHZ_REQ
+    RUNTIME_STORE_LOGOUT_REQ
+    RUNTIME_STORE_PAR_REQ
+    RUNTIME_STORE_CIBA_REQ
+    RUNTIME_STORE_JTI_TOKEN
+    RUNTIME_STORE_VCI_NONCE
+    RUNTIME_STORE_VCI_OFFER
+    RUNTIME_STORE_VP_STATE
+    # runtime_persistent
+    SSO_SESSION
+    SSO_SESSION_CONTEXT
+    SSO_SESSION_PARTICIPANT
+    REVOKED_TOKEN
+    CONSENT
+    CONSENT_AUTHORIZATION
+    CONSENT_AUDIT
 )
 
-# ----- CSV header -----
+# ----- CSV header (written once) -----
 if [[ ! -f "$OUTPUT_CSV" ]]; then
-    header="timestamp,thunder_rss_kb,thunder_vsz_kb,thunder_disk_used_bytes,thunder_disk_avail_bytes,thunder_log_bytes,runtimedb_bytes"
+    header="timestamp,thunder_rss_kb,thunder_vsz_kb,thunder_disk_used_bytes,thunder_disk_avail_bytes,thunder_log_bytes,runtime_transient_bytes,runtime_persistent_bytes"
     for t in "${RUNTIME_TABLES[@]}"; do
         header+=",count_$(echo "$t" | tr '[:upper:]' '[:lower:]')"
     done
@@ -74,12 +98,11 @@ echo "[long-run-sampler] Starting sampler. Interval=${SAMPLE_INTERVAL_SECONDS}s.
 echo "[long-run-sampler] Waiting 60s for JMeter to start before entering the main loop..."
 sleep 60
 
-# ----- Sample one iteration -----
 sample_once() {
     local ts
     ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-    # Thunder host stats via ssh alias. All values default empty on failure.
+    # Thunder host stats via the ssh alias. All values default to empty on failure.
     local rss_kb="" vsz_kb="" disk_used="" disk_avail="" log_bytes=""
     local host_out
     if host_out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$THUNDER_ALIAS" bash -s <<'REMOTE_EOF' 2>/dev/null
@@ -92,7 +115,7 @@ else
     echo "VSZ_KB="
 fi
 df -B1 --output=used,avail / 2>/dev/null | tail -1 | awk '{print "DISK_USED="$1"\nDISK_AVAIL="$2}'
-# Sum sizes of the stdout redirect log and the internal repository/logs directory.
+# Sum the stdout redirect log and the native rolling logs under repository/logs.
 log_total=$( (du -bs /home/ubuntu/thunder/thunder_*.log 2>/dev/null; du -bs /home/ubuntu/thunder/repository/logs/ 2>/dev/null) \
     | awk '{s+=$1} END {print s+0}' )
 echo "LOG_BYTES=$log_total"
@@ -107,34 +130,50 @@ REMOTE_EOF
         echo "[long-run-sampler] WARN: ssh to $THUNDER_ALIAS failed at $ts"
     fi
 
-    # RDS: db size + row counts. Single psql call with all queries.
-    local runtimedb_bytes=""
+    # RDS: per-DB size + exact COUNT(*) per table. Per DB, discover which of RUNTIME_TABLES resolve
+    # there (to_regclass, same search_path an unqualified COUNT(*) uses) then COUNT(*) only those;
+    # a static ref to a table not in that DB would be a parse-time error. Any psql failure -> WARN
+    # + empty cells for this one sample, never an abort.
+    local rt_bytes="" rp_bytes=""
     declare -A counts
     for t in "${RUNTIME_TABLES[@]}"; do counts[$t]=""; done
 
-    # Build the psql query. Each SELECT is on its own line, terminated with a semicolon,
-    # and produces one tuple-only line; we read them in order.
-    local sql="SELECT pg_database_size('runtimedb');"
-    for t in "${RUNTIME_TABLES[@]}"; do
-        # Table names in schema are quoted (upper-case) — must use identifier-quoted form.
-        sql+=" SELECT COUNT(*) FROM \"$t\";"
+    # Postgres array literal of the table names.
+    local tbl_array; tbl_array="{$(IFS=,; echo "${RUNTIME_TABLES[*]}")}"
+
+    local db size present cnt_out
+    local -a present_arr cnts
+    for db in runtime_transient runtime_persistent; do
+        # DB size (doubles as the connectivity check).
+        if ! size=$(psql -h "$RDS_HOST" -U "$DB_USER" -d "$db" -qAt \
+                    -c "SELECT pg_database_size('$db');" 2>/dev/null); then
+            echo "[long-run-sampler] WARN: psql size query to $db failed at $ts"
+            continue
+        fi
+        if [[ "$db" == "runtime_transient" ]]; then rt_bytes="$size"; else rp_bytes="$size"; fi
+
+        # Which tables actually exist in this DB.
+        if ! present=$(psql -h "$RDS_HOST" -U "$DB_USER" -d "$db" -qAt \
+                       -c "SELECT t FROM unnest('$tbl_array'::text[]) AS t WHERE to_regclass(format('%I', t)) IS NOT NULL;" 2>/dev/null); then
+            echo "[long-run-sampler] WARN: table discovery on $db failed at $ts"
+            continue
+        fi
+        [[ -z "$present" ]] && continue
+        mapfile -t present_arr <<< "$present"
+
+        # Exact COUNT(*) for just the present tables, one batched call; results map back by index.
+        local count_sql=""
+        for t in "${present_arr[@]}"; do count_sql+="SELECT COUNT(*) FROM \"$t\"; "; done
+        if cnt_out=$(psql -h "$RDS_HOST" -U "$DB_USER" -d "$db" -qAt -c "$count_sql" 2>/dev/null); then
+            mapfile -t cnts <<< "$cnt_out"
+            for i in "${!present_arr[@]}"; do counts[${present_arr[$i]}]="${cnts[$i]:-}"; done
+        else
+            echo "[long-run-sampler] WARN: count query on $db failed at $ts"
+        fi
     done
 
-    local psql_out
-    if psql_out=$(psql -h "$RDS_HOST" -U "$DB_USER" -d runtimedb \
-                       --set=ON_ERROR_STOP=1 -qAt -c "$sql" 2>/dev/null); then
-        # First line is db size, following lines are row counts in table order.
-        mapfile -t lines <<< "$psql_out"
-        runtimedb_bytes="${lines[0]:-}"
-        for i in "${!RUNTIME_TABLES[@]}"; do
-            counts[${RUNTIME_TABLES[$i]}]="${lines[$((i+1))]:-}"
-        done
-    else
-        echo "[long-run-sampler] WARN: psql to $RDS_HOST failed at $ts"
-    fi
-
-    # Emit one CSV row.
-    local row="$ts,$rss_kb,$vsz_kb,$disk_used,$disk_avail,$log_bytes,$runtimedb_bytes"
+    # Emit one CSV row (base columns + per-table counts in RUNTIME_TABLES order).
+    local row="$ts,$rss_kb,$vsz_kb,$disk_used,$disk_avail,$log_bytes,$rt_bytes,$rp_bytes"
     for t in "${RUNTIME_TABLES[@]}"; do
         row+=",${counts[$t]}"
     done
@@ -142,15 +181,12 @@ REMOTE_EOF
     echo "[long-run-sampler] Sampled: $row"
 }
 
-# ----- Main loop -----
 while :; do
-    # If run-performance-tests.sh has exited, sample once more and quit.
     if ! pgrep -f "[r]un-performance-tests.sh" >/dev/null 2>&1; then
-        echo "[long-run-sampler] run-performance-tests.sh no longer running. Taking final sample and exiting."
+        echo "[long-run-sampler] run-performance-tests.sh stopped. Taking final sample and exiting."
         sample_once
         break
     fi
-
     sample_once
     sleep "$SAMPLE_INTERVAL_SECONDS"
 done

@@ -103,7 +103,7 @@ echo "============================================"
 sudo tee /etc/logrotate-nginx-perf.conf >/dev/null <<'LOGROTATE_EOF'
 /var/log/nginx/*.log {
     size 100M
-    rotate 5
+    rotate 30
     missingok
     notifempty
     compress
