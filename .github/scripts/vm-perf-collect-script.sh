@@ -105,6 +105,20 @@ else
     echo "WARN: long-run-metrics.csv not present on bastion (older trigger or sampler failure) — skipping long-run analysis."
 fi
 
+# ---- DB cleanup loop log (produced by db-cleanup-loop.sh on the bastion) ----
+# Best-effort: lets an operator confirm the expired-row purge actually ran during
+# the test. Absent for older triggers or if the cleanup loop never launched.
+echo ""
+echo "Downloading db-cleanup-loop.log from bastion (best-effort)..."
+if rsync -av --timeout=60 \
+    -e "$ssh_transport" \
+    "ubuntu@${BASTION_IP}:/home/ubuntu/db-cleanup-loop.log" \
+    "$RESULTS_DIR/db-cleanup-loop.log" 2>&1; then
+    echo "db-cleanup-loop.log downloaded ($(stat -c %s "$RESULTS_DIR/db-cleanup-loop.log") bytes)."
+else
+    echo "WARN: db-cleanup-loop.log not present on bastion (older trigger or cleanup loop not launched)."
+fi
+
 echo ""
 echo "Creating summary.csv..."
 echo "============================================"
