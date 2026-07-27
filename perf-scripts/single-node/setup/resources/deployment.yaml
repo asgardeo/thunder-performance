@@ -24,6 +24,31 @@ server:
     # perf-scripts/common/jmeter/perf-test-thunder.sh.
     direct_auth_secret: "asgthunder-perf-direct-auth-secret"
 
+# Bound Thunder's own logs during long-running tests using its native rolling-file logger
+# (available since Thunder v0.48.0). Console/stdout output is turned off so all logs go to
+# a single, size-capped, self-rotating file — no external logrotate/cron needed. The path
+# is repository/logs so the long-run sampler still sees the growth, and restart-thunder.sh
+# keeps working.
+log:
+  level: "info"
+  output:
+    console:
+      enabled: false
+    file:
+      enabled: true
+      path: "repository/logs"
+      file_name: "thunderid.log"
+      format: "text"
+      rotation:
+        size:
+          enabled: true
+          max_size_mb: 100
+        time:
+          enabled: false
+        max_backups: 30
+        max_age_days: 0
+        compress: true
+
 gate_client:
   hostname: "thunder.wso2.com"
   port: 9090
