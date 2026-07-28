@@ -241,28 +241,34 @@ scp_bastion_cmd "run-performance-tests.sh" "/home/ubuntu/workspace/jmeter"
 #     ssh's channel; the parent exits immediately so the ssh call returns.
 #   - `</dev/null >log 2>&1` gives the child its own stdio, no fd traces back to ssh.
 #
-# Three processes are launched in this mode: the long-run sampler (RSS/DB/log
-# growth snapshots every 5 min), the DB cleanup loop (purges expired runtime rows
-# every 30 min), and run-performance-tests.sh. All are independent setsid sessions;
-# the sampler and the cleanup loop each exit by themselves when they see
-# run-performance-tests.sh has finished.
+# Four processes are launched in this mode: the long-run sampler (RSS/DB/log growth
+# snapshots every 5 min), the DB cleanup loop (purges expired runtime rows hourly), the
+# log->S3 sync (ships rotated Thunder/Nginx logs to S3), and run-performance-tests.sh.
+# All are independent setsid sessions; the sampler, cleanup loop and log sync each exit
+# by themselves when they see run-performance-tests.sh has finished.
 if [[ -n "${DETACHED_RUN:-}" ]]; then
+    # Per-run prefix for the S3 log destination (falls back to a timestamp off-CI).
+    run_id="${BUILD_NUMBER:-$(date -u +%Y%m%d-%H%M%S)}"
+
     echo ""
-    echo "Detached mode: staging long-run sampler and DB cleanup loop on the bastion..."
+    echo "Detached mode: staging sampler, DB cleanup loop and log->S3 sync on the bastion..."
     echo "============================================"
     scp_bastion_cmd "../common/long-run-sampler.sh" "/home/ubuntu/long-run-sampler.sh"
     scp_bastion_cmd "../common/db-cleanup-loop.sh" "/home/ubuntu/db-cleanup-loop.sh"
+    scp_bastion_cmd "../common/log-s3-sync.sh" "/home/ubuntu/log-s3-sync.sh"
 
     echo ""
-    echo "Detached mode: launching sampler, DB cleanup loop and JMeter in background on the bastion..."
+    echo "Detached mode: launching sampler, DB cleanup loop, log->S3 sync and JMeter in background on the bastion..."
     echo "============================================"
     ssh -n -i "$key_file" -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
         ubuntu@"$bastion_node_ip" \
-        "chmod +x /home/ubuntu/long-run-sampler.sh /home/ubuntu/db-cleanup-loop.sh /home/ubuntu/workspace/jmeter/run-performance-tests.sh && \
+        "chmod +x /home/ubuntu/long-run-sampler.sh /home/ubuntu/db-cleanup-loop.sh /home/ubuntu/log-s3-sync.sh /home/ubuntu/workspace/jmeter/run-performance-tests.sh && \
          RDS_HOST='$rds_host' DB_USER='$db_username' DB_PASSWORD='$db_password' \
            setsid --fork /home/ubuntu/long-run-sampler.sh </dev/null >/home/ubuntu/long-run-sampler.log 2>&1; \
          RDS_HOST='$rds_host' DB_USER='$db_username' DB_PASSWORD='$db_password' \
            setsid --fork /home/ubuntu/db-cleanup-loop.sh </dev/null >/home/ubuntu/db-cleanup-loop.log 2>&1; \
+         S3_BUCKET='performance-thunder' S3_PREFIX='perf-logs' RUN_ID='$run_id' \
+           setsid --fork /home/ubuntu/log-s3-sync.sh </dev/null >/home/ubuntu/log-s3-sync.log 2>&1; \
          setsid --fork /home/ubuntu/workspace/jmeter/run-performance-tests.sh -p 443 ${run_performance_tests_options[*]} </dev/null >/home/ubuntu/run.log 2>&1"
     echo "Detached run launched. Skipping foreground JMeter execution and result collection."
     exit 0

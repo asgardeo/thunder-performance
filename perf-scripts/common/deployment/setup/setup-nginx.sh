@@ -107,8 +107,11 @@ sudo tee /etc/logrotate-nginx-perf.conf >/dev/null <<'LOGROTATE_EOF'
     missingok
     notifempty
     compress
-    delaycompress
     copytruncate
+    # Immutable, timestamped names (not renumbered .1/.2/...) so each rotated file is a
+    # unique object in S3 and the full history accumulates instead of a rolling window.
+    dateext
+    dateformat -%Y%m%d-%H%M%S
 }
 LOGROTATE_EOF
 sudo tee /etc/cron.d/nginx-perf-logrotate >/dev/null <<'CRON_EOF'
