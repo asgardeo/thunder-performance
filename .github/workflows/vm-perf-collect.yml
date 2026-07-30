@@ -218,6 +218,8 @@ jobs:
           MANIFEST_DIR: ${{ github.workspace }}/_manifest
           # The results dir name uses the trigger run number so multiple collects don't collide.
           RESULTS_DIR_NAME: results-trigger-${{ inputs.TRIGGER_RUN_NUMBER }}
+          # Run number keys the S3 log prefix; matches the daemon's RUN_ID (trigger run number).
+          TRIGGER_RUN_NUMBER: ${{ inputs.TRIGGER_RUN_NUMBER }}
         run: |
           chmod +x .github/scripts/vm-perf-collect-script.sh
           bash .github/scripts/vm-perf-collect-script.sh
