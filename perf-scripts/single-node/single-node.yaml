@@ -262,6 +262,22 @@ Resources:
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
+      Policies:
+        # Lets the bastion ship rotated Thunder/Nginx logs to s3://performance-thunder/perf-logs/.
+        # Least-privilege: write only under that prefix; list only that prefix.
+        - PolicyName: PerfLogsS3Write
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 's3:PutObject'
+                Resource: 'arn:aws:s3:::performance-thunder/perf-logs/*'
+              - Effect: Allow
+                Action: 's3:ListBucket'
+                Resource: 'arn:aws:s3:::performance-thunder'
+                Condition:
+                  StringLike:
+                    's3:prefix': 'perf-logs/*'
       Path: /
 
   CloudWatchAgentServerInstanceProfile:
@@ -339,6 +355,9 @@ Resources:
         - !Ref 'AWS::Region'
         - AMI
       InstanceType: !Ref BastionInstanceType
+      # Gives the bastion a keycard so it can push logs to S3 (reuses the CloudWatch role,
+      # which now also carries the PerfLogsS3Write policy above).
+      IamInstanceProfile: !Ref CloudWatchAgentServerInstanceProfile
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:

@@ -90,6 +90,13 @@ echo "============================================"
 tar -C /home/ubuntu/workspace -xzf /home/ubuntu/performance-thunder-*.tar.gz
 
 echo ""
+echo "Ensuring AWS CLI is available (used to ship rotated logs to S3)..."
+echo "============================================"
+if ! command -v aws >/dev/null 2>&1; then
+    sudo apt-get update -qq && sudo apt-get install -y -qq awscli || echo "WARN: awscli install failed"
+fi
+
+echo ""
 echo "Running JMeter setup script..."
 echo "============================================"
 cd /home/ubuntu || exit 0

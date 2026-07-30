@@ -95,4 +95,27 @@ echo "Adding workerconnection to nginx.conf file"
 echo "============================================"
 sudo sed -i 's/worker_connections 768/worker_connections 65535/g' /etc/nginx/nginx.conf || echo "error 1"
 
+echo ""
+echo "Installing log rotation for Nginx access/error logs..."
+echo "============================================"
+# Cap the Nginx logs at the OS level with a private, size-based logrotate config
+# invoked every 15 min via a dedicated cron entry. 
+sudo tee /etc/logrotate-nginx-perf.conf >/dev/null <<'LOGROTATE_EOF'
+/var/log/nginx/*.log {
+    size 100M
+    rotate 30
+    missingok
+    notifempty
+    compress
+    copytruncate
+    # Immutable, timestamped names (not renumbered .1/.2/...) so each rotated file is a
+    # unique object in S3 and the full history accumulates instead of a rolling window.
+    dateext
+    dateformat -%Y%m%d-%H%M%S
+}
+LOGROTATE_EOF
+sudo tee /etc/cron.d/nginx-perf-logrotate >/dev/null <<'CRON_EOF'
+*/15 * * * * root /usr/sbin/logrotate /etc/logrotate-nginx-perf.conf --state /var/lib/logrotate/nginx-perf.status >/dev/null 2>&1
+CRON_EOF
+
 sudo service nginx restart

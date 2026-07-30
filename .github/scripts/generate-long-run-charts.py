@@ -162,7 +162,8 @@ series_defs = [
     ("thunder_disk_used_bytes",  "Disk used (GB)",              "Thunder host disk used over time", 1 / (1024**3), "GB"),
     ("thunder_disk_avail_bytes", "Disk available (GB)",         "Thunder host disk available",      1 / (1024**3), "GB"),
     ("thunder_log_bytes",        "Log size (MB)",               "Thunder log directory size",       1 / (1024**2), "MB"),
-    ("runtimedb_bytes",          "runtimedb size (MB)",         "runtimedb size over time",         1 / (1024**2), "MB"),
+    ("runtime_transient_bytes",  "runtime_transient size (MB)",  "runtime_transient size over time",  1 / (1024**2), "MB"),
+    ("runtime_persistent_bytes", "runtime_persistent size (MB)", "runtime_persistent size over time", 1 / (1024**2), "MB"),
 ]
 
 for col, ylabel, title, scale, unit in series_defs:

@@ -289,6 +289,7 @@ jobs:
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run/**
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-metrics.csv
             ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-summary.json
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/db-cleanup-loop.log
           retention-days: 30
           if-no-files-found: warn
 
