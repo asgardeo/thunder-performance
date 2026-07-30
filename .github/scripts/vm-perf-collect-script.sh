@@ -95,7 +95,7 @@ echo "Downloaded results.zip: $result_size bytes"
 # ---- Long-run metrics CSV (produced by long-run-sampler.sh on the bastion) ----
 # Best-effort: absent for older triggers or when the sampler never wrote a row.
 echo ""
-echo "Downloading long-run-metrics.csv from bastion (best-effort)..."
+echo "Downloading long-run-metrics.csv from bastion..."
 if rsync -av --timeout=60 \
     -e "$ssh_transport" \
     "ubuntu@${BASTION_IP}:/home/ubuntu/long-run-metrics.csv" \
@@ -109,7 +109,7 @@ fi
 # Best-effort: lets an operator confirm the expired-row purge actually ran during
 # the test. Absent for older triggers or if the cleanup loop never launched.
 echo ""
-echo "Downloading db-cleanup-loop.log from bastion (best-effort)..."
+echo "Downloading db-cleanup-loop.log from bastion ..."
 if rsync -av --timeout=60 \
     -e "$ssh_transport" \
     "ubuntu@${BASTION_IP}:/home/ubuntu/db-cleanup-loop.log" \
@@ -117,6 +117,22 @@ if rsync -av --timeout=60 \
     echo "db-cleanup-loop.log downloaded ($(stat -c %s "$RESULTS_DIR/db-cleanup-loop.log") bytes)."
 else
     echo "WARN: db-cleanup-loop.log not present on bastion (older trigger or cleanup loop not launched)."
+fi
+
+# ---- Upload server logs to S3 ----
+# Ship end-of-run Thunder + Nginx logs to perf-logs/<run>/ via the bastion's log-s3-sync.sh
+# in one-shot final mode, before teardown (so it can't lose the race the daemon's poll would).
+# Non-fatal: on failure it logs a WARN and collect continues; only the final log tail is at
+# stake, and it exits non-zero on real failure so the WARN reflects a genuine problem.
+echo ""
+echo "Shipping end-of-run server logs to S3..."
+if ssh -i "$KEY_FILE" -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+    ubuntu@"${BASTION_IP}" \
+    "FINAL_ONCE=1 RUN_ID='${TRIGGER_RUN_NUMBER}' STAGING='/home/ubuntu/log-s3-staging-final' \
+       bash /home/ubuntu/log-s3-sync.sh"; then
+    echo "End-of-run server logs shipped to s3://performance-thunder/perf-logs/${TRIGGER_RUN_NUMBER}/."
+else
+    echo "WARN: end-of-run server-log sync to S3 did not complete; logs may be missing from the bucket." >&2
 fi
 
 echo ""

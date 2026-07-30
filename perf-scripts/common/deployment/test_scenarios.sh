@@ -41,5 +41,5 @@ declare -A test_scenario1=(
 #     [description]="Authenticate a user using credentials."
 #     [jmx]="authenticate/Authenticate_With_Credentials.jmx"
 #     [tenantMode]=false
-#     [skip]=flase
+#     [skip]=false
 # )

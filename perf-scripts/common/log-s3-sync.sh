@@ -16,19 +16,16 @@
 # under the License.
 #
 # ----------------------------------------------------------------------------
-# Ship rotated (compressed) Thunder + Nginx logs to S3 during a detached run.
-# Runs on the bastion beside run-performance-tests.sh. Every SYNC_INTERVAL_SECONDS it
-# pulls the rotated *.gz files from each node (over the existing SSH aliases) into a local
-# staging dir, then `aws s3 sync`s that to S3. During the run only compressed, already-rotated
-# files are shipped, so the constantly-changing active log is never re-uploaded. The final
-# pass (once the test stops) additionally ships the active, not-yet-rotated logs so the tail -
-# and any stream that never crossed the rotation size threshold - is not lost at teardown.
-# sync is idempotent, so a transient failure is retried on the next pass. AWS credentials come
-# from the bastion's instance profile. Exits when run-performance-tests.sh stops (final sync first).
+# Ship rotated (compressed) Thunder + Nginx logs to S3 during a detached run. Runs on the
+# bastion beside run-performance-tests.sh; every SYNC_INTERVAL_SECONDS it rsyncs the rotated
+# *.gz files from each node (over the SSH aliases) into a staging dir, then `aws s3 sync`s to
+# S3. Mid-run only rotated files are shipped; the active log is captured at the end by the
+# collect job via FINAL_ONCE (below), which runs before teardown. Exits when the test stops.
 #
 # Env: S3_BUCKET (default performance-thunder), S3_PREFIX (default perf-logs),
 #      RUN_ID (default: UTC timestamp), SYNC_INTERVAL_SECONDS (default 900),
-#      THUNDER_ALIAS (default wso2thunder), NGINX_ALIAS (default loadbalancer).
+#      THUNDER_ALIAS (default wso2thunder), NGINX_ALIAS (default loadbalancer),
+#      STAGING (default /home/ubuntu/log-s3-staging), FINAL_ONCE (1 = one-shot final).
 # ----------------------------------------------------------------------------
 
 set -uo pipefail
@@ -40,7 +37,7 @@ SYNC_INTERVAL_SECONDS="${SYNC_INTERVAL_SECONDS:-900}"
 THUNDER_ALIAS="${THUNDER_ALIAS:-wso2thunder}"
 NGINX_ALIAS="${NGINX_ALIAS:-loadbalancer}"
 
-STAGING="/home/ubuntu/log-s3-staging"
+STAGING="${STAGING:-/home/ubuntu/log-s3-staging}"
 DEST="s3://${S3_BUCKET}/${S3_PREFIX}/${RUN_ID}"
 SSH_OPTS="ssh -o ConnectTimeout=10 -o BatchMode=yes"
 
@@ -48,9 +45,11 @@ mkdir -p "$STAGING/thunder" "$STAGING/nginx"
 log() { echo "[log-s3-sync] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*"; }
 
 sync_once() {
-    # On the final pass also pull the active, not-yet-rotated logs.
+    # Returns non-zero if the S3 push fails, or (on the final pass) if a node staged no
+    # files — so a final capture can never report success while no logs reached S3.
+    local rc=0 mode="${1:-}"
     local -a filter=(--include="*.gz" --exclude="*")
-    if [[ "${1:-}" == "final" ]]; then
+    if [[ "$mode" == "final" ]]; then
         filter=(--include="*.gz" --include="*.log" --exclude="*")
     fi
 
@@ -66,14 +65,22 @@ sync_once() {
         "${NGINX_ALIAS}:/var/log/nginx/" "$STAGING/nginx/" 2>/dev/null \
         || log "WARN: rsync from ${NGINX_ALIAS} failed"
 
+    # On the final pass, refuse to pass unless both nodes actually staged files. An empty
+    # stage means the pull failed and we captured nothing — surface it, don't pass silently.
+    if [[ "$mode" == "final" ]]; then
+        [[ -n "$(ls -A "$STAGING/thunder" 2>/dev/null)" ]] || { log "ERROR: no Thunder logs staged"; rc=1; }
+        [[ -n "$(ls -A "$STAGING/nginx"   2>/dev/null)" ]] || { log "ERROR: no Nginx logs staged";   rc=1; }
+    fi
+
     # Push to S3 (credentials from the bastion instance profile). No --delete here, so S3
-    # keeps the full history even after a file ages out of the node/staging window. sync
-    # uploads only what is not already in S3, so repeated passes are cheap and self-healing.
+    # keeps the full history even after a file ages out of the node/staging window.
     if aws s3 sync "$STAGING/" "${DEST}/" --only-show-errors; then
         log "synced -> ${DEST}/"
     else
-        log "WARN: aws s3 sync to ${DEST}/ failed"
+        log "ERROR: aws s3 sync to ${DEST}/ failed"
+        rc=1
     fi
+    return "$rc"
 }
 
 # awscli is installed at bastion setup time (setup-bastion.sh); rsync ships with the AMI
@@ -82,13 +89,24 @@ for bin in aws rsync; do
     command -v "$bin" >/dev/null 2>&1 || log "WARN: '$bin' not on PATH; log shipping may not work"
 done
 
+# One-shot final mode. The collect job calls this before teardown; it exits non-zero if the
+# logs did not reach S3, so the caller can fail collect and block teardown.
+if [[ "${FINAL_ONCE:-}" == "1" || "${1:-}" == "--final" ]]; then
+    log "Final sync -> ${DEST}/"
+    if sync_once final; then
+        log "Final sync complete."
+        exit 0
+    fi
+    log "ERROR: final sync failed; logs may not be in S3."
+    exit 1
+fi
+
 log "Starting log->S3 sync. Dest=${DEST} Interval=${SYNC_INTERVAL_SECONDS}s"
 sleep 60
 
 while :; do
     if ! pgrep -f "[r]un-performance-tests.sh" >/dev/null 2>&1; then
-        log "run-performance-tests.sh stopped. Final sync and exit."
-        sync_once final
+        log "run-performance-tests.sh stopped. Exiting, the collect job does the final sync."
         break
     fi
     sync_once
