@@ -242,7 +242,7 @@ scp_bastion_cmd "run-performance-tests.sh" "/home/ubuntu/workspace/jmeter"
 #   - `</dev/null >log 2>&1` gives the child its own stdio, no fd traces back to ssh.
 #
 # Four processes are launched in this mode: the long-run sampler (RSS/DB/log growth
-# snapshots every 5 min), the DB cleanup loop (purges expired runtime rows hourly), the
+# snapshots every 5 min), the DB cleanup loop (purges expired runtime rows every 24h), the
 # log->S3 sync (ships rotated Thunder/Nginx logs to S3), and run-performance-tests.sh.
 # All are independent setsid sessions; the sampler, cleanup loop and log sync each exit
 # by themselves when they see run-performance-tests.sh has finished.
@@ -265,7 +265,7 @@ if [[ -n "${DETACHED_RUN:-}" ]]; then
         "chmod +x /home/ubuntu/long-run-sampler.sh /home/ubuntu/db-cleanup-loop.sh /home/ubuntu/log-s3-sync.sh /home/ubuntu/workspace/jmeter/run-performance-tests.sh && \
          RDS_HOST='$rds_host' DB_USER='$db_username' DB_PASSWORD='$db_password' \
            setsid --fork /home/ubuntu/long-run-sampler.sh </dev/null >/home/ubuntu/long-run-sampler.log 2>&1; \
-         RDS_HOST='$rds_host' DB_USER='$db_username' DB_PASSWORD='$db_password' \
+         RDS_HOST='$rds_host' DB_USER='$db_username' DB_PASSWORD='$db_password' CLEANUP_INTERVAL_SECONDS='86400' \
            setsid --fork /home/ubuntu/db-cleanup-loop.sh </dev/null >/home/ubuntu/db-cleanup-loop.log 2>&1; \
          S3_BUCKET='performance-thunder' S3_PREFIX='perf-logs' RUN_ID='$run_id' \
            setsid --fork /home/ubuntu/log-s3-sync.sh </dev/null >/home/ubuntu/log-s3-sync.log 2>&1; \
