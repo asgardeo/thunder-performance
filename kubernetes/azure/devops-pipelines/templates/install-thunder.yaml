@@ -103,15 +103,18 @@ steps:
         elif [[ "$CACHE_MODE" == "redis" ]]; then
           REDIS_CLUSTER_IP=$(kubectl get svc $(REDIS_RELEASE_NAME)-master -n $(REDIS_NAMESPACE) -o jsonpath='{.spec.clusterIP}')
           echo "Resolved Redis ClusterIP: $REDIS_CLUSTER_IP"
+          # The chart gates the whole cache.redis block on type == "redis", and keys the cache
+          # prefix as camelCase keyPrefix (unlike the database block, which uses key_prefix).
           CACHE_FLAGS="--set configuration.cache.disabled=false \
             --set configuration.cache.type=redis \
             --set configuration.cache.redis.address=${REDIS_CLUSTER_IP}:6379 \
             --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
             --set configuration.cache.redis.db=0 \
-            --set configuration.cache.redis.key_prefix=thunderid:"
+            --set configuration.cache.redis.keyPrefix=thunderid"
         else
+          # "inmemory" with no hyphen is the value the chart expects.
           CACHE_FLAGS="--set configuration.cache.disabled=false \
-            --set configuration.cache.type=in-memory"
+            --set configuration.cache.type=inmemory"
         fi
 
         # Transient runtime store. Only this store can be moved to Redis: the Redis deployment
