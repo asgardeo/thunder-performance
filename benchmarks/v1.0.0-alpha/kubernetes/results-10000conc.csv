@@ -1,0 +1,27 @@
+Scenario Name,Heap Size,Concurrent Users,Label,# Samples,Error Count,Error %,Throughput (Requests/sec),Average Response Time (ms),Standard Deviation of Response Time (ms),Minimum Response Time (ms),Maximum Response Time (ms),75th Percentile of Response Time (ms),90th Percentile of Response Time (ms),95th Percentile of Response Time (ms),98th Percentile of Response Time (ms),99th Percentile of Response Time (ms),99.9th Percentile of Response Time (ms),Received (KB/sec),Sent (KB/sec),WSO2 Thunder 1 GC Throughput (%),WSO2 Thunder 1 Memory Footprint (M),Average WSO2 Thunder 1 Memory Footprint After Full GC (M),Standard Deviation of WSO2 Thunder 1 Memory Footprint After Full GC (M),WSO2 Thunder 2 GC Throughput (%),WSO2 Thunder 2 Memory Footprint (M),Average WSO2 Thunder 2 Memory Footprint After Full GC (M),Standard Deviation of WSO2 Thunder 2 Memory Footprint After Full GC (M),JMeter Client GC Throughput (%),JMeter Client Memory Footprint (M),Average JMeter Client Memory Footprint After Full GC (M),Standard Deviation of JMeter Client Memory Footprint After Full GC (M),WSO2 Thunder 1 Load Average - Last 1 minute,WSO2 Thunder 1 Load Average - Last 5 minutes,WSO2 Thunder 1 Load Average - Last 15 minutes,WSO2 Thunder 2 Load Average - Last 1 minute,WSO2 Thunder 2 Load Average - Last 5 minutes,WSO2 Thunder 2 Load Average - Last 15 minutes,JMeter Client Load Average - Last 1 minute,JMeter Client Load Average - Last 5 minutes,JMeter Client Load Average - Last 15 minutes
+Client Credentials Grant Type,N/A,10000,1 Get access token,2267130,2117166,93.39,2733.27,1982.92,4576.28,0,47343,151.00,9983.00,10815.00,16127.00,19327.00,35327.00,1304.56,903.71,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,125.91,91.62,51.33
+Authorization Code Grant Type,N/A,10000,1 Send request to authorize endpoint,707047,704340,99.62,906.60,409.81,2190.28,0,30300,5.00,33.00,182.00,6015.00,13695.00,22015.00,366.24,240.62,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,41.63,50.70,48.26
+Authorization Code Grant Type,N/A,10000,2 Start Authentication Flow,707470,706684,99.89,907.14,262.82,1861.97,0,25592,6.00,31.00,72.00,3439.00,11903.00,24575.00,365.36,235.13,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,41.63,50.70,48.26
+Authorization Code Grant Type,N/A,10000,3 Perform authentication,701902,701780,99.98,900.21,1391.38,3468.90,0,25450,7.00,7935.00,10047.00,12223.00,14143.00,17535.00,368.48,334.40,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,41.63,50.70,48.26
+Authorization Code Grant Type,N/A,10000,4 Obtain authorization code,705076,692562,98.23,904.07,619.27,2762.62,0,25531,23.00,277.00,3039.00,11391.00,15295.00,25087.00,356.97,251.81,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,41.63,50.70,48.26
+Authorization Code Grant Type,N/A,10000,5 Obtain access token,707342,707336,100.00,906.98,313.39,1885.20,0,25526,7.00,57.00,387.00,7967.00,11327.00,18431.00,359.10,362.50,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,41.63,50.70,48.26
+User Authentication with Credentials,N/A,10000,1 Perform user authentication,6967102,6956696,99.85,8660.87,451.74,2148.91,0,64756,3.00,19.00,467.00,10239.00,10815.00,18687.00,3500.82,3458.37,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,,,,,N/A,N/A,N/A,N/A,N/A,N/A,58.49,76.52,66.76
+
+
+NOTE: This run is NOT a valid benchmark. Error rates were 93-100% across all scenarios.
+The single JMeter client VM (Standard_F8s_v2, 8 vCore) was saturated (load average ~100-126)
+and exhausted ephemeral ports (9963 sockets in TIME_WAIT). Numbers below reflect load
+generator and cluster saturation, not Thunder throughput.
+
+K8s Spec:
+AKS Version: 1.34
+Node Pool: Standard_F8s_v2, count:2, autoscale min:2 max:5, max-pods-per-node:30
+Thunder Pods: requests 1 vCore + 256Mi, limits 1.5 vCore + 512Mi, replicas:2, HPA max-pods:10 (CPU 65%, Memory 75%)
+Nginx Ingress Pods: requests 0.5 vCore + 500Mi, limits 1 vCore + 1000Mi, min-pods:2, max-pods:5 (CPU 80%, Memory 80%)
+JMeter Client VM: Standard_F8s_v2, Heap Size:4g
+Caching: In-Memory
+
+DB Specs:
+Config: GP_Standard_D2s_v3 (Postgres 17)
+Runtime: GP_Standard_D2s_v3 (Postgres 17)
+User: GP_Standard_D2s_v3 (Postgres 17)
