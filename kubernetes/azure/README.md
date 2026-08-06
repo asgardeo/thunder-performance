@@ -162,6 +162,18 @@ Execute the pipeline with the `destroy` action to remove all previously provisio
 | Terraform Action | The infrastructure operation to perform  | `create`, `destroy` | `create` |
 | Terraform Performance Repository | Repository containing the Terraform code | String              | asgardeo/thunder-performance |
 | Terraform Performance Repository Branch | Branch of the repository to use          | String              | main |
+| Config PostgreSQL Server SKU | SKU of the config database server | `GP_Standard_D2s_v3`, `GP_Standard_D4s_v3`, `GP_Standard_D8s_v3`, `GP_Standard_D16s_v3` | `GP_Standard_D2s_v3` |
+| Runtime PostgreSQL Server SKU | SKU of the runtime database server | Same as above | `GP_Standard_D2s_v3` |
+| User PostgreSQL Server SKU | SKU of the user database server | Same as above | `GP_Standard_D2s_v3` |
+| AKS Node Pool VM Size | VM size of the AKS default node pool | `Standard_F8s_v2`, `Standard_F16s_v2`, `Standard_F32s_v2`, `Standard_F64s_v2` | `Standard_F8s_v2` |
+| AKS Node Pool Node Count | Number of nodes in the node pool | Number | `2` |
+| AKS Node Pool Min Node Count (autoscale) | Autoscaler lower bound | Number | `2` |
+| AKS Node Pool Max Node Count (autoscale) | Autoscaler upper bound | Number | `5` |
+| AKS Max Pods Per Node | Maximum pods schedulable on each node | Number | `30` |
+| Perf Runner (JMeter Client) VM Size | VM size of the perf runner VM, which is where JMeter executes | `Standard_F8s_v2`, `Standard_F16s_v2`, `Standard_F32s_v2`, `Standard_F64s_v2`, `Standard_F72s_v2` | `Standard_F8s_v2` |
+
+> **Note:** Changing the AKS Node Pool VM Size replaces the node pool, so the cluster is rebuilt on
+> apply. See [Sizing the environment for high concurrency](#sizing-the-environment-for-high-concurrency).
 
 ### Deploy Thunder Pipeline
 
@@ -184,11 +196,26 @@ This pipeline deploys Thunder to the provisioned AKS cluster through a series of
 | Setup Database Schema | Enable/disable database schema creation | `true`, `false` | `true` |
 | Install Thunder | Enable/disable Thunder deployment       | `true`, `false` | `true` |
 | Add Hosts Entry to VM | Enable/disable hosts file configuration | `true`, `false` | `true` |
-| Terraform Repository | Repository containing Thunder           | String          | asgardeo/thunder-performance |
-| Terraform Repository Branch | Branch of the repository to use         | String          | main |
-| Thunder Image Registry | Docker registry for Thunder image       | String          | ghcr.io/asgardeo |
-| Thunder Image Repository | Docker repository for Thunder image     | String          | thunder |
-| Thunder Image Tag | Docker image tag for Thunder            | String          | 0.7.0 |
+| Populate Test Data | Enable/disable seeding of test applications and users | `true`, `false` | `true` |
+| Thunder Repository | Repository containing the Thunder Helm chart | String          | thunder-id/thunderid |
+| Thunder Repository Branch | Branch of the Thunder repository to use | String          | main |
+| Performance repo name | Repository containing performance tests | String          | asgardeo/thunder-performance |
+| Performance repo branch | Branch of the performance repository    | String          | main |
+| Thunder Image Registry | Docker registry for Thunder image       | String          | ghcr.io/thunder-id |
+| Thunder Image Repository | Docker repository for Thunder image     | String          | thunderid |
+| Thunder Image Tag | Docker image tag for Thunder            | String          | 1.0.0-alpha |
+| Nginx Replicas (also the HPA minimum) | Nginx controller replica count and HPA lower bound | Number | `2` |
+| Nginx HPA Max Replicas | Nginx HPA upper bound | Number | `5` |
+| Nginx CPU Limits | CPU limit per Nginx pod | String (e.g. `1000m`, `4`) | `1000m` |
+| Nginx CPU Requests | CPU request per Nginx pod | String (e.g. `500m`, `4`) | `500m` |
+| Nginx Memory Limits | Memory limit per Nginx pod | String (e.g. `1000Mi`, `4Gi`) | `1000Mi` |
+| Nginx Memory Requests | Memory request per Nginx pod | String (e.g. `500Mi`, `4Gi`) | `500Mi` |
+| Nginx HPA Target CPU Utilization (%) | CPU threshold that triggers Nginx scale-out | Number | `80` |
+| Nginx HPA Target Memory Utilization (%) | Memory threshold that triggers Nginx scale-out | Number | `80` |
+
+> **Note:** Nginx fronts every request, so it saturates before Thunder does at high concurrency.
+> Scale it alongside the Thunder pods and the node pool. See
+> [Sizing the environment for high concurrency](#sizing-the-environment-for-high-concurrency).
 
 ### Run Performance Test Pipeline
 
@@ -204,19 +231,83 @@ This pipeline executes the performance tests against the deployed Thunder instan
 
 | Parameter Name | Description                                                                                                                                  | Accepted Values | Default Value                    |
 |----------------|----------------------------------------------------------------------------------------------------------------------------------------------|-----------------|----------------------------------|
-| Scale Up Perf Environment | Enable/disable environment scaling up                                                                                                        | `true`, `false` | `true`                           |
+| Scale Up Perf Environment | Enable/disable environment scaling up                                                                                                        | `true`, `false` | `false`                          |
 | Execute Performance Test | Enable/disable test execution                                                                                                                | `true`, `false` | `true`                           |
-| Scale Down Perf Environment | Enable/disable environment scaling down                                                                                                      | `true`, `false` | `true`                           |
+| Scale Down Perf Environment | Enable/disable environment scaling down                                                                                                      | `true`, `false` | `false`                          |
 | Performance repo name | Repository containing performance tests                                                                                                      | String          | asgardeo/thunder-performance     |
-| Performance repo branch | Branch of the performance repository                                                                                                         | String          | thunder                          |
-| Concurrency | User load configuration                                                                                                                      | Number          | `200`                            |
+| Performance repo branch | Branch of the performance repository                                                                                                         | String          | main                             |
+| Thunder Helm Repository | Repository containing the Thunder Helm chart                                                                                                 | String          | thunder-id/thunderid             |
+| Thunder Helm Repository Branch | Branch of the Helm repository                                                                                                           | String          | main                             |
+| Concurrency | Number of concurrent users to drive                                                                                                          | Number          | `200`                            |
+| Test Duration (minutes) | Measurement window per scenario                                                                                                              | Number          | `3`                              |
+| Warm-up Time (minutes) | Warm-up window discarded before measurement                                                                                                  | Number          | `2`                              |
+| Enable delays in testing | Applies a 6000ms +/- 2000ms think-time timer between Authorization Code iterations. Turn this **off** to measure maximum throughput           | `true`, `false` | `true`                           |
 | Perf-Test purpose | Test run description for reporting                                                                                                           | String          | Regular Thunder performance test |
-| Run Mode | Test execution scope                                                                                                                         | `QUICK`, `FULL` | `QUICK`                          |
-| Populate test data | Enable/disable test data population. This should be executed as true when the test is executed for the first time after environment creation | `true`, `false` | `false`                          |
-| Thunder Image Registry | Docker registry for Thunder image       | String          | ghcr.io/asgardeo |
-| Thunder Image Repository | Docker repository for Thunder image     | String          | thunder |
-| Thunder Image Tag | Docker image tag for Thunder            | String          | 0.7.0 |
+| Thunder Replicas | Initial Thunder pod count and HPA minimum                                                                                                    | Number          | `2`                              |
+| Thunder CPU Limits | CPU limit per Thunder pod                                                                                                                    | String          | `1.5`                            |
+| Thunder CPU Requests | CPU request per Thunder pod                                                                                                                  | String          | `1`                              |
+| Thunder Memory Limits | Memory limit per Thunder pod                                                                                                                 | String          | `512Mi`                          |
+| Thunder Memory Requests | Memory request per Thunder pod                                                                                                               | String          | `256Mi`                          |
+| Thunder HPA Enabled | Enable/disable Thunder autoscaling                                                                                                           | `true`, `false` | `true`                           |
+| Thunder HPA Max Replicas | Ceiling on total Thunder pods, and therefore on total Thunder capacity                                                                  | Number          | `10`                             |
+| Thunder HPA Target CPU Utilization (%) | CPU threshold that triggers Thunder scale-out                                                                                  | Number          | `65`                             |
+| Thunder HPA Target Memory Utilization (%) | Memory threshold that triggers Thunder scale-out                                                                            | Number          | `75`                             |
+| Thunder Image Registry | Docker registry for Thunder image       | String          | ghcr.io/thunder-id |
+| Thunder Image Repository | Docker repository for Thunder image     | String          | thunderid |
+| Thunder Image Tag | Docker image tag for Thunder            | String          | 0.47.0 |
 
+
+## Sizing the environment for high concurrency
+
+The defaults are sized for low-concurrency smoke runs (a 2-node `Standard_F8s_v2` pool). Driving
+1000 or 10000 concurrent users requires scaling four things together. Raising any one of them
+alone will not help, because whichever is left small becomes the bottleneck.
+
+| Layer | Pipeline | Parameters |
+|-------|----------|------------|
+| AKS node pool | Execute Terraform | AKS Node Pool VM Size, Node Count, Min/Max Node Count |
+| Load generator | Execute Terraform | Perf Runner (JMeter Client) VM Size |
+| Thunder pods | Run Performance Test | Thunder Replicas, CPU/Memory Limits and Requests, HPA Max Replicas |
+| Nginx ingress | Deploy Thunder | Nginx Replicas, HPA Max Replicas, CPU/Memory Limits and Requests |
+
+### What to watch for
+
+- **The load generator is a common bottleneck.** JMeter runs on the single perf runner VM. If it
+  runs out of CPU or ephemeral ports, the run reports huge error rates that look like a Thunder
+  failure but are not. Check `jmeter_loadavg.txt` and `jmeter_ss.txt` in the results archive: a
+  load average far above the VM's vCPU count, or most sockets sitting in `TIME_WAIT`, means the
+  client was the limit and the numbers are not usable.
+- **The HPA ceiling must fit on the node pool.** Thunder can only scale to `HPA Max Replicas` if
+  the pool has room for that many pods at the configured CPU/memory requests, alongside Nginx and
+  the system pods. Multiply pods by requested CPU and compare against the pool's total allocatable
+  CPU before raising the ceiling.
+- **Nginx sees every request**, so it needs to grow with Thunder. The defaults of 1 vCore and a
+  maximum of 5 pods will cap throughput well before Thunder does.
+- **Turn off "Enable delays in testing" to measure maximum throughput.** With it on, the
+  Authorization Code scenario spends roughly 6 seconds of every iteration in a think-time timer,
+  so its throughput reflects the timer rather than the server. Client Credentials and User
+  Authentication have no such timer. Benchmarks run with different settings are not comparable.
+
+### Reference configuration
+
+The v0.40.0 10000-user runs used the following. Sizes are given as the pipeline parameter values.
+
+| Parameter | Value |
+|-----------|-------|
+| AKS Node Pool VM Size / Node Count | `Standard_F32s_v2` / `5` |
+| Perf Runner VM Size | `Standard_F64s_v2` or larger |
+| Config / Runtime / User PostgreSQL SKU | `GP_Standard_D8s_v3` |
+| Thunder Replicas | `15` |
+| Thunder CPU Limits / Requests | `4` / `4` |
+| Thunder Memory Limits / Requests | `2Gi` / `2Gi` |
+| Thunder HPA Max Replicas | `32` |
+| Nginx Replicas / HPA Max Replicas | `7` / `10` |
+| Nginx CPU Limits / Requests | `4` / `4` |
+| Nginx Memory Limits / Requests | `4Gi` / `4Gi` |
+| Enable delays in testing | off |
+
+Recorded results are under [`benchmarks/`](../../benchmarks), with the exact specification for each
+run in that run's `readme.md`.
 
 ## Additional Resources
 

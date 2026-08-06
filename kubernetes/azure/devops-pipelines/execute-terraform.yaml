@@ -64,6 +64,44 @@ parameters:
       - "GP_Standard_D4s_v3"
       - "GP_Standard_D8s_v3"
       - "GP_Standard_D16s_v3"
+  # Changing the node pool VM size replaces the node pool, so the cluster is rebuilt on apply.
+  - name: AKS_NODE_POOL_VM_SIZE
+    type: string
+    displayName: "AKS Node Pool VM Size"
+    default: "Standard_F8s_v2"
+    values:
+      - "Standard_F8s_v2"
+      - "Standard_F16s_v2"
+      - "Standard_F32s_v2"
+      - "Standard_F64s_v2"
+  - name: AKS_NODE_POOL_COUNT
+    type: number
+    displayName: "AKS Node Pool Node Count"
+    default: 2
+  - name: AKS_NODE_POOL_MIN_COUNT
+    type: number
+    displayName: "AKS Node Pool Min Node Count (autoscale)"
+    default: 2
+  - name: AKS_NODE_POOL_MAX_COUNT
+    type: number
+    displayName: "AKS Node Pool Max Node Count (autoscale)"
+    default: 5
+  - name: AKS_NODE_POOL_MAX_PODS
+    type: number
+    displayName: "AKS Max Pods Per Node"
+    default: 30
+  # The perf runner (bastion) VM is where JMeter executes. Undersizing it makes the load
+  # generator, rather than Thunder, the bottleneck at high concurrency.
+  - name: PERF_RUNNER_VM_SIZE
+    type: string
+    displayName: "Perf Runner (JMeter Client) VM Size"
+    default: "Standard_F8s_v2"
+    values:
+      - "Standard_F8s_v2"
+      - "Standard_F16s_v2"
+      - "Standard_F32s_v2"
+      - "Standard_F64s_v2"
+      - "Standard_F72s_v2"
 
 variables:
   - group: vg-thunder-perf
@@ -300,6 +338,12 @@ stages:
                   -var="postgres_config_server_sku_name=${{ parameters.POSTGRES_CONFIG_SERVER_SKU }}" \
                   -var="postgres_runtime_server_sku_name=${{ parameters.POSTGRES_RUNTIME_SERVER_SKU }}" \
                   -var="postgres_user_server_sku_name=${{ parameters.POSTGRES_USER_SERVER_SKU }}" \
+                  -var="default_node_pool_vm_size=${{ parameters.AKS_NODE_POOL_VM_SIZE }}" \
+                  -var="default_node_pool_count=${{ parameters.AKS_NODE_POOL_COUNT }}" \
+                  -var="default_node_pool_min_count=${{ parameters.AKS_NODE_POOL_MIN_COUNT }}" \
+                  -var="default_node_pool_max_count=${{ parameters.AKS_NODE_POOL_MAX_COUNT }}" \
+                  -var="default_node_pool_max_pods=${{ parameters.AKS_NODE_POOL_MAX_PODS }}" \
+                  -var="vm_size=${{ parameters.PERF_RUNNER_VM_SIZE }}" \
                   -auto-approve
             env:
               ARM_CLIENT_ID: $(ARM_CLIENT_ID)
@@ -326,6 +370,12 @@ stages:
                   -var="postgres_config_server_sku_name=${{ parameters.POSTGRES_CONFIG_SERVER_SKU }}" \
                   -var="postgres_runtime_server_sku_name=${{ parameters.POSTGRES_RUNTIME_SERVER_SKU }}" \
                   -var="postgres_user_server_sku_name=${{ parameters.POSTGRES_USER_SERVER_SKU }}" \
+                  -var="default_node_pool_vm_size=${{ parameters.AKS_NODE_POOL_VM_SIZE }}" \
+                  -var="default_node_pool_count=${{ parameters.AKS_NODE_POOL_COUNT }}" \
+                  -var="default_node_pool_min_count=${{ parameters.AKS_NODE_POOL_MIN_COUNT }}" \
+                  -var="default_node_pool_max_count=${{ parameters.AKS_NODE_POOL_MAX_COUNT }}" \
+                  -var="default_node_pool_max_pods=${{ parameters.AKS_NODE_POOL_MAX_PODS }}" \
+                  -var="vm_size=${{ parameters.PERF_RUNNER_VM_SIZE }}" \
                   -auto-approve
 
                 # Then destroy the rest of the resources
@@ -335,6 +385,12 @@ stages:
                   -var="postgres_config_server_sku_name=${{ parameters.POSTGRES_CONFIG_SERVER_SKU }}" \
                   -var="postgres_runtime_server_sku_name=${{ parameters.POSTGRES_RUNTIME_SERVER_SKU }}" \
                   -var="postgres_user_server_sku_name=${{ parameters.POSTGRES_USER_SERVER_SKU }}" \
+                  -var="default_node_pool_vm_size=${{ parameters.AKS_NODE_POOL_VM_SIZE }}" \
+                  -var="default_node_pool_count=${{ parameters.AKS_NODE_POOL_COUNT }}" \
+                  -var="default_node_pool_min_count=${{ parameters.AKS_NODE_POOL_MIN_COUNT }}" \
+                  -var="default_node_pool_max_count=${{ parameters.AKS_NODE_POOL_MAX_COUNT }}" \
+                  -var="default_node_pool_max_pods=${{ parameters.AKS_NODE_POOL_MAX_PODS }}" \
+                  -var="vm_size=${{ parameters.PERF_RUNNER_VM_SIZE }}" \
                   -auto-approve
             env:
               ARM_CLIENT_ID: $(ARM_CLIENT_ID)
