@@ -47,6 +47,7 @@
           <elementProp name="scope" elementType="Argument">
             <stringProp name="Argument.name">scope</stringProp>
             <stringProp name="Argument.value">openid</stringProp>
+            <stringProp name="Argument.desc">Keep this OIDC-only. Since Thunder v1.0.0-alpha2 a permission bearing authorize request without a resource parameter is rejected with invalid_target unless a default resource server is configured.</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="callbackUrl" elementType="Argument">
@@ -233,7 +234,7 @@ if (y == 0 || &quot;active-passive&quot;.equals(deploymentType)) {
               </elementProp>
               <elementProp name="scope" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">true</boolProp>
-                <stringProp name="Argument.value">${scope}%20${__Random(1,10000000)}</stringProp>
+                <stringProp name="Argument.value">${scope}</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
                 <boolProp name="HTTPArgument.use_equals">true</boolProp>
                 <stringProp name="Argument.name">scope</stringProp>
