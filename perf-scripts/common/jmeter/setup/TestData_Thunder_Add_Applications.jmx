@@ -45,6 +45,12 @@
             <stringProp name="Argument.value">https://localhost/callback</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
+          <elementProp name="applicationType" elementType="Argument">
+            <stringProp name="Argument.name">applicationType</stringProp>
+            <stringProp name="Argument.value">${__P(applicationType,custom)}</stringProp>
+            <stringProp name="Argument.desc">Application type. Required on creation since Thunder v1.0.0-alpha2.</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
         </collectionProp>
       </Arguments>
       <hashTree/>
@@ -842,6 +848,7 @@ if (y == 0) {
     &quot;ouId&quot;: &quot;${__property(default_org_id)}&quot;,&#xd;
     &quot;name&quot;: &quot;${applicationNamePrefix}${application_count_id}&quot;,&#xd;
     &quot;description&quot;: &quot;Initial testing App&quot;,&#xd;
+    &quot;type&quot;: &quot;${applicationType}&quot;,&#xd;
     &quot;authFlowId&quot;: &quot;${__property(custom_flow_id)}&quot;,&#xd;
     &quot;inboundAuthConfig&quot;: [&#xd;
         {&#xd;
