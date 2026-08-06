@@ -32,15 +32,12 @@ parameters:
   - name: THUNDER_IMAGE_TAG
     type: string
     default: '0.7.0'
-  - name: SKIP_SECURITY
-    type: string
-    default: 'false'
   - name: RUN_SETUP_SCRIPT
     type: boolean
     default: true
   - name: CACHE_MODE
     type: string
-    default: 'disabled'
+    default: 'in-memory'
     values:
       - disabled
       - in-memory
@@ -57,40 +54,91 @@ steps:
       workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
       inlineScript: |
         set -e
+        SETUP_JOB=${{ parameters.RELEASE_NAME }}-thunderid-setup
+        SETUP_LOG=$(mktemp)
+        dump_thunder_diagnostics() {
+          echo "##[error]Thunder install did not become ready. Dumping diagnostics:"
+          kubectl get pods -n ${{ parameters.NAMESPACE }} -o wide || true
+          kubectl get events -n ${{ parameters.NAMESPACE }} --sort-by=.lastTimestamp | tail -n 30 || true
+          THUNDER_POD=$(kubectl get pods -n ${{ parameters.NAMESPACE }} -l app.kubernetes.io/instance=${{ parameters.RELEASE_NAME }} -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          if [ -n "$THUNDER_POD" ]; then
+            kubectl describe pod "$THUNDER_POD" -n ${{ parameters.NAMESPACE }} || true
+            kubectl logs "$THUNDER_POD" -n ${{ parameters.NAMESPACE }} --all-containers --tail=200 || true
+            kubectl logs "$THUNDER_POD" -n ${{ parameters.NAMESPACE }} --all-containers --previous --tail=200 || true
+          fi
+          echo "--- Setup/bootstrap job (seeds default resources incl. the Console app) ---"
+          kubectl describe job "$SETUP_JOB" -n ${{ parameters.NAMESPACE }} || true
+          # The setup pod is deleted the instant the job hits BackoffLimitExceeded, so a
+          # post-hoc "kubectl logs" loses the race. Prefer the log captured live below.
+          echo "--- Setup/bootstrap job logs (captured live) ---"
+          cat "$SETUP_LOG" 2>/dev/null || true
+          echo "--- Setup/bootstrap job logs (post-hoc, may be empty if pod already deleted) ---"
+          kubectl logs job/"$SETUP_JOB" -n ${{ parameters.NAMESPACE }} --all-containers --tail=200 || true
+          kubectl logs -n ${{ parameters.NAMESPACE }} -l job-name="$SETUP_JOB" --all-containers --tail=200 || true
+          kubectl logs -n ${{ parameters.NAMESPACE }} -l job-name="$SETUP_JOB" --all-containers --previous --tail=200 || true
+        }
+        trap dump_thunder_diagnostics ERR
+        # Background collector: stream the setup pod's logs to a file while the pre-install
+        # hook runs, so the crash output survives the job controller deleting the failed pod.
+        (
+          for _ in $(seq 1 90); do
+            POD=$(kubectl get pods -n ${{ parameters.NAMESPACE }} -l job-name="$SETUP_JOB" \
+              -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true)
+            if [ -n "$POD" ]; then
+              for p in $POD; do
+                kubectl logs -f "$p" -n ${{ parameters.NAMESPACE }} --all-containers \
+                  --pod-running-timeout=30s >> "$SETUP_LOG" 2>/dev/null || true
+              done
+            fi
+            sleep 2
+          done
+        ) &
+        SETUP_LOG_COLLECTOR_PID=$!
         echo "Installing Thunder Helm Chart"
 
-        CACHE_FLAGS=""
-        if [[ "$CACHE_MODE" == "redis" ]]; then
+        # Cache backend. "disabled" turns the cache off entirely; the other two modes enable it
+        # and select the implementation.
+        if [[ "$CACHE_MODE" == "disabled" ]]; then
+          CACHE_FLAGS="--set configuration.cache.disabled=true"
+        elif [[ "$CACHE_MODE" == "redis" ]]; then
           REDIS_CLUSTER_IP=$(kubectl get svc $(REDIS_RELEASE_NAME)-master -n $(REDIS_NAMESPACE) -o jsonpath='{.spec.clusterIP}')
           echo "Resolved Redis ClusterIP: $REDIS_CLUSTER_IP"
-          CACHE_FLAGS="--set configuration.cache.type=redis \
+          CACHE_FLAGS="--set configuration.cache.disabled=false \
+            --set configuration.cache.type=redis \
             --set configuration.cache.redis.address=${REDIS_CLUSTER_IP}:6379 \
             --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
             --set configuration.cache.redis.db=0 \
             --set configuration.cache.redis.key_prefix=thunderid:"
-        elif [[ "$CACHE_MODE" == "in-memory" ]]; then
-          CACHE_FLAGS="--set configuration.cache.type=in-memory"
+        else
+          CACHE_FLAGS="--set configuration.cache.disabled=false \
+            --set configuration.cache.type=in-memory"
         fi
 
-        RUNTIME_DB_FLAGS=""
+        # Transient runtime store. Only this store can be moved to Redis: the Redis deployment
+        # uses allkeys-lru eviction with persistence disabled (see redis-values.yaml), so the
+        # persistent runtime store and the entity store always stay on Postgres.
         if [[ "$(RUNTIME_DB_TYPE)" == "redis" ]]; then
-          echo "Configuring Runtime DB with Redis backend"
-          RUNTIME_DB_FLAGS="--set configuration.database.runtime.type=redis \
-            --set configuration.database.runtime.redis.address=$(REDIS_ADDRESS) \
-            --set configuration.database.runtime.redis.password=$(REDIS-PASSWORD) \
-            --set configuration.database.runtime.redis.db=1 \
-            --set configuration.database.runtime.redis.key_prefix=$(RUNTIME_DB_REDIS_KEY_PREFIX)"
+          echo "Configuring transient runtime DB with Redis backend"
+          RUNTIME_TRANSIENT_DB_FLAGS="--set configuration.database.runtime_transient.type=redis \
+            --set configuration.database.runtime_transient.redis.address=$(REDIS_ADDRESS) \
+            --set configuration.database.runtime_transient.redis.password=$(REDIS-PASSWORD) \
+            --set configuration.database.runtime_transient.redis.db=1 \
+            --set configuration.database.runtime_transient.redis.key_prefix=$(RUNTIME_TRANSIENT_DB_REDIS_KEY_PREFIX)"
         else
-          echo "Configuring Runtime DB with Postgres backend"
-          RUNTIME_DB_FLAGS="--set configuration.database.runtime.type=$(RUNTIME_DB_TYPE) \
-            --set configuration.database.runtime.postgres.name=$(RUNTIME_DB_NAME) \
-            --set configuration.database.runtime.postgres.hostname=$(RUNTIME_DB_HOST) \
-            --set configuration.database.runtime.postgres.port=$(RUNTIME_DB_PORT) \
-            --set configuration.database.runtime.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
-            --set configuration.database.runtime.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
-            --set configuration.database.runtime.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
-            --set configuration.database.runtime.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
-            --set configuration.database.runtime.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME)"
+          echo "Configuring transient runtime DB with Postgres backend"
+          RUNTIME_TRANSIENT_DB_FLAGS="--set configuration.database.runtime_transient.type=$(RUNTIME_DB_TYPE) \
+            --set configuration.database.runtime_transient.postgres.name=$(RUNTIME_DB_NAME) \
+            --set configuration.database.runtime_transient.postgres.hostname=$(RUNTIME_DB_HOST) \
+            --set configuration.database.runtime_transient.postgres.port=$(RUNTIME_DB_PORT) \
+            --set configuration.database.runtime_transient.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
+            --set configuration.database.runtime_transient.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
+            --set configuration.database.runtime_transient.postgres.sslmode=$(DB_SSL_MODE) \
+            --set configuration.database.runtime_transient.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
+            --set configuration.database.runtime_transient.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
+            --set configuration.database.runtime_transient.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
+            --set configuration.database.runtime_transient.postgres.max_retries=$(DB_MAX_RETRIES) \
+            --set configuration.database.runtime_transient.postgres.min_retry_backoff_ms=$(DB_MIN_RETRY_BACKOFF_MS) \
+            --set configuration.database.runtime_transient.postgres.max_retry_backoff_ms=$(DB_MAX_RETRY_BACKOFF_MS)"
         fi
 
         helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
@@ -114,25 +162,63 @@ steps:
           --set configuration.database.config.postgres.port=$(CONFIG_DB_PORT) \
           --set configuration.database.config.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
           --set configuration.database.config.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
+          --set configuration.database.config.postgres.sslmode=$(DB_SSL_MODE) \
           --set configuration.database.config.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
           --set configuration.database.config.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
           --set configuration.database.config.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
-          $RUNTIME_DB_FLAGS \
-          --set configuration.database.user.type=$(USER_DB_TYPE) \
-          --set configuration.database.user.postgres.name=$(USER_DB_NAME) \
-          --set configuration.database.user.postgres.hostname=$(USER_DB_HOST) \
-          --set configuration.database.user.postgres.port=$(USER_DB_PORT) \
-          --set configuration.database.user.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
-          --set configuration.database.user.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
-          --set configuration.database.user.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
-          --set configuration.database.user.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
-          --set configuration.database.user.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
-          --set configuration.consent.enabled=false \
+          --set configuration.database.config.postgres.max_retries=$(DB_MAX_RETRIES) \
+          --set configuration.database.config.postgres.min_retry_backoff_ms=$(DB_MIN_RETRY_BACKOFF_MS) \
+          --set configuration.database.config.postgres.max_retry_backoff_ms=$(DB_MAX_RETRY_BACKOFF_MS) \
+          $RUNTIME_TRANSIENT_DB_FLAGS \
+          --set configuration.database.runtime_persistent.type=$(RUNTIME_PERSISTENT_DB_TYPE) \
+          --set configuration.database.runtime_persistent.postgres.name=$(RUNTIME_PERSISTENT_DB_NAME) \
+          --set configuration.database.runtime_persistent.postgres.hostname=$(RUNTIME_PERSISTENT_DB_HOST) \
+          --set configuration.database.runtime_persistent.postgres.port=$(RUNTIME_PERSISTENT_DB_PORT) \
+          --set configuration.database.runtime_persistent.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
+          --set configuration.database.runtime_persistent.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
+          --set configuration.database.runtime_persistent.postgres.sslmode=$(DB_SSL_MODE) \
+          --set configuration.database.runtime_persistent.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
+          --set configuration.database.runtime_persistent.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
+          --set configuration.database.runtime_persistent.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
+          --set configuration.database.runtime_persistent.postgres.max_retries=$(DB_MAX_RETRIES) \
+          --set configuration.database.runtime_persistent.postgres.min_retry_backoff_ms=$(DB_MIN_RETRY_BACKOFF_MS) \
+          --set configuration.database.runtime_persistent.postgres.max_retry_backoff_ms=$(DB_MAX_RETRY_BACKOFF_MS) \
+          --set configuration.database.entity.type=$(USER_DB_TYPE) \
+          --set configuration.database.entity.postgres.name=$(USER_DB_NAME) \
+          --set configuration.database.entity.postgres.hostname=$(USER_DB_HOST) \
+          --set configuration.database.entity.postgres.port=$(USER_DB_PORT) \
+          --set configuration.database.entity.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
+          --set configuration.database.entity.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
+          --set configuration.database.entity.postgres.sslmode=$(DB_SSL_MODE) \
+          --set configuration.database.entity.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
+          --set configuration.database.entity.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
+          --set configuration.database.entity.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
+          --set configuration.database.entity.postgres.max_retries=$(DB_MAX_RETRIES) \
+          --set configuration.database.entity.postgres.min_retry_backoff_ms=$(DB_MIN_RETRY_BACKOFF_MS) \
+          --set configuration.database.entity.postgres.max_retry_backoff_ms=$(DB_MAX_RETRY_BACKOFF_MS) \
+          --set configuration.server.security.directAuthSecret=$(THUNDER_DIRECT_AUTH_SECRET) \
           --set configuration.crypto.passwordHashing.algorithm=$(THUNDER_PASSWORD_HASHING_ALGORITHM) \
-          --set deployment.skipSecurity=${{ parameters.SKIP_SECURITY }} \
+          --set deployment.securityContext.readOnlyRootFilesystem=false \
           --set setup.enabled=${{ parameters.RUN_SETUP_SCRIPT }} \
-          --set configuration.cache.disabled=false \
-          $CACHE_FLAGS
+          --set setup.admin.username=$(THUNDER_ADMIN_USERNAME) \
+          --set setup.admin.password=$(THUNDER_ADMIN_PASSWORD) \
+          --set certs.persistence.accessMode=ReadWriteMany \
+          --set certs.persistence.storageClass=$(THUNDER_SETUP_STORAGE_CLASS) \
+          --set secrets.persistence.accessMode=ReadWriteMany \
+          --set secrets.persistence.storageClass=$(THUNDER_SETUP_STORAGE_CLASS) \
+          $CACHE_FLAGS \
+          --wait \
+          --timeout 5m
+        kill "$SETUP_LOG_COLLECTOR_PID" 2>/dev/null || true
         echo "Thunder Helm Chart installed successfully"
+        echo "=== Post-install Thunder status ==="
+        echo "--- Pods ---"
+        kubectl get pods -n ${{ parameters.NAMESPACE }} -o wide || true
+        echo "--- Services ---"
+        kubectl get svc -n ${{ parameters.NAMESPACE }} -o wide || true
+        echo "--- Endpoints (empty ENDPOINTS behind the Thunder service explains nginx 503) ---"
+        kubectl get endpoints -n ${{ parameters.NAMESPACE }} || true
+        echo "--- Ingress ---"
+        kubectl get ingress -n ${{ parameters.NAMESPACE }} -o wide || true
     env:
       CACHE_MODE: ${{ parameters.CACHE_MODE }}

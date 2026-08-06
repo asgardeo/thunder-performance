@@ -24,6 +24,7 @@
 
 import csv
 import glob
+import json
 import os
 import sys
 from collections import defaultdict
@@ -82,9 +83,24 @@ RDS_METRICS = [
     ("DatabaseConnections",         "DB Connections",         "count",   1),
 ]
 
+# EBS metrics are queried against AWS/EBS by VolumeId (5-min period).
+# Values are aggregated across all volumes attached to the same instance;
+# for single-volume instances this is exact, for multi-volume it's a mix.
+EBS_METRICS = [
+    ("VolumeReadOps",     "Volume Read Ops",       "ops/period", 1),
+    ("VolumeWriteOps",    "Volume Write Ops",      "ops/period", 1),
+    ("VolumeReadBytes",   "Volume Read",           "MB/period",  1 / 1_048_576),
+    ("VolumeWriteBytes",  "Volume Write",          "MB/period",  1 / 1_048_576),
+    ("VolumeQueueLength", "Volume Queue Length",   "requests",   1),
+]
+
 
 def read_csv_metrics(filepath):
-    """Return {metric_name: [float, ...]} from a cloudwatch CSV."""
+    """Return {metric_name: [float, ...]} from a cloudwatch CSV.
+
+    Works for both EC2/RDS CSVs (Timestamp,Metric,Average) and EBS CSVs
+    (Timestamp,Metric,VolumeId,Average) — the extra column is ignored.
+    """
     data = defaultdict(list)
     try:
         with open(filepath, newline="") as f:
@@ -164,22 +180,93 @@ if metrics_dirs:
     out.append("\n## CloudWatch Metrics\n")
 
     ec2_nodes = [
-        ("Thunder (EC2)", "thunder-ec2.csv"),
-        ("Nginx (EC2)",   "nginx-ec2.csv"),
-        ("Bastion (EC2)", "bastion-ec2.csv"),
+        ("Thunder", "thunder-ec2.csv", "thunder-ebs.csv"),
+        ("Nginx",   "nginx-ec2.csv",   "nginx-ebs.csv"),
+        ("Bastion", "bastion-ec2.csv", "bastion-ebs.csv"),
     ]
 
-    for label, filename in ec2_nodes:
-        data = read_csv_metrics(os.path.join(metrics_dir, filename))
-        if not any(data.values()):
+    for label, ec2_file, ebs_file in ec2_nodes:
+        ec2_data = read_csv_metrics(os.path.join(metrics_dir, ec2_file))
+        ebs_data = read_csv_metrics(os.path.join(metrics_dir, ebs_file))
+        if not any(ec2_data.values()) and not any(ebs_data.values()):
             continue
-        out.append(f"\n### {label}\n\n")
-        out.append(metrics_table(data, EC2_METRICS))
+        out.append(f"\n### {label} (EC2)\n\n")
+        if any(ec2_data.values()):
+            out.append(metrics_table(ec2_data, EC2_METRICS))
+        if any(ebs_data.values()):
+            out.append(f"\n#### {label} (EBS volumes)\n\n")
+            out.append(metrics_table(ebs_data, EBS_METRICS))
 
     rds_data = read_csv_metrics(os.path.join(metrics_dir, "rds.csv"))
     if any(rds_data.values()):
         out.append("\n### RDS\n\n")
         out.append(metrics_table(rds_data, RDS_METRICS))
+
+# ── Long-run analysis ──────────────────────────────────────────────────────────
+# Read the JSON summary produced by generate-long-run-charts.py. Absent if the
+# sampler didn't run (older triggers or short tests).
+lr_paths = sorted(glob.glob(f"{WORKSPACE}/perf-scripts/{DEPLOYMENT}/results-*/long-run-summary.json"))
+if lr_paths:
+    try:
+        with open(lr_paths[-1]) as f:
+            lr = json.load(f)
+        out.append(f"\n## Long-run analysis\n\n")
+        out.append(f"Duration: **{lr.get('duration_hours', 0)}h** across **{lr.get('samples', 0)}** samples.\n\n")
+        out.append("| Metric | Unit | First | Last | Slope/hour | R² |\n")
+        out.append("| --- | --- | ---: | ---: | ---: | ---: |\n")
+        # Show host + DB series first (fixed shape), then dynamic count_* rows.
+        ordered_series = (
+            ["thunder_rss_kb", "thunder_vsz_kb", "thunder_disk_used_bytes",
+             "thunder_disk_avail_bytes", "thunder_log_bytes", "runtimedb_bytes"]
+            + sorted(k for k in lr.get("series", {}) if k.startswith("count_"))
+        )
+        for key in ordered_series:
+            s = lr.get("series", {}).get(key)
+            if not s:
+                continue
+            first = s.get("first"); last = s.get("last")
+            slope = s.get("slope_per_hour"); r2 = s.get("r_squared")
+            unit = s.get("unit", "")
+            # For counts and byte-values, keep raw; the unit column tells the story.
+            if first is not None and last is not None:
+                # Scale for display: byte-columns to MB/GB via unit label already
+                # accounts for it in the CSV; here we just pretty-print.
+                first_str = f"{first:.3f}" if isinstance(first, float) else str(first)
+                last_str  = f"{last:.3f}" if isinstance(last, float) else str(last)
+            else:
+                first_str = "—"; last_str = "—"
+            slope_str = f"{slope:+.3f}" if slope is not None else "—"
+            r2_str = f"{r2:.3f}" if r2 is not None else "—"
+            out.append(f"| {key} | {unit} | {first_str} | {last_str} | {slope_str} | {r2_str} |\n")
+        out.append("\n> Charts are in the `long-run/` subdirectory of the results artifact.\n")
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"WARN: could not read long-run-summary.json: {e}", file=sys.stderr)
+
+# ── Latency drift ──────────────────────────────────────────────────────────────
+ld_paths = sorted(glob.glob(f"{WORKSPACE}/perf-scripts/{DEPLOYMENT}/results-*/latency-drift.json"))
+if ld_paths:
+    try:
+        with open(ld_paths[-1]) as f:
+            ld = json.load(f)
+        scenarios = ld.get("scenarios", [])
+        if scenarios:
+            bs = ld.get("bucket_seconds", 300)
+            out.append(f"\n## Latency drift (per {bs // 60}-min bucket)\n\n")
+            out.append("| Scenario | Requests | Buckets | p95 first (ms) | p95 last (ms) | p95 slope (ms/hour) | R² |\n")
+            out.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n")
+            for s in scenarios:
+                out.append(
+                    f"| {s.get('scenario', '')} "
+                    f"| {s.get('total_requests', 0)} "
+                    f"| {s.get('buckets', 0)} "
+                    f"| {s.get('p95_first_bucket_ms', 0)} "
+                    f"| {s.get('p95_last_bucket_ms', 0)} "
+                    f"| {s.get('p95_slope_ms_per_hour', 0):+.2f} "
+                    f"| {s.get('p95_r_squared', 0):.3f} |\n"
+                )
+            out.append("\n> Per-scenario charts are in the `latency-drift/` subdirectory of the results artifact.\n")
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"WARN: could not read latency-drift.json: {e}", file=sys.stderr)
 
 content = "".join(out)
 if summary_path:

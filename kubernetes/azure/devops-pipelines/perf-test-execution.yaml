@@ -37,15 +37,15 @@ parameters:
   - name: THUNDER_IMAGE_REGISTRY
     displayName: Thunder Image Registry
     type: string
-    default: "ghcr.io/asgardeo"
+    default: "ghcr.io/thunder-id"
   - name: THUNDER_IMAGE_REPOSITORY
     displayName: Thunder Image Repository
     type: string
-    default: "thunder"
+    default: "thunderid"
   - name: THUNDER_IMAGE_TAG
     displayName: Thunder Image Tag
     type: string
-    default: "0.7.0"
+    default: "0.47.0"
   - name: PERFORMANCE_REPO
     displayName: Performance repo name
     type: string
@@ -57,7 +57,7 @@ parameters:
   - name: THUNDER_HELM_REPO
     type: string
     displayName: "Thunder Helm Repository"
-    default: "asgardeo/thunder"
+    default: "thunder-id/thunderid"
   - name: THUNDER_HELM_REPO_BRANCH
     type: string
     displayName: "Thunder Helm Repository Branch"
@@ -112,7 +112,7 @@ parameters:
   - name: CACHE_MODE
     displayName: Cache Mode
     type: string
-    default: 'disabled'
+    default: 'in-memory'
     values:
       - disabled
       - in-memory
@@ -204,21 +204,25 @@ jobs:
             fi
             echo "AKS Cluster started successfully"
       - task: AzureCLI@2
-        displayName: 'Start Postgres Server'
+        displayName: 'Start Postgres Servers'
         condition: always()
         inputs:
           azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
           scriptType: 'bash'
           scriptLocation: 'inlineScript'
           inlineScript: |
-            echo "Starting Postgres Server..."
-            if ! az postgres flexible-server start --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
-              echo "Error: Failed to start Postgres Server $(POSTGRES_SERVER_NAME)"
-              echo "##vso[task.logissue type=error]Failed to start Postgres Server $(POSTGRES_SERVER_NAME)"
-              echo "##vso[task.complete result=Failed;]"
-              exit 1
-            fi
-            echo "Postgres Server started successfully"
+            echo "Starting Postgres Servers..."
+            for SERVER_NAME in $(POSTGRES_CONFIG_SERVER_NAME) $(POSTGRES_RUNTIME_SERVER_NAME) $(POSTGRES_USER_SERVER_NAME); do
+              echo "Starting $SERVER_NAME..."
+              if ! az postgres flexible-server start --name $SERVER_NAME --resource-group $(RESOURCE_GROUP_NAME); then
+                echo "Error: Failed to start Postgres Server $SERVER_NAME"
+                echo "##vso[task.logissue type=error]Failed to start Postgres Server $SERVER_NAME"
+                echo "##vso[task.complete result=Failed;]"
+                exit 1
+              fi
+              echo "$SERVER_NAME started successfully"
+            done
+            echo "All Postgres Servers started successfully"
 
   - job: install_redis
     displayName: Install Redis
@@ -300,7 +304,7 @@ jobs:
           GITHUB_USERNAME: $(gitUsername)
           BUILD_TYPE: $(Build.Reason)
           BUILD_PATH: $(Build.ArtifactStagingDirectory)
-          DATABASE_HOST_NAME: $(DATABASE_HOSTNAME)
+          DATABASE_HOST_NAME: $(CONFIG_DB_HOSTNAME)
           THUNDER_HOST_NAME: $(THUNDER_HOSTNAME)
           POPULATE_TEST_DATA: "false"
           TEST_DURATION: ${{parameters.TEST_DURATION}}
@@ -363,18 +367,22 @@ jobs:
             fi
             echo "AKS Cluster stopped successfully"
       - task: AzureCLI@2
-        displayName: 'Stop Postgres Server'
+        displayName: 'Stop Postgres Servers'
         condition: always()
         inputs:
           azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
           scriptType: 'bash'
           scriptLocation: 'inlineScript'
           inlineScript: |
-            echo "Stopping Postgres Server..."
-            if ! az postgres flexible-server stop --name $(POSTGRES_SERVER_NAME) --resource-group $(RESOURCE_GROUP_NAME); then
-              echo "Error: Failed to stop Postgres Server $(POSTGRES_SERVER_NAME)"
-              echo "##vso[task.logissue type=error]Failed to stop Postgres Server $(POSTGRES_SERVER_NAME)"
-              echo "##vso[task.complete result=Failed;]"
-              exit 1
-            fi
-            echo "Postgres Server stopped successfully"
+            echo "Stopping Postgres Servers..."
+            for SERVER_NAME in $(POSTGRES_CONFIG_SERVER_NAME) $(POSTGRES_RUNTIME_SERVER_NAME) $(POSTGRES_USER_SERVER_NAME); do
+              echo "Stopping $SERVER_NAME..."
+              if ! az postgres flexible-server stop --name $SERVER_NAME --resource-group $(RESOURCE_GROUP_NAME); then
+                echo "Error: Failed to stop Postgres Server $SERVER_NAME"
+                echo "##vso[task.logissue type=error]Failed to stop Postgres Server $SERVER_NAME"
+                echo "##vso[task.complete result=Failed;]"
+                exit 1
+              fi
+              echo "$SERVER_NAME stopped successfully"
+            done
+            echo "All Postgres Servers stopped successfully"

@@ -21,7 +21,7 @@
 
 function update_postgres_config() {
 
-    sed -i "s|{db_hostname}|$db_instance_ip|g" "$carbon_home/repository/conf/deployment.yaml" || echo "Editing deployment.yaml file failed!"
+    sed -i "s|{db_hostname}|$db_instance_ip|g" "$carbon_home/deployment.yaml" || echo "Editing deployment.yaml file failed!"
 }
 
 function usage() {
@@ -80,7 +80,7 @@ carbon_home=$(realpath ~/thunder)
 echo ""
 echo "Adding deployment yaml file to the pack..."
 echo "-------------------------------------------"
-cp resources/deployment.yaml "$carbon_home"/repository/conf/deployment.yaml
+cp resources/deployment.yaml "$carbon_home"/deployment.yaml
 
 echo ""
 echo "Applying basic parameter changes..."
@@ -104,7 +104,12 @@ echo "-------------------------------------------"
 cd "$carbon_home"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="thunder_setup_${TIMESTAMP}.log"
-bash setup.sh > "$LOG_FILE" 2>&1 &
+# Pin the bootstrapped admin credentials (override via ADMIN_USERNAME/ADMIN_PASSWORD env).
+# Since Thunder v1.0.0-alpha, setup.sh generates a random admin password when none is
+# supplied, which breaks the JMeter admin-token seeding flow (it logs in as admin/admin).
+# Keep these in sync with adminUsername/adminPassword in the TestData_Thunder_Add_*.jmx
+# seeding plans.
+ADMIN_USERNAME="${ADMIN_USERNAME:-admin}" ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}" bash setup.sh > "$LOG_FILE" 2>&1 &
 cd "../"
 echo "Waiting 60s for Thunder server setup to complete..."
 sleep 60s
@@ -116,7 +121,10 @@ echo "-------------------------------------------"
 cd "$carbon_home"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="thunder_${TIMESTAMP}.log"
-SKIP_SECURITY=true bash start.sh > "$LOG_FILE" 2>&1 &
+# Default resources (admin user, default OU, Console app) are seeded in-process by
+# setup.sh above. Perf test data is seeded with an admin token (see get_admin_token
+# in perf-test-thunder.sh).
+bash start.sh > "$LOG_FILE" 2>&1 &
 cd "../"
 echo "Waiting 30s for Thunder server to start..."
 sleep 30s

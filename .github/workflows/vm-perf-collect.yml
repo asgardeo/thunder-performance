@@ -1,0 +1,302 @@
+name: Collect results of long-running test
+
+# Downloads results.zip from the bastion of a completed vm-perf-trigger run,
+# generates the summary artifacts, collects CloudWatch metrics, publishes the
+# job summary, tears down the CloudFormation stack, and uploads GHA artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      TRIGGER_RUN_NUMBER:
+        description: 'Run number of the vm-perf-trigger workflow whose results to collect'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read   # needed for `gh run download` from another workflow run
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    env:
+      RESOURCES_DIR: ${{ github.workspace }}/resources
+      MANIFEST_DIR: ${{ github.workspace }}/_manifest
+    steps:
+      - name: Validate input
+        run: |
+          run_num="${{ inputs.TRIGGER_RUN_NUMBER }}"
+          if ! [[ "$run_num" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::TRIGGER_RUN_NUMBER must be a positive integer (got: '${run_num}')"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Locate trigger run
+        id: locate-trigger
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIGGER_RUN_NUMBER: ${{ inputs.TRIGGER_RUN_NUMBER }}
+        run: |
+          # Look up the databaseId (run ID) for the given trigger run number.
+          run_id=$(gh run list \
+            --workflow=vm-perf-trigger.yml \
+            --limit 100 \
+            --json databaseId,number,conclusion \
+            --jq ".[] | select(.number==${TRIGGER_RUN_NUMBER}) | .databaseId" \
+            | head -1)
+          if [[ -z "$run_id" ]]; then
+            echo "::error::Could not find a vm-perf-trigger run with run number ${TRIGGER_RUN_NUMBER}. Was the run started via vm-perf-trigger.yml, and within the last 100 runs?"
+            exit 1
+          fi
+          echo "Located trigger run id: $run_id"
+          echo "trigger_run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Download trigger manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIGGER_RUN_ID: ${{ steps.locate-trigger.outputs.trigger_run_id }}
+          TRIGGER_RUN_NUMBER: ${{ inputs.TRIGGER_RUN_NUMBER }}
+        run: |
+          mkdir -p "$MANIFEST_DIR"
+          if ! gh run download "$TRIGGER_RUN_ID" \
+                 --name "manifest-${TRIGGER_RUN_NUMBER}" \
+                 --dir "$MANIFEST_DIR"; then
+            echo "::error::Failed to download manifest-${TRIGGER_RUN_NUMBER} artifact from trigger run ${TRIGGER_RUN_ID}. Artifact may be expired (>90d) or the trigger workflow may have failed before uploading it."
+            exit 1
+          fi
+          if [[ ! -f "$MANIFEST_DIR/manifest.json" ]]; then
+            echo "::error::manifest.json missing from downloaded artifact."
+            exit 1
+          fi
+          if [[ ! -f "$MANIFEST_DIR/cf-test-metadata.json" ]]; then
+            echo "::error::cf-test-metadata.json missing from downloaded artifact."
+            exit 1
+          fi
+          echo "Manifest downloaded:"
+          ls -la "$MANIFEST_DIR"
+
+      - name: Parse manifest into step outputs
+        id: parse-manifest
+        run: |
+          m="$MANIFEST_DIR/manifest.json"
+          # Each entry is: <output_key>|<jq_path>|<required?>
+          fields=(
+            "stack_name|.stack_name|1"
+            "stack_id|.stack_id|1"
+            "bastion_ip|.bastion_ip|1"
+            "bastion_id|.instance_ids.bastion|1"
+            "nginx_id|.instance_ids.nginx|0"
+            "thunder_id|.instance_ids.thunder|1"
+            "rds_id|.instance_ids.rds|1"
+            "bastion_type|.instance_types.bastion|0"
+            "nginx_type|.instance_types.nginx|0"
+            "thunder_type|.instance_types.thunder|0"
+            "db_type|.instance_types.rds|0"
+            "perf_test_start_time|.perf_test_start_time|1"
+            "deployment|.inputs.DEPLOYMENT|1"
+            "concurrency|.inputs.CONCURRENCY|0"
+            "thunder_pack_url|.inputs.THUNDER_PACK_URL|0"
+            "repo_ref|.inputs.REPO_REF|0"
+          )
+          for entry in "${fields[@]}"; do
+            IFS='|' read -r key path required <<< "$entry"
+            val=$(jq -r "$path" "$m")
+            if [[ "$val" == "null" ]]; then val=""; fi
+            if [[ "$required" == "1" && -z "$val" ]]; then
+              echo "::error::Manifest is missing required field: $key ($path)"
+              exit 1
+            fi
+            echo "${key}=${val}" >> "$GITHUB_OUTPUT"
+          done
+          echo "Manifest parsed successfully."
+
+      - name: Download PEM key
+        run: |
+          mkdir -p "$RESOURCES_DIR"
+          aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem \
+            "$RESOURCES_DIR/thunder-perf-test.pem" --only-show-errors --no-progress
+          chmod 400 "$RESOURCES_DIR/thunder-perf-test.pem"
+
+      - name: Verify CloudFormation stack exists
+        env:
+          STACK_NAME: ${{ steps.parse-manifest.outputs.stack_name }}
+        run: |
+          if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region us-west-1 >/dev/null 2>&1; then
+            echo "::error::CloudFormation stack '$STACK_NAME' does not exist (already deleted?). Nothing to collect."
+            exit 1
+          fi
+          echo "Stack '$STACK_NAME' exists."
+
+      - name: Precheck bastion status
+        id: precheck
+        timeout-minutes: 3
+        env:
+          BASTION_IP: ${{ steps.parse-manifest.outputs.bastion_ip }}
+        run: |
+          set +x
+          precheck_output=$(ssh -n -i "${RESOURCES_DIR}/thunder-perf-test.pem" \
+            -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+            -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
+            ubuntu@"${BASTION_IP}" \
+            'if pgrep -f "[r]un-performance-tests.sh" >/dev/null; then
+               echo STATUS=RUNNING
+               exit 0
+             fi
+             if [[ ! -f /home/ubuntu/results.zip ]]; then
+               echo STATUS=NO_RESULTS
+               echo "--- run.log tail ---"
+               tail -n 30 /home/ubuntu/run.log 2>/dev/null || echo "(no run.log)"
+               exit 0
+             fi
+             end_epoch=$(stat -c %Y /home/ubuntu/results.zip)
+             end_iso=$(date -u -d @${end_epoch} +%Y-%m-%dT%H:%M:%SZ)
+             size=$(stat -c %s /home/ubuntu/results.zip)
+             echo STATUS=READY
+             echo END_TIME=${end_iso}
+             echo SIZE=${size}')
+
+          # Belt-and-suspenders: redact AKIA-pattern strings before printing.
+          echo "$precheck_output" | sed -E 's/AKIA[0-9A-Z]{16}/AKIA****REDACTED****/g'
+
+          status=$(echo "$precheck_output" | grep '^STATUS=' | head -1 | cut -d= -f2)
+          case "$status" in
+            READY)
+              end_time=$(echo "$precheck_output" | grep '^END_TIME=' | cut -d= -f2)
+              size=$(echo "$precheck_output" | grep '^SIZE=' | cut -d= -f2)
+              echo "perf_test_end_time=$end_time" >> "$GITHUB_OUTPUT"
+              echo "results_size=$size" >> "$GITHUB_OUTPUT"
+              echo "Bastion reports test READY. results.zip is ${size} bytes, finished at ${end_time}."
+              ;;
+            RUNNING)
+              echo "::error::JMeter is still running on the bastion. Wait for it to finish before running collect."
+              exit 1
+              ;;
+            NO_RESULTS)
+              echo "::error::JMeter is not running and results.zip does not exist — the test likely crashed. See run.log tail above."
+              exit 1
+              ;;
+            *)
+              echo "::error::Unexpected precheck status: '$status'"
+              exit 1
+              ;;
+          esac
+
+      - name: Build Performance Tests
+        env:
+          DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
+        run: |
+          cd $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT
+          echo "Building performance test project: $DEPLOYMENT..."
+          mvn -q clean install
+
+      - name: Collect results and generate summary
+        id: collect
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
+          BASTION_IP: ${{ steps.parse-manifest.outputs.bastion_ip }}
+          KEY_FILE: ${{ github.workspace }}/resources/thunder-perf-test.pem
+          MANIFEST_DIR: ${{ github.workspace }}/_manifest
+          # The results dir name uses the trigger run number so multiple collects don't collide.
+          RESULTS_DIR_NAME: results-trigger-${{ inputs.TRIGGER_RUN_NUMBER }}
+        run: |
+          chmod +x .github/scripts/vm-perf-collect-script.sh
+          bash .github/scripts/vm-perf-collect-script.sh
+
+      - name: Collect CloudWatch Metrics
+        # Runs only if precheck confirmed READY. always() covers collect-step failures.
+        if: always() && steps.precheck.outputs.perf_test_end_time != '' && steps.parse-manifest.outputs.thunder_id != ''
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
+          PERF_TEST_START_TIME: ${{ steps.parse-manifest.outputs.perf_test_start_time }}
+          PERF_TEST_END_TIME: ${{ steps.precheck.outputs.perf_test_end_time }}
+          BASTION_INSTANCE_ID: ${{ steps.parse-manifest.outputs.bastion_id }}
+          NGINX_INSTANCE_ID: ${{ steps.parse-manifest.outputs.nginx_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.parse-manifest.outputs.thunder_id }}
+          RDS_INSTANCE_ID: ${{ steps.parse-manifest.outputs.rds_id }}
+        run: |
+          pip install -q matplotlib
+          chmod +x .github/scripts/collect-cloudwatch-metrics.sh
+          bash .github/scripts/collect-cloudwatch-metrics.sh
+          python3 .github/scripts/generate-metrics-charts.py || echo "WARN: Chart generation failed."
+
+      - name: Publish Job Summary
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ steps.parse-manifest.outputs.deployment }}
+          BUILD_NUMBER: ${{ inputs.TRIGGER_RUN_NUMBER }}
+          TIMESTAMP: ${{ steps.parse-manifest.outputs.perf_test_start_time }}
+          THUNDER_PACK_URL: ${{ steps.parse-manifest.outputs.thunder_pack_url }}
+          THUNDER_INSTANCE_TYPE: ${{ steps.parse-manifest.outputs.thunder_type }}
+          NGINX_INSTANCE_TYPE: ${{ steps.parse-manifest.outputs.nginx_type }}
+          BASTION_INSTANCE_TYPE: ${{ steps.parse-manifest.outputs.bastion_type }}
+          DB_INSTANCE_TYPE: ${{ steps.parse-manifest.outputs.db_type }}
+          DB_TYPE: 'postgres'
+          CONCURRENCY: ${{ steps.parse-manifest.outputs.concurrency }}
+          BASTION_INSTANCE_ID: ${{ steps.parse-manifest.outputs.bastion_id }}
+          NGINX_INSTANCE_ID: ${{ steps.parse-manifest.outputs.nginx_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.parse-manifest.outputs.thunder_id }}
+          RDS_INSTANCE_ID: ${{ steps.parse-manifest.outputs.rds_id }}
+          REPO_REF: ${{ steps.parse-manifest.outputs.repo_ref }}
+        run: |
+          python3 .github/scripts/generate-job-summary.py || echo "WARN: Job summary generation failed."
+
+      - name: Delete CloudFormation Stack
+        # Only tear down when collect succeeded — leaves the stack up on collect
+        # failure so the operator can debug and retry. !cancelled() lets this run
+        # when a downstream step (e.g. CloudWatch) errored but blocks it on
+        # manual workflow cancellation.
+        if: ${{ !cancelled() && steps.collect.outcome == 'success' && steps.parse-manifest.outputs.stack_id != '' }}
+        env:
+          STACK_ID: ${{ steps.parse-manifest.outputs.stack_id }}
+        run: |
+          chmod +x .github/scripts/delete-cf-stack.sh
+          bash .github/scripts/delete-cf-stack.sh
+
+      - name: Upload summary artifacts
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results-${{ inputs.TRIGGER_RUN_NUMBER }}
+          path: |
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/summary.csv
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/summary.md
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/instance-ids.txt
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/cloudwatch/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/latency-drift/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/latency-drift.json
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run/**
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-metrics.csv
+            ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*/long-run-summary.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload full results artifacts
+        if: always() && steps.precheck.outputs.perf_test_end_time != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results-full-${{ inputs.TRIGGER_RUN_NUMBER }}
+          path: ${{ github.workspace }}/perf-scripts/${{ steps.parse-manifest.outputs.deployment }}/results-*
+          retention-days: 30
+          if-no-files-found: warn

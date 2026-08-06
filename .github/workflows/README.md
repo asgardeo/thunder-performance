@@ -16,7 +16,7 @@ When triggering the workflow, you can configure the following parameters:
 
 | Parameter | Description | Default Value | Required |
 |-----------|-------------|--------------|----------|
-| `THUNDER_PACK_URL` | URL to download the Thunder pack | `https://github.com/asgardeo/thunder/releases/download/v0.7.0/thunder-v0.7.0-linux-x64.zip` | Yes |
+| `THUNDER_PACK_URL` | URL to download the Thunder pack | `https://github.com/thunder-id/thunderid/releases/download/v0.47.0/thunderid-0.47.0-linux-x64.zip` | Yes |
 | `DEPLOYMENT` | Deployment type | `single-node` | Yes |
 | `CPU_CORES` | Number of CPU cores for the VM | `4` (options: 2, 4, 8) | Yes |
 | `ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT` | Additional parameters for the performance script | `-d 15 -w 5 -x false -y JWT` | Yes |

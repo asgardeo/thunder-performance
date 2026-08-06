@@ -183,10 +183,28 @@ variable "postgres_server_storage_size" {
   default     = 32768
 }
 
-variable "postgres_server_sku_name" {
-  description = "The SKU name for the Postgres server"
+variable "postgres_config_server_sku_name" {
+  description = "The SKU name for the config Postgres server"
   type        = string
   default     = "GP_Standard_D2s_v3"
+}
+
+variable "postgres_runtime_server_sku_name" {
+  description = "The SKU name for the runtime Postgres server"
+  type        = string
+  default     = "GP_Standard_D2s_v3"
+}
+
+variable "postgres_user_server_sku_name" {
+  description = "The SKU name for the user Postgres server"
+  type        = string
+  default     = "GP_Standard_D2s_v3"
+}
+
+variable "postgres_userdb_server_storage_size" {
+  description = "The storage size in GB for the user Postgres server"
+  type        = number
+  default     = 131072
 }
 
 # Database name variables
@@ -197,15 +215,21 @@ variable "config_db_name" {
 }
 
 variable "runtime_db_name" {
-  description = "The name of the Runtime database"
+  description = "The name of the Runtime (transient) database"
   type        = string
-  default     = "runtimedb"
+  default     = "runtime_transient"
+}
+
+variable "runtime_persistent_db_name" {
+  description = "The name of the Runtime persistent database (co-located on the runtime Postgres server)"
+  type        = string
+  default     = "runtime_persistent"
 }
 
 variable "user_db_name" {
-  description = "The name of the User database"
+  description = "The name of the Entity database"
   type        = string
-  default     = "userdb"
+  default     = "entitydb"
 }
 
 # VM variables

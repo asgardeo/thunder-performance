@@ -15,13 +15,16 @@
 -- under the License.
 
 create database "configdb";
-create database "runtimedb";
-create database "userdb";
+create database "runtime_transient";
+create database "entitydb";
+create database "runtime_persistent";
 
 \c configdb
 \i /home/ubuntu/thunder/dbscripts/configdb/postgres.sql
-\c runtimedb
-\i /home/ubuntu/thunder/dbscripts/runtimedb/postgres.sql
-\c userdb
-\i /home/ubuntu/thunder/dbscripts/userdb/postgres.sql
+\c runtime_transient
+\i /home/ubuntu/thunder/dbscripts/runtime_transient/postgres.sql
+\c entitydb
+\i /home/ubuntu/thunder/dbscripts/entitydb/postgres.sql
+\c runtime_persistent
+\i /home/ubuntu/thunder/dbscripts/runtime_persistent/postgres.sql
 

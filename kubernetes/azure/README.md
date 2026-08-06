@@ -103,6 +103,7 @@ Add the following secrets to the previously created Key Vault:
 | `AKS-SSH-KEY` | SSH private key for AKS cluster nodes (created in Step 2) |
 | `POSTGRES-ADMIN-USERNAME` | Admin username for the PostgreSQL server                  |
 | `POSTGRES-ADMIN-PASSWORD` | Admin password for the PostgreSQL server                  |
+| `REDIS-PASSWORD` | Password for the in-cluster Redis. Required only when Cache Mode or Runtime Database Type is set to `redis` |
 | `SUBSCRIPTION-ID` | Azure Subscription ID for resource deployment             |
 | `TENANT-ID` | Azure Tenant ID of the subscription                       |
 | `VM-IMAGE-ID` | ID of the VM image (created in Step 1)                    |
@@ -116,6 +117,7 @@ Add the following secrets to the previously created Key Vault:
     - Link the following secrets:
         - `POSTGRES-ADMIN-USERNAME`
         - `POSTGRES-ADMIN-PASSWORD`
+        - `REDIS-PASSWORD` (only needed for Redis-backed runs)
 
 2. **Create Configuration Variable Group**
     - Name: `vg-thunder-perf`

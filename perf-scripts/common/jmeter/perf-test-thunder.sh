@@ -91,6 +91,12 @@ use_delay=true
 jwt_token_client_secret=""
 jwt_token_user_password=""
 
+# Gates the Direct API (/auth/**) since Thunder v0.48.0; sent as the Direct-Auth-Secret
+# header. Must match server.security.direct_auth_secret in the deployment.yaml under
+# perf-scripts/<deployment>/setup/resources/.
+default_direct_auth_secret="asgthunder-perf-direct-auth-secret"
+direct_auth_secret=$default_direct_auth_secret
+
 # Token Type
 token_issuer="Opaque"
 
@@ -120,7 +126,7 @@ function usage() {
     echo "   [-g <no_of_nodes>] [-f <deployment>] [-n <no_of_tenants>]"
     echo "   [-s <sp_count>] [-q <idp_count>] [-u <user_count>]"
     echo "   [-k <jwt_token_client_secret>] [-o <jwt_token_user_password>]"
-    echo "   [-x <enable_burst>] [-y <token_issuer>]"
+    echo "   [-x <enable_burst>] [-y <token_issuer>] [-a <direct_auth_secret>]"
     echo "   [-t] [-p <is_port>] [-b <db_type>] [-z <use_delay>] [-h]"
     echo ""
     echo "-c: Concurrency levels to test. You can give multiple options to specify multiple levels. Default \"$default_concurrent_users\"."
@@ -140,6 +146,7 @@ function usage() {
     echo "-o: JWT token user password."
     echo "-x: Enable burst traffic."
     echo "-y: Token issuer type. Use Opaque (default) or JWT."
+    echo "-a: Direct Auth Secret gating the Direct API (/auth/**). Default \"$default_direct_auth_secret\"."
     echo "-t: Estimate time without executing tests."
     echo "-p: Thunder Port. Default $default_is_port."
     echo "-b: Database type."
@@ -148,7 +155,7 @@ function usage() {
     echo ""
 }
 
-while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:h" opts; do
+while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:a:h" opts; do
     case $opts in
     c)
         concurrent_users+=("${OPTARG}")
@@ -212,6 +219,9 @@ while getopts "c:d:w:r:j:i:e:g:f:n:s:q:u:tp:k:x:o:y:b:z:h" opts; do
         ;;
     y)
         token_issuer=${OPTARG}
+        ;;
+    a)
+        direct_auth_secret=${OPTARG}
         ;;
     h)
         usage
@@ -344,13 +354,23 @@ function write_server_metrics() {
     if [[ -n $ssh_host_alias ]]; then
         command_prefix="ssh -o SendEnv=LC_TIME $ssh_host_alias"
     fi
-    $command_prefix ss -s >"$report_location"/"$ssh_host"_ss.txt
-    $command_prefix uptime >"$report_location"/"$ssh_host"_uptime.txt
-    $command_prefix sar -q >"$report_location"/"$ssh_host"_loadavg.txt
-    $command_prefix sar -A >"$report_location"/"$ssh_host"_sar.txt
-    $command_prefix top -bn 1 >"$report_location"/"$ssh_host"_top.txt
+    # Non-fatal: metric-collection failures (e.g. sar when sysstat's data collector
+    # isn't running) must not abort the post-test cleanup chain under `set -e`.
+    # Redirect stderr into the same file so the failure reason is preserved, and
+    # emit a WARN to stdout so it's visible in the test log.
+    $command_prefix ss -s >"$report_location"/"$ssh_host"_ss.txt 2>&1 \
+        || echo "WARN: 'ss -s' failed for ${ssh_host} (exit $?); see ${ssh_host}_ss.txt"
+    $command_prefix uptime >"$report_location"/"$ssh_host"_uptime.txt 2>&1 \
+        || echo "WARN: 'uptime' failed for ${ssh_host} (exit $?); see ${ssh_host}_uptime.txt"
+    $command_prefix sar -q >"$report_location"/"$ssh_host"_loadavg.txt 2>&1 \
+        || echo "WARN: 'sar -q' failed for ${ssh_host} (exit $?); see ${ssh_host}_loadavg.txt"
+    $command_prefix sar -A >"$report_location"/"$ssh_host"_sar.txt 2>&1 \
+        || echo "WARN: 'sar -A' failed for ${ssh_host} (exit $?); see ${ssh_host}_sar.txt"
+    $command_prefix top -bn 1 >"$report_location"/"$ssh_host"_top.txt 2>&1 \
+        || echo "WARN: 'top -bn 1' failed for ${ssh_host} (exit $?); see ${ssh_host}_top.txt"
     if [[ -n $pgrep_pattern ]]; then
-        $command_prefix ps u -p \`pgrep -f "$pgrep_pattern"\` >"$report_location"/"$ssh_host_alias"_ps.txt
+        $command_prefix ps u -p \`pgrep -f "$pgrep_pattern"\` >"$report_location"/"$ssh_host_alias"_ps.txt 2>&1 \
+            || echo "WARN: 'ps u' failed for ${ssh_host} (exit $?); see ${ssh_host_alias}_ps.txt"
     fi
 }
 
@@ -419,6 +439,32 @@ function print_durations() {
     printf "Script execution time: %s\n" "$(format_time $(measure_time "$test_start_time"))"
 }
 
+# Maximum tolerated error percentage for a test-data seeding run before the whole
+# performance test is aborted. Seeding into a fresh database should be ~0%.
+seed_max_err_pct=1
+
+# Abort the run if a seeding script did not create its resources. JMeter exits 0
+# even when every request fails, so without this a broken bootstrap would produce
+# a green pipeline with empty benchmarks.
+function assert_seed_succeeded() {
+    local label="$1"
+    local jmeter_output="$2"
+    local err_pct
+    err_pct=$(printf '%s\n' "$jmeter_output" \
+        | grep -oE 'Err:[[:space:]]+[0-9]+ \([0-9.]+%\)' | tail -1 \
+        | grep -oE '\([0-9.]+%\)' | tr -d '()%')
+    if [[ -z "$err_pct" ]]; then
+        echo "ERROR: Could not determine seeding error rate for $label (no JMeter summary found)." >&2
+        exit 1
+    fi
+    if awk -v e="$err_pct" -v t="$seed_max_err_pct" 'BEGIN { exit !((e + 0) > (t + 0)) }'; then
+        echo "ERROR: Test data seeding failed for $label: ${err_pct}% errors (threshold ${seed_max_err_pct}%)." >&2
+        echo "       This typically means the management APIs rejected the requests (401/403)." >&2
+        exit 1
+    fi
+    echo "Seeding OK for $label: ${err_pct}% errors (threshold ${seed_max_err_pct}%)."
+}
+
 function run_jmeter_scripts() {
 
     local scripts=("$@")
@@ -435,10 +481,14 @@ function run_jmeter_scripts() {
         for param in "${jmeter_params[@]}"; do
             command+=" -J$param"
         done
-        command+=" -l test_data_store/results.jtl"
+        command+=" -l $test_data_store/results.jtl"
         echo "$command"
         echo ""
-        $command
+        local output
+        output="$($command 2>&1)" || true
+        echo "$output"
+        echo ""
+        assert_seed_succeeded "$script" "$output"
         echo ""
     done
 }
@@ -572,7 +622,7 @@ function test_scenarios() {
             mkdir -p "$report_location"
 
             time=$(expr "$test_duration" \* 60)
-            declare -a jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$is_port" "noOfNodes=$noOfNodes" "noOfBurst=$burstTraffic" "deployment=$deployment" "userCount=$userCount" "useDelay=$use_delay")
+            declare -a jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$is_port" "noOfNodes=$noOfNodes" "noOfBurst=$burstTraffic" "deployment=$deployment" "userCount=$userCount" "useDelay=$use_delay" "directAuthSecret=$direct_auth_secret")
 
             local tenantMode=${scenario[tenantMode]}
             if [ "$tenantMode" = true ]; then
@@ -598,7 +648,10 @@ function test_scenarios() {
 
             write_server_metrics jmeter
 
-            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s
+            # Filter jtl-splitter's noisy per-row "more columns than expected" CSV warnings
+            # (emitted once per failed sample); the real error rate is in the JMeter summary.
+            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s \
+                2>&1 | grep -v "has more columns than expected" || true
 
             echo ""
             echo "Zipping JTL files in $report_location"

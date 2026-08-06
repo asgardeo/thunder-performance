@@ -1,0 +1,193 @@
+{
+  "samples": 361,
+  "duration_hours": 30.106,
+  "series": {
+    "thunder_rss_kb": {
+      "column": "thunder_rss_kb",
+      "unit": "MB",
+      "first": 44.97265625,
+      "last": 41.58984375,
+      "min": 41.58984375,
+      "max": 51.296875,
+      "slope_per_hour": 0.0384,
+      "r_squared": 0.1688,
+      "png": "long-run/thunder_rss_kb.png"
+    },
+    "thunder_vsz_kb": {
+      "column": "thunder_vsz_kb",
+      "unit": "MB",
+      "first": 1264.47265625,
+      "last": 1329.04296875,
+      "min": 1264.47265625,
+      "max": 1329.04296875,
+      "slope_per_hour": 2.4114,
+      "r_squared": 0.5661,
+      "png": "long-run/thunder_vsz_kb.png"
+    },
+    "thunder_disk_used_bytes": {
+      "column": "thunder_disk_used_bytes",
+      "unit": "GB",
+      "first": 2.7210006713867188,
+      "last": 7.838359832763672,
+      "min": 2.7210006713867188,
+      "max": 18.46609115600586,
+      "slope_per_hour": 0.1468,
+      "r_squared": 0.0778,
+      "png": "long-run/thunder_disk_used_bytes.png"
+    },
+    "thunder_disk_avail_bytes": {
+      "column": "thunder_disk_avail_bytes",
+      "unit": "GB",
+      "first": 16.46521759033203,
+      "last": 11.347858428955078,
+      "min": 0.7201271057128906,
+      "max": 16.46521759033203,
+      "slope_per_hour": -0.1468,
+      "r_squared": 0.0778,
+      "png": "long-run/thunder_disk_avail_bytes.png"
+    },
+    "thunder_log_bytes": {
+      "column": "thunder_log_bytes",
+      "unit": "MB",
+      "first": 1.5173988342285156,
+      "last": 20154.65744113922,
+      "min": 1.5173988342285156,
+      "max": 20154.65744113922,
+      "slope_per_hour": 671.7561,
+      "r_squared": 1.0,
+      "png": "long-run/thunder_log_bytes.png"
+    },
+    "runtimedb_bytes": {
+      "column": "runtimedb_bytes",
+      "unit": "MB",
+      "first": 13.049944877624512,
+      "last": 11049.948382377625,
+      "min": 13.049944877624512,
+      "max": 11049.948382377625,
+      "slope_per_hour": 368.4486,
+      "r_squared": 1.0,
+      "png": "long-run/runtimedb_bytes.png"
+    },
+    "count_authorization_code": {
+      "column": "count_authorization_code",
+      "unit": "rows",
+      "first": 543.0,
+      "last": 17896694.0,
+      "min": 543.0,
+      "max": 17896694.0,
+      "slope_per_hour": 596526.8378,
+      "r_squared": 1.0,
+      "png": "long-run/count_authorization_code.png"
+    },
+    "count_authorization_request": {
+      "column": "count_authorization_request",
+      "unit": "rows",
+      "first": 1000.0,
+      "last": 999.0,
+      "min": 982.0,
+      "max": 1000.0,
+      "slope_per_hour": 0.0208,
+      "r_squared": 0.0067,
+      "png": "long-run/count_authorization_request.png"
+    },
+    "count_ciba_auth_request": {
+      "column": "count_ciba_auth_request",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_ciba_auth_request.png"
+    },
+    "count_flow_context": {
+      "column": "count_flow_context",
+      "unit": "rows",
+      "first": 999.0,
+      "last": 998.0,
+      "min": 979.0,
+      "max": 1000.0,
+      "slope_per_hour": 0.0205,
+      "r_squared": 0.0039,
+      "png": "long-run/count_flow_context.png"
+    },
+    "count_webauthn_session": {
+      "column": "count_webauthn_session",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_webauthn_session.png"
+    },
+    "count_attribute_cache": {
+      "column": "count_attribute_cache",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_attribute_cache.png"
+    },
+    "count_par_request": {
+      "column": "count_par_request",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_par_request.png"
+    },
+    "count_jti_record": {
+      "column": "count_jti_record",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_jti_record.png"
+    },
+    "count_openid4vp_request_state": {
+      "column": "count_openid4vp_request_state",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_openid4vp_request_state.png"
+    },
+    "count_openid4vci_nonce": {
+      "column": "count_openid4vci_nonce",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_openid4vci_nonce.png"
+    },
+    "count_openid4vci_credential_offer": {
+      "column": "count_openid4vci_credential_offer",
+      "unit": "rows",
+      "first": 0.0,
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "slope_per_hour": 0.0,
+      "r_squared": 0.0,
+      "png": "long-run/count_openid4vci_credential_offer.png"
+    }
+  }
+}

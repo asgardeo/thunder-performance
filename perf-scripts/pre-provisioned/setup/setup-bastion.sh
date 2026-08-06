@@ -94,6 +94,17 @@ echo "============================================"
 tar -C /home/$bastion_user/workspace -xzf /home/$bastion_user/thunder-performance-pre-provisioned-*.tar.gz
 
 echo ""
+echo "Ensuring required CLI tools (jq)..."
+echo "============================================"
+# Azure Ubuntu images run unattended-upgrades on boot, which holds the dpkg/apt lock for the
+# first few minutes and makes apt operations fail immediately. Wait for the lock (rather than
+# failing) so jq installs reliably; jq is required by perf-test-pre-provisioned.sh to build the
+# scenario metadata. Running this first also lets unattended-upgrades finish before the apt
+# upgrade inside setup-jmeter-client.sh runs, so that no longer races the lock either.
+sudo apt-get -o DPkg::Lock::Timeout=600 update -y || true
+sudo apt-get -o DPkg::Lock::Timeout=600 install -y jq
+
+echo ""
 echo "Running JMeter setup script..."
 echo "============================================"
 cd /home/$bastion_user || exit 0

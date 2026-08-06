@@ -1,0 +1,454 @@
+name: Trigger long-running test
+
+# Kicks off a long-running JMeter test on the bastion and exits without waiting.
+# When the test finishes, run "Collect results of long-running test" with this
+# run's number to retrieve results, generate the summary, and tear down the
+# CloudFormation stack. The trigger's job summary shows the exact command and
+# a fully manual fallback flow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      REPO_REF:
+        description: 'Git ref (branch, tag, or commit SHA) to checkout'
+        required: false
+        default: ''
+        type: string
+      THUNDER_PACK_URL:
+        description: 'URL to download Thunder pack'
+        required: true
+        default: 'https://github.com/thunder-id/thunderid/releases/download/v0.47.0/thunderid-0.47.0-linux-x64.zip'
+        type: string
+      DEPLOYMENT:
+        description: 'Deployment type'
+        required: true
+        default: 'single-node'
+        type: choice
+        options:
+          - single-node
+      THUNDER_INSTANCE_TYPE:
+        description: 'Thunder VM instance type'
+        required: true
+        default: 't2.nano'
+        type: choice
+        options:
+          - t2.nano
+          - t2.micro
+          - t2.small
+          - t3a.nano
+          - t3a.micro
+          - t3a.small
+          - t3a.medium
+          - t3a.large
+          - t3a.xlarge
+          - t3a.2xlarge
+          - m8i.large
+          - m8i.xlarge
+          - m8i.2xlarge
+      NGINX_INSTANCE_TYPE:
+        description: 'Nginx VM instance type'
+        required: true
+        default: 't2.nano'
+        type: choice
+        options:
+          - t2.nano
+          - t2.micro
+          - t2.small
+          - t3a.nano
+          - t3a.micro
+          - t3a.small
+          - t3a.medium
+          - t3a.large
+          - t3a.xlarge
+          - t3a.2xlarge
+          - m8i.large
+          - m8i.xlarge
+          - m8i.2xlarge
+      BASTION_INSTANCE_TYPE:
+        description: 'Bastion VM instance type'
+        required: true
+        default: 't3a.large'
+        type: choice
+        options:
+          - t2.nano
+          - t2.micro
+          - t2.small
+          - t3a.nano
+          - t3a.micro
+          - t3a.small
+          - t3a.medium
+          - t3a.large
+          - t3a.xlarge
+          - t3a.2xlarge
+          - m8i.large
+          - m8i.xlarge
+          - m8i.2xlarge
+      ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT:
+        description: 'Additional parameters for performance script'
+        required: true
+        default: '-d 15 -w 5 -x false -y JWT'
+        type: string
+      USE_DELAYS:
+        description: 'Enable delays in testing'
+        required: true
+        default: true
+        type: boolean
+      CONCURRENCY:
+        description: 'Concurrency (Comma-separated list)'
+        required: true
+        default: '50'
+        type: string
+      DB_INSTANCE_TYPE:
+        description: 'RDS DB instance type'
+        required: true
+        default: 'db.t3.medium'
+        type: choice
+        options:
+          - db.t3.medium
+          - db.t3.large
+          - db.t3.xlarge
+          - db.m6i.large
+          - db.m6i.xlarge
+          - db.m6i.2xlarge
+
+permissions:
+  contents: read
+
+jobs:
+  vm-perf-trigger:
+    runs-on: ubuntu-latest
+    env:
+      RESOURCES_DIR: ${{ github.workspace }}/resources
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.REPO_REF }}
+          persist-credentials: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Validate Concurrency input
+        run: |
+          concurrency="${{ inputs.CONCURRENCY }}"
+          if [[ -z "$concurrency" ]]; then
+            echo "Error: CONCURRENCY must not be empty."
+            exit 1
+          fi
+          IFS=',' read -ra levels <<< "$concurrency"
+          for level in "${levels[@]}"; do
+            level="${level// /}"
+            if ! [[ "$level" =~ ^[1-9][0-9]*$ ]]; then
+              echo "Error: '$level' is not a valid positive integer. CONCURRENCY must be a comma-separated list of positive integers (e.g. 50,100,150,300,500)."
+              exit 1
+            fi
+          done
+          echo "CONCURRENCY input is valid: $concurrency"
+
+      - name: Download Thunder Pack from URL
+        run: |
+          echo "Downloading Thunder Pack from URL..."
+          wget -q -O "${{ github.workspace }}/thunder.zip" "${{ inputs.THUNDER_PACK_URL }}"
+          echo "Thunder pack downloaded successfully."
+
+      - name: Download Infrastructure Resources
+        run: |
+          mkdir -p $RESOURCES_DIR
+          echo "Downloading thunder-perf-test.pem..."
+          aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem $RESOURCES_DIR/thunder-perf-test.pem --only-show-errors --no-progress
+          chmod 400 $RESOURCES_DIR/thunder-perf-test.pem
+          echo "Downloading apache-jmeter-5.6.3.tgz..."
+          aws s3 cp s3://performance-thunder-resources/apache-jmeter-5.6.3.tgz $RESOURCES_DIR/apache-jmeter-5.6.3.tgz --only-show-errors --no-progress
+
+      - name: Build Performance Tests
+        env:
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+        run: |
+          cd $GITHUB_WORKSPACE/perf-scripts/$DEPLOYMENT
+          echo "Building performance test project: $DEPLOYMENT..."
+          mvn -q clean install
+
+      - name: Create CloudFormation Stack
+        id: create-cf-stack
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          NGINX_INSTANCE_TYPE: ${{ inputs.NGINX_INSTANCE_TYPE }}
+          BASTION_INSTANCE_TYPE: ${{ inputs.BASTION_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          DB_TYPE: 'postgres'
+          BUILD_USER_EMAIL: ${{ github.actor }}@github.com
+        run: |
+          chmod +x .github/scripts/create-cf-stack.sh
+          bash .github/scripts/create-cf-stack.sh
+
+      - name: Launch JMeter on bastion (detached)
+        id: execute-perf-test
+        timeout-minutes: 15
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
+          USE_DELAYS: ${{ inputs.USE_DELAYS }}
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          DB_TYPE: 'postgres'
+          BUILD_USER_EMAIL: ${{ github.actor }}@github.com
+          BUILD_CAUSE: ${{ github.event_name }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          BASTION_NODE_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
+          NGINX_INSTANCE_IP: ${{ steps.create-cf-stack.outputs.nginx_instance_ip }}
+          WSO2_THUNDER_1_IP: ${{ steps.create-cf-stack.outputs.wso2_thunder_1_ip }}
+          RDS_HOST: ${{ steps.create-cf-stack.outputs.rds_host }}
+        run: |
+          chmod +x .github/scripts/vm-perf-trigger-script.sh
+          bash .github/scripts/vm-perf-trigger-script.sh
+
+      - name: Verify JMeter is running
+        id: verify-jmeter
+        timeout-minutes: 3
+        env:
+          BASTION_NODE_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
+        run: |
+          # Give setsid a moment to fork the JMeter process before we check for it.
+          sleep 20
+          set +x
+          verify_output=$(ssh -i "${RESOURCES_DIR}/thunder-perf-test.pem" \
+            -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+            -o ServerAliveInterval=10 -o ServerAliveCountMax=3 \
+            ubuntu@"${BASTION_NODE_IP}" \
+            'if pgrep -f "[r]un-performance-tests.sh" >/dev/null; then
+               echo RUNNING
+             else
+               echo DEAD
+               echo "--- run.log tail ---"
+               tail -n 50 /home/ubuntu/run.log 2>/dev/null || echo "(no run.log yet)"
+             fi')
+          # Belt-and-suspenders: redact AKIA-pattern strings before printing.
+          echo "$verify_output" | sed -E 's/AKIA[0-9A-Z]{16}/AKIA****REDACTED****/g'
+          echo "$verify_output" | head -1 | grep -q RUNNING || {
+            echo "::error::JMeter is NOT running on the bastion. See the log tail above for the crash reason."
+            exit 1
+          }
+          echo "verify_status=RUNNING" >> "$GITHUB_OUTPUT"
+
+      - name: Build manifest.json
+        env:
+          WORKSPACE: ${{ github.workspace }}
+          RUN_NUMBER: ${{ github.run_number }}
+          STACK_ID: ${{ steps.create-cf-stack.outputs.stack_id }}
+          BASTION_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
+          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          PERF_TEST_START_TIME: ${{ steps.execute-perf-test.outputs.perf_test_start_time }}
+          DEPLOYMENT: ${{ inputs.DEPLOYMENT }}
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          ADDITIONAL_PARAMS: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
+          USE_DELAYS: ${{ inputs.USE_DELAYS }}
+          REPO_REF: ${{ inputs.REPO_REF }}
+          THUNDER_PACK_URL: ${{ inputs.THUNDER_PACK_URL }}
+        run: |
+          # stack_id is a full ARN; extract the stack name (2nd-to-last path component).
+          stack_name=$(echo "$STACK_ID" | awk -F/ '{print $(NF-1)}')
+
+          jq -n \
+            --arg run_number "$RUN_NUMBER" \
+            --arg stack_name "$stack_name" \
+            --arg stack_id "$STACK_ID" \
+            --arg region "us-west-1" \
+            --arg bastion_ip "$BASTION_IP" \
+            --arg bastion_id "$BASTION_INSTANCE_ID" \
+            --arg nginx_id "$NGINX_INSTANCE_ID" \
+            --arg thunder_id "$THUNDER_INSTANCE_ID" \
+            --arg rds_id "$RDS_INSTANCE_ID" \
+            --arg bastion_type "$BASTION_INSTANCE_TYPE" \
+            --arg nginx_type "$NGINX_INSTANCE_TYPE" \
+            --arg thunder_type "$THUNDER_INSTANCE_TYPE" \
+            --arg db_type "$DB_INSTANCE_TYPE" \
+            --arg perf_test_start_time "$PERF_TEST_START_TIME" \
+            --arg deployment "$DEPLOYMENT" \
+            --arg concurrency "$CONCURRENCY" \
+            --arg additional_params "$ADDITIONAL_PARAMS" \
+            --arg use_delays "$USE_DELAYS" \
+            --arg repo_ref "$REPO_REF" \
+            --arg thunder_pack_url "$THUNDER_PACK_URL" \
+            '{
+              run_number: $run_number,
+              stack_name: $stack_name,
+              stack_id: $stack_id,
+              region: $region,
+              bastion_ip: $bastion_ip,
+              instance_ids: {
+                bastion: $bastion_id,
+                nginx:   $nginx_id,
+                thunder: $thunder_id,
+                rds:     $rds_id
+              },
+              instance_types: {
+                bastion: $bastion_type,
+                nginx:   $nginx_type,
+                thunder: $thunder_type,
+                rds:     $db_type
+              },
+              perf_test_start_time: $perf_test_start_time,
+              inputs: {
+                DEPLOYMENT: $deployment,
+                CONCURRENCY: $concurrency,
+                ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT: $additional_params,
+                USE_DELAYS: $use_delays,
+                REPO_REF: $repo_ref,
+                THUNDER_PACK_URL: $thunder_pack_url
+              }
+            }' > "$WORKSPACE/manifest.json"
+
+          echo "Manifest:"
+          cat "$WORKSPACE/manifest.json"
+
+      - name: Upload manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest-${{ github.run_number }}
+          # cf-test-metadata.json is consumed by the collect workflow.
+          path: |
+            ${{ github.workspace }}/manifest.json
+            ${{ github.workspace }}/cf-test-metadata.json
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Publish job summary
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          STACK_ID: ${{ steps.create-cf-stack.outputs.stack_id }}
+          BASTION_IP: ${{ steps.create-cf-stack.outputs.bastion_node_ip }}
+          BASTION_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.bastion_instance_id }}
+          NGINX_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.nginx_instance_id }}
+          THUNDER_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.thunder_instance_id }}
+          RDS_INSTANCE_ID: ${{ steps.create-cf-stack.outputs.rds_instance_id }}
+          BASTION_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.bastion_instance_type }}
+          NGINX_INSTANCE_TYPE: ${{ steps.create-cf-stack.outputs.nginx_instance_type }}
+          THUNDER_INSTANCE_TYPE: ${{ inputs.THUNDER_INSTANCE_TYPE }}
+          DB_INSTANCE_TYPE: ${{ inputs.DB_INSTANCE_TYPE }}
+          PERF_TEST_START_TIME: ${{ steps.execute-perf-test.outputs.perf_test_start_time }}
+          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          ADDITIONAL_PARAMS: ${{ inputs.ADDITIONAL_PARAMS_TO_RUN_PERFORMANCE_SCRIPT }}
+        run: |
+          stack_name=$(echo "$STACK_ID" | awk -F/ '{print $(NF-1)}')
+
+          {
+            echo "## Trigger long-running test — Run #${RUN_NUMBER}"
+            echo ""
+            echo "**Status:** Kickoff complete. JMeter is running detached on the bastion."
+            echo ""
+            echo "> Cancelling THIS workflow does NOT stop the running test — the JMeter process is detached from GHA. See **Cancel the test** below to stop it."
+            echo ""
+            echo "### When the test finishes"
+            echo ""
+            echo "Run the collect workflow with this run number. It retrieves \`results.zip\`, generates the summary, uploads GHA artifacts, and tears down the CloudFormation stack:"
+            echo ""
+            echo '```bash'
+            echo "gh workflow run vm-perf-collect.yml -f TRIGGER_RUN_NUMBER=${RUN_NUMBER}"
+            echo '```'
+            echo ""
+            echo "Or click **Actions → Collect results of long-running test → Run workflow** and paste \`${RUN_NUMBER}\`."
+            echo ""
+            echo "### Test handles"
+            echo ""
+            echo "| Item | Value |"
+            echo "|-|-|"
+            echo "| Stack name | \`${stack_name}\` |"
+            echo "| Region | \`us-west-1\` |"
+            echo "| Bastion IP | \`${BASTION_IP}\` |"
+            echo "| Test started (UTC) | \`${PERF_TEST_START_TIME}\` |"
+            echo "| Concurrency | \`${CONCURRENCY}\` |"
+            echo "| Additional params | \`${ADDITIONAL_PARAMS}\` |"
+            echo "| results.zip on bastion | \`/home/ubuntu/results.zip\` (created when JMeter finishes) |"
+            echo "| Live log on bastion | \`/home/ubuntu/run.log\` |"
+            echo ""
+            echo "### Instance IDs"
+            echo ""
+            echo "| Role | Instance ID | Type | Console |"
+            echo "|-|-|-|-|"
+            echo "| Bastion | \`${BASTION_INSTANCE_ID}\` | ${BASTION_INSTANCE_TYPE} | [EC2 → Monitoring](https://us-west-1.console.aws.amazon.com/ec2/home?region=us-west-1#InstanceDetails:instanceId=${BASTION_INSTANCE_ID}) |"
+            echo "| Nginx   | \`${NGINX_INSTANCE_ID}\` | ${NGINX_INSTANCE_TYPE} | [EC2 → Monitoring](https://us-west-1.console.aws.amazon.com/ec2/home?region=us-west-1#InstanceDetails:instanceId=${NGINX_INSTANCE_ID}) |"
+            echo "| Thunder | \`${THUNDER_INSTANCE_ID}\` | ${THUNDER_INSTANCE_TYPE} | [EC2 → Monitoring](https://us-west-1.console.aws.amazon.com/ec2/home?region=us-west-1#InstanceDetails:instanceId=${THUNDER_INSTANCE_ID}) |"
+            echo "| RDS     | \`${RDS_INSTANCE_ID}\` | ${DB_INSTANCE_TYPE} | [RDS → Monitoring](https://us-west-1.console.aws.amazon.com/rds/home?region=us-west-1#database:id=${RDS_INSTANCE_ID}) |"
+            echo ""
+            echo "<details><summary><b>Access the bastion (tail logs, health check, cancel, manual retrieval)</b></summary>"
+            echo ""
+            echo "#### Fetch the PEM key (once per machine)"
+            echo ""
+            echo '```bash'
+            echo "aws s3 cp s3://performance-thunder/keys/thunder-perf-test.pem ./key.pem"
+            echo "chmod 400 ./key.pem"
+            echo '```'
+            echo ""
+            echo "#### Watch progress live"
+            echo ""
+            echo '```bash'
+            echo "ssh -i ./key.pem -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} tail -f /home/ubuntu/run.log"
+            echo '```'
+            echo ""
+            echo "#### Health check"
+            echo ""
+            echo '```bash'
+            echo "ssh -i ./key.pem -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} \\"
+            echo "  'echo \"process: \$(pgrep -f \"[r]un-performance-tests\" || echo DEAD)\"; echo \"log last modified: \$(stat -c %y /home/ubuntu/run.log)\"'"
+            echo '```'
+            echo ""
+            echo "If \`process: DEAD\` and \`run.log\` hasn't been touched in >5 min, the test crashed. Retrieve \`run.log\` for diagnosis, then run the collect workflow (it will tear down the stack)."
+            echo ""
+            echo "#### Cancel the test"
+            echo ""
+            echo '```bash'
+            echo "ssh -i ./key.pem ubuntu@${BASTION_IP} 'pkill -f run-performance-tests.sh'"
+            echo '```'
+            echo ""
+            echo "This stops JMeter on the bastion but leaves the CloudFormation stack running. Use the collect workflow (or the manual teardown below) to delete AWS resources."
+            echo ""
+            echo "#### Manually retrieve results"
+            echo ""
+            echo '```bash'
+            echo "scp -i ./key.pem ubuntu@${BASTION_IP}:/home/ubuntu/results.zip ."
+            echo "unzip results.zip"
+            echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "<details><summary><b>Manually tear down the CloudFormation stack</b></summary>"
+            echo ""
+            echo "Only needed if you skipped the collect workflow. Collect tears the stack down automatically as its last step."
+            echo ""
+            echo "**AWS Console:** [CloudFormation → ${stack_name}](https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-1#/stacks/stackinfo?stackId=${stack_name}) → Delete"
+            echo ""
+            echo "**CLI:**"
+            echo ""
+            echo '```bash'
+            echo "aws cloudformation delete-stack --stack-name ${stack_name} --region us-west-1"
+            echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "### View CloudWatch metrics"
+            echo ""
+            echo "Click any **Monitoring** link in the instance table above. Set the time range to start at \`${PERF_TEST_START_TIME}\` and end at the time \`results.zip\` appeared on the bastion."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -86,7 +86,7 @@ echo "Copying files to Bastion node..."
 echo "============================================"
 
 ssh -i ~/.ssh/azure_id_rsa -o StrictHostKeyChecking=no -o HostKeyAlgorithms=ecdsa-sha2-nistp256,ssh-rsa,ssh-dss -o PubkeyAcceptedKeyTypes=+ssh-rsa-cert-v01@openssh.com $bastion_user@$bastion_node_ip "sudo chown $bastion_user:$bastion_user /home/$bastion_user"
-copy_setup_files_command="scp -i ~/.ssh/azure_id_rsa -v -r -o StrictHostKeyChecking=no -o HostKeyAlgorithms=ecdsa-sha2-nistp256,ssh-rsa,ssh-dss -o PubkeyAcceptedKeyTypes=+ssh-rsa-cert-v01@openssh.com $results_dir/setup $bastion_user@$bastion_node_ip:/home/$bastion_user/"
+copy_setup_files_command="scp -i ~/.ssh/azure_id_rsa -r -o StrictHostKeyChecking=no -o HostKeyAlgorithms=ecdsa-sha2-nistp256,ssh-rsa,ssh-dss -o PubkeyAcceptedKeyTypes=+ssh-rsa-cert-v01@openssh.com $results_dir/setup $bastion_user@$bastion_node_ip:/home/$bastion_user/"
 copy_repo_setup_command="scp -i ~/.ssh/azure_id_rsa -o StrictHostKeyChecking=no -o HostKeyAlgorithms=ecdsa-sha2-nistp256,ssh-rsa,ssh-dss -o PubkeyAcceptedKeyTypes=+ssh-rsa-cert-v01@openssh.com target/thunder-performance-pre-provisioned-*.tar.gz \
     $bastion_user@$bastion_node_ip:/home/$bastion_user/"
 

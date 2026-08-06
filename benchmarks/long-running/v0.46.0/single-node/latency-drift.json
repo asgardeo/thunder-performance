@@ -1,0 +1,15 @@
+{
+  "bucket_seconds": 300,
+  "scenarios": [
+    {
+      "scenario": "01-thunder_oauth_authorization_code_grant/default/1000_users",
+      "source_type": "raw",
+      "buckets": 361,
+      "total_requests": 89485468,
+      "p95_slope_ms_per_hour": 0.019,
+      "p95_r_squared": 0.0202,
+      "p95_first_bucket_ms": 8,
+      "p95_last_bucket_ms": 10
+    }
+  ]
+}

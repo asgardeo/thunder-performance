@@ -17,6 +17,12 @@
 server:
   hostname: "thunder.wso2.com"
   port: 8090
+  security:
+    # Gates the Direct API (/auth/**) since Thunder v0.48.0. Pinned here so the JMeter
+    # client can send the matching Direct-Auth-Secret header; setup.sh honours an existing
+    # value instead of generating a random one. Must match direct_auth_secret in
+    # perf-scripts/common/jmeter/perf-test-thunder.sh.
+    direct_auth_secret: "asgthunder-perf-direct-auth-secret"
 
 gate_client:
   hostname: "thunder.wso2.com"
@@ -26,8 +32,8 @@ gate_client:
   error_path: "/error"
 
 tls:
-  cert_file: "repository/resources/security/server.cert"
-  key_file: "repository/resources/security/server.key"
+  cert_file: "config/certs/server.cert"
+  key_file: "config/certs/server.key"
   min_version: "1.2"
 
 database:
@@ -43,24 +49,36 @@ database:
           max_open_conns: 20
           max_idle_conns: 20
           conn_max_lifetime: 300
-    runtime:
+    runtime_transient:
         type: "postgres"
         postgres:
           hostname: "{db_hostname}"
           port: 5432
-          name: "runtimedb"
+          name: "runtime_transient"
           username: "asgthunder"
           password: "asgthunder"
           sslmode: "disable"
           max_open_conns: 20
           max_idle_conns: 20
           conn_max_lifetime: 300
-    user:
+    entity:
         type: "postgres"
         postgres:
           hostname: "{db_hostname}"
           port: 5432
-          name: "userdb"
+          name: "entitydb"
+          username: "asgthunder"
+          password: "asgthunder"
+          sslmode: "disable"
+          max_open_conns: 20
+          max_idle_conns: 20
+          conn_max_lifetime: 300
+    runtime_persistent:
+        type: "postgres"
+        postgres:
+          hostname: "{db_hostname}"
+          port: 5432
+          name: "runtime_persistent"
           username: "asgthunder"
           password: "asgthunder"
           sslmode: "disable"

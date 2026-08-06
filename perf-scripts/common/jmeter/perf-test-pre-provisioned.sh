@@ -79,6 +79,12 @@ estimated_processing_time_in_between_tests=$default_estimated_processing_time_in
 default_thunder_port=8090
 thunder_port=$default_thunder_port
 
+# Secret sent in the Direct-Auth-Secret header to reach the Direct API (/auth/**). Must match
+# server.security.directAuthSecret in the deployed chart (THUNDER_DIRECT_AUTH_SECRET in
+# variables.yaml). Without it the authenticate-with-credentials scenario gets 401 on every request.
+default_direct_auth_secret="asgthunder-perf-direct-auth-secret"
+direct_auth_secret=$default_direct_auth_secret
+
 # Start time of the test
 test_start_time=$(date +%s)
 # Scenario specific counters
@@ -291,13 +297,23 @@ function write_server_metrics() {
     if [[ -n $ssh_host_alias ]]; then
         command_prefix="ssh -o SendEnv=LC_TIME $ssh_host_alias"
     fi
-    $command_prefix ss -s >"$report_location"/"$ssh_host"_ss.txt
-    $command_prefix uptime >"$report_location"/"$ssh_host"_uptime.txt
-    $command_prefix sar -q >"$report_location"/"$ssh_host"_loadavg.txt
-    $command_prefix sar -A >"$report_location"/"$ssh_host"_sar.txt
-    $command_prefix top -bn 1 >"$report_location"/"$ssh_host"_top.txt
+    # Non-fatal: metric-collection failures (e.g. sar when sysstat's data collector
+    # isn't running) must not abort the post-test cleanup chain under `set -e`.
+    # Redirect stderr into the same file so the failure reason is preserved, and
+    # emit a WARN to stdout so it's visible in the test log.
+    $command_prefix ss -s >"$report_location"/"$ssh_host"_ss.txt 2>&1 \
+        || echo "WARN: 'ss -s' failed for ${ssh_host} (exit $?); see ${ssh_host}_ss.txt"
+    $command_prefix uptime >"$report_location"/"$ssh_host"_uptime.txt 2>&1 \
+        || echo "WARN: 'uptime' failed for ${ssh_host} (exit $?); see ${ssh_host}_uptime.txt"
+    $command_prefix sar -q >"$report_location"/"$ssh_host"_loadavg.txt 2>&1 \
+        || echo "WARN: 'sar -q' failed for ${ssh_host} (exit $?); see ${ssh_host}_loadavg.txt"
+    $command_prefix sar -A >"$report_location"/"$ssh_host"_sar.txt 2>&1 \
+        || echo "WARN: 'sar -A' failed for ${ssh_host} (exit $?); see ${ssh_host}_sar.txt"
+    $command_prefix top -bn 1 >"$report_location"/"$ssh_host"_top.txt 2>&1 \
+        || echo "WARN: 'top -bn 1' failed for ${ssh_host} (exit $?); see ${ssh_host}_top.txt"
     if [[ -n $pgrep_pattern ]]; then
-        $command_prefix ps u -p \`pgrep -f "$pgrep_pattern"\` >"$report_location"/"$ssh_host_alias"_ps.txt
+        $command_prefix ps u -p \`pgrep -f "$pgrep_pattern"\` >"$report_location"/"$ssh_host_alias"_ps.txt 2>&1 \
+            || echo "WARN: 'ps u' failed for ${ssh_host} (exit $?); see ${ssh_host_alias}_ps.txt"
     fi
 }
 
@@ -375,7 +391,7 @@ function run_test_data_scripts() {
 
     for script in "${scripts[@]}"; do
         script_file="$setup_dir/$script"
-        command="jmeter -Jhost=$lb_host -Jport=$thunder_port -n -t $script_file"
+        command="jmeter -Jhost=$lb_host -Jport=$thunder_port -JconsoleRedirectUri=https://$lb_host/console -n -t $script_file"
         echo "$command"
         echo ""
         $command
@@ -521,7 +537,7 @@ function test_scenarios() {
             echo "Report location is $report_location"
             mkdir -p "$report_location"
             time=$(expr "$test_duration" \* 60)
-            declare -ag jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$thunder_port" "useDelay=$use_delay")
+            declare -ag jmeter_params=("concurrency=$users" "time=$time" "host=$lb_host" "port=$thunder_port" "useDelay=$use_delay" "directAuthSecret=$direct_auth_secret")
             local tenantMode=${scenario[tenantMode]}
             if [ "$tenantMode" = true ]; then
                   jmeter_params+=" -JtenantMode=true -JnoOfTenants=$noOfTenants -JspCount=$spCount -JuserCount=$userCount"
@@ -548,7 +564,10 @@ function test_scenarios() {
 
             write_server_metrics jmeter
 
-            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s
+            # Filter jtl-splitter's noisy per-row "more columns than expected" CSV warnings
+            # (emitted once per failed sample); the real error rate is in the JMeter summary.
+            "$HOME"/workspace/jtl-splitter/jtl-splitter.sh -- -f "$report_location"/results.jtl -t "$warm_up_time" -s \
+                2>&1 | grep -v "has more columns than expected" || true
 
             # after_execute_test_scenario
 
