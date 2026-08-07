@@ -25,11 +25,17 @@
 #   runtime_persistent -> CALL cleanup_expired_runtime_persistent_data()
 #   runtime_persistent -> CALL perf_cleanup_expired_sso_sessions()   [see NOTE]
 #
+# perf_cleanup_expired_sso_sessions is deliberately throttled: it pauses between batches so
+# autovacuum can keep pace (default 1s, see create_database.sql). Expect this call to take
+# roughly an hour per 6h cycle at long-run volumes — that is by design, not a hang.
+#
 # The first two are Thunder's shipped procedures, installed at DB-setup time by
 # create_database.sql (\i .../postgres-cleanup.sql). They delete only EXPIRED rows in
 # bounded, self-committing batches, so calling them repeatedly is safe and cheap.
 #
-# Scheduling: Bastion loop with the recommended 60-min cadence by default.
+# Scheduling: Bastion loop, 60-min cadence by default; detached runs override it to 6h
+# via CLEANUP_INTERVAL_SECONDS (see start-performance.sh). The sleep happens AFTER a cycle
+# completes, so a long cycle delays the next one rather than overlapping with it.
 #
 # NOTE (temporary): the alpha pack's shipped cleanup_expired_runtime_persistent_data()
 # purges only REVOKED_TOKEN — the SSO_SESSION purge was added to Thunder AFTER v1.0.0-alpha
