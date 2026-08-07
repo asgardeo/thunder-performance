@@ -174,8 +174,12 @@ Execute the pipeline with the `destroy` action to remove all previously provisio
 | AKS Max Pods Per Node | Maximum pods schedulable on each node | Number | `30` |
 | Perf Runner (JMeter Client) VM Size | VM size of the perf runner VM, which is where JMeter executes | `Standard_F8s_v2`, `Standard_F16s_v2`, `Standard_F32s_v2`, `Standard_F64s_v2`, `Standard_F72s_v2` | `Standard_F8s_v2` |
 
-> **Note:** Changing the AKS Node Pool VM Size replaces the node pool, so the cluster is rebuilt on
-> apply. See [Sizing the environment for high concurrency](#sizing-the-environment-for-high-concurrency).
+> **Note:** The AKS Node Pool VM Size can only be set when the cluster is **created**. On an
+> existing cluster, azurerm cycles the default node pool in place and requires
+> `temporary_name_for_rotation`, which the WSO2 `AKS-Generic` module does not expose, so the apply
+> fails. To change it, destroy and recreate the cluster. Node count, min and max count are
+> updatable in place.
+> See [Sizing the environment for high concurrency](#sizing-the-environment-for-high-concurrency).
 
 ### Deploy Thunder Pipeline
 
