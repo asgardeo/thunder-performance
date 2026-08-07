@@ -54,6 +54,59 @@ parameters:
       - disabled
       - in-memory
       - redis
+  # Redis sizing. Only applied when Cache Mode or Runtime Database Type is 'redis'.
+  # The master's CPU/memory requests must fit on a single node, so a 16 vCore master
+  # needs a node pool of Standard_F32s_v2 or larger.
+  # NOTE: redis-values.yaml pins 'maxmemory' (14gb master, 6gb replica). Keep those below
+  # the memory limits set here, or Redis will grow past its limit and be OOM-killed.
+  - name: REDIS_CPU_REQUESTS
+    displayName: Redis Master CPU Requests
+    type: string
+    default: '16'
+  - name: REDIS_CPU_LIMITS
+    displayName: Redis Master CPU Limits
+    type: string
+    default: '16'
+  - name: REDIS_MEMORY_REQUESTS
+    displayName: Redis Master Memory Requests
+    type: string
+    default: '32Gi'
+  - name: REDIS_MEMORY_LIMITS
+    displayName: Redis Master Memory Limits
+    type: string
+    default: '32Gi'
+  - name: REDIS_REPLICA_CPU_REQUESTS
+    displayName: Redis Replica CPU Requests
+    type: string
+    default: '6'
+  - name: REDIS_REPLICA_CPU_LIMITS
+    displayName: Redis Replica CPU Limits
+    type: string
+    default: '6'
+  - name: REDIS_REPLICA_MEMORY_REQUESTS
+    displayName: Redis Replica Memory Requests
+    type: string
+    default: '8Gi'
+  - name: REDIS_REPLICA_MEMORY_LIMITS
+    displayName: Redis Replica Memory Limits
+    type: string
+    default: '8Gi'
+  - name: REDIS_REPLICA_HPA_MIN_REPLICAS
+    displayName: Redis Replica HPA Min Replicas
+    type: string
+    default: '5'
+  - name: REDIS_REPLICA_HPA_MAX_REPLICAS
+    displayName: Redis Replica HPA Max Replicas
+    type: string
+    default: '10'
+  - name: REDIS_REPLICA_HPA_CPU_UTILIZATION
+    displayName: Redis Replica HPA Target CPU Utilization (%)
+    type: string
+    default: '70'
+  - name: REDIS_REPLICA_HPA_MEMORY_UTILIZATION
+    displayName: Redis Replica HPA Target Memory Utilization (%)
+    type: string
+    default: '80'
   - name: POPULATE_TEST_DATA
     displayName: Populate Test Data
     type: boolean
@@ -138,6 +191,30 @@ variables:
     value: ${{parameters.PERFORMANCE_REPO_BRANCH}}
   - name: RUNTIME_DB_TYPE
     value: ${{parameters.RUNTIME_DB_TYPE}}
+  - name: REDIS_CPU_REQUESTS
+    value: ${{parameters.REDIS_CPU_REQUESTS}}
+  - name: REDIS_CPU_LIMITS
+    value: ${{parameters.REDIS_CPU_LIMITS}}
+  - name: REDIS_MEMORY_REQUESTS
+    value: ${{parameters.REDIS_MEMORY_REQUESTS}}
+  - name: REDIS_MEMORY_LIMITS
+    value: ${{parameters.REDIS_MEMORY_LIMITS}}
+  - name: REDIS_REPLICA_CPU_REQUESTS
+    value: ${{parameters.REDIS_REPLICA_CPU_REQUESTS}}
+  - name: REDIS_REPLICA_CPU_LIMITS
+    value: ${{parameters.REDIS_REPLICA_CPU_LIMITS}}
+  - name: REDIS_REPLICA_MEMORY_REQUESTS
+    value: ${{parameters.REDIS_REPLICA_MEMORY_REQUESTS}}
+  - name: REDIS_REPLICA_MEMORY_LIMITS
+    value: ${{parameters.REDIS_REPLICA_MEMORY_LIMITS}}
+  - name: REDIS_REPLICA_HPA_MIN_REPLICAS
+    value: ${{parameters.REDIS_REPLICA_HPA_MIN_REPLICAS}}
+  - name: REDIS_REPLICA_HPA_MAX_REPLICAS
+    value: ${{parameters.REDIS_REPLICA_HPA_MAX_REPLICAS}}
+  - name: REDIS_REPLICA_HPA_CPU_UTILIZATION
+    value: ${{parameters.REDIS_REPLICA_HPA_CPU_UTILIZATION}}
+  - name: REDIS_REPLICA_HPA_MEMORY_UTILIZATION
+    value: ${{parameters.REDIS_REPLICA_HPA_MEMORY_UTILIZATION}}
 
 resources:
   repositories:

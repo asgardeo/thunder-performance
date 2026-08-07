@@ -214,6 +214,20 @@ This pipeline deploys Thunder to the provisioned AKS cluster through a series of
 | Nginx Memory Requests | Memory request per Nginx pod | String (e.g. `500Mi`, `4Gi`) | `500Mi` |
 | Nginx HPA Target CPU Utilization (%) | CPU threshold that triggers Nginx scale-out | Number | `80` |
 | Nginx HPA Target Memory Utilization (%) | Memory threshold that triggers Nginx scale-out | Number | `80` |
+| Runtime Database Type | Backend for the **transient** runtime store. `redis` also triggers the Redis install job. The persistent runtime store and the entity store always stay on Postgres | `postgres`, `redis` | `postgres` |
+| Cache Mode | Cache backend. `redis` also triggers the Redis install job | `disabled`, `in-memory`, `redis` | `in-memory` |
+| Redis Master CPU Limits / Requests | CPU for the Redis master pod | String | `16` / `16` |
+| Redis Master Memory Limits / Requests | Memory for the Redis master pod | String | `32Gi` / `32Gi` |
+| Redis Replica CPU Limits / Requests | CPU per Redis replica pod | String | `6` / `6` |
+| Redis Replica Memory Limits / Requests | Memory per Redis replica pod | String | `8Gi` / `8Gi` |
+| Redis Replica HPA Min / Max Replicas | Redis replica autoscaling bounds | Number | `5` / `10` |
+| Redis Replica HPA Target CPU / Memory Utilization (%) | Thresholds that trigger Redis replica scale-out | Number | `70` / `80` |
+
+> **Note on Redis sizing:** these only take effect when Cache Mode or Runtime Database Type is
+> `redis`. The master's requests must fit on a **single** node, so the default 16 vCore master
+> needs a node pool of `Standard_F32s_v2` or larger. Also keep the `maxmemory` values pinned in
+> `templates/redis-values.yaml` (14gb master, 6gb replica) below the memory limits set here,
+> otherwise Redis grows past its limit and is OOM-killed.
 
 > **Note:** Nginx fronts every request, so it saturates before Thunder does at high concurrency.
 > Scale it alongside the Thunder pods and the node pool. See
@@ -257,6 +271,14 @@ This pipeline executes the performance tests against the deployed Thunder instan
 | Thunder Image Registry | Docker registry for Thunder image       | String          | ghcr.io/thunder-id |
 | Thunder Image Repository | Docker repository for Thunder image     | String          | thunderid |
 | Thunder Image Tag | Docker image tag for Thunder            | String          | 0.47.0 |
+| Runtime Database Type | Backend for the **transient** runtime store. `redis` also triggers the Redis install job. The persistent runtime store and the entity store always stay on Postgres | `postgres`, `redis` | `postgres` |
+| Cache Mode | Cache backend. `redis` also triggers the Redis install job | `disabled`, `in-memory`, `redis` | `in-memory` |
+| Redis Master CPU Limits / Requests | CPU for the Redis master pod | String | `16` / `16` |
+| Redis Master Memory Limits / Requests | Memory for the Redis master pod | String | `32Gi` / `32Gi` |
+| Redis Replica CPU Limits / Requests | CPU per Redis replica pod | String | `6` / `6` |
+| Redis Replica Memory Limits / Requests | Memory per Redis replica pod | String | `8Gi` / `8Gi` |
+| Redis Replica HPA Min / Max Replicas | Redis replica autoscaling bounds | Number | `5` / `10` |
+| Redis Replica HPA Target CPU / Memory Utilization (%) | Thresholds that trigger Redis replica scale-out | Number | `70` / `80` |
 
 
 ## Sizing the environment for high concurrency
