@@ -102,6 +102,20 @@ parameters:
     displayName: Thunder HPA Enabled
     type: boolean
     default: true
+  # The HPA ceiling caps total Thunder capacity. Raising it only helps if the node pool has
+  # room to schedule the extra pods, so scale the AKS node pool along with it.
+  - name: THUNDER_HPA_MAX_REPLICAS
+    displayName: Thunder HPA Max Replicas
+    type: string
+    default: '10'
+  - name: THUNDER_HPA_CPU_UTILIZATION
+    displayName: Thunder HPA Target CPU Utilization (%)
+    type: string
+    default: '65'
+  - name: THUNDER_HPA_MEMORY_UTILIZATION
+    displayName: Thunder HPA Target Memory Utilization (%)
+    type: string
+    default: '75'
   - name: RUNTIME_DB_TYPE
     displayName: Runtime Database Type
     type: string
@@ -144,6 +158,12 @@ variables:
     value: ${{parameters.THUNDER_MEMORY_LIMITS}}
   - name: THUNDER_MEMORY_REQUESTS
     value: ${{parameters.THUNDER_MEMORY_REQUESTS}}
+  - name: THUNDER_HPA_MAX_REPLICAS
+    value: ${{parameters.THUNDER_HPA_MAX_REPLICAS}}
+  - name: THUNDER_HPA_CPU_UTILIZATION
+    value: ${{parameters.THUNDER_HPA_CPU_UTILIZATION}}
+  - name: THUNDER_HPA_MEMORY_UTILIZATION
+    value: ${{parameters.THUNDER_HPA_MEMORY_UTILIZATION}}
   - name: THUNDER_HPA_ENABLED
     ${{ if eq(parameters.THUNDER_HPA_ENABLED, true) }}:
       value: 'true'

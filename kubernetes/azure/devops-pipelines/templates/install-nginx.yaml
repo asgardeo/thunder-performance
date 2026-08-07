@@ -37,6 +37,27 @@ parameters:
   - name: AUTOSCALING_ENABLED
     type: string
     default: 'true'
+  - name: MAX_REPLICAS
+    type: string
+    default: '5'
+  - name: NGINX_CPU_LIMITS
+    type: string
+    default: '1000m'
+  - name: NGINX_CPU_REQUESTS
+    type: string
+    default: '500m'
+  - name: NGINX_MEMORY_LIMITS
+    type: string
+    default: '1000Mi'
+  - name: NGINX_MEMORY_REQUESTS
+    type: string
+    default: '500Mi'
+  - name: TARGET_CPU_UTILIZATION
+    type: string
+    default: '80'
+  - name: TARGET_MEMORY_UTILIZATION
+    type: string
+    default: '80'
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -46,17 +67,17 @@ steps:
         replicaCount: ${{ parameters.NO_OF_REPLICAS }}
         resources:
           limits:
-            cpu: 1000m
-            memory: 1000Mi
+            cpu: ${{ parameters.NGINX_CPU_LIMITS }}
+            memory: ${{ parameters.NGINX_MEMORY_LIMITS }}
           requests:
-            cpu: 500m
-            memory: 500Mi
+            cpu: ${{ parameters.NGINX_CPU_REQUESTS }}
+            memory: ${{ parameters.NGINX_MEMORY_REQUESTS }}
         autoscaling:
           enabled: ${{ parameters.AUTOSCALING_ENABLED }}
           minReplicas: ${{ parameters.NO_OF_REPLICAS }}
-          maxReplicas: 5
-          targetCPUUtilizationPercentage: 80
-          targetMemoryUtilizationPercentage: 80
+          maxReplicas: ${{ parameters.MAX_REPLICAS }}
+          targetCPUUtilizationPercentage: ${{ parameters.TARGET_CPU_UTILIZATION }}
+          targetMemoryUtilizationPercentage: ${{ parameters.TARGET_MEMORY_UTILIZATION }}
         service:
           annotations:
             service.beta.kubernetes.io/azure-load-balancer-internal: "true"

@@ -86,6 +86,40 @@ parameters:
     displayName: Thunder Image Tag
     type: string
     default: "1.0.0-alpha"
+  # Nginx fronts every request, so it becomes the bottleneck before Thunder does at high
+  # concurrency unless it is scaled alongside the Thunder pods and the AKS node pool.
+  - name: NGINX_REPLICAS
+    displayName: Nginx Replicas (also the HPA minimum)
+    type: string
+    default: '2'
+  - name: NGINX_MAX_REPLICAS
+    displayName: Nginx HPA Max Replicas
+    type: string
+    default: '5'
+  - name: NGINX_CPU_LIMITS
+    displayName: Nginx CPU Limits
+    type: string
+    default: '1000m'
+  - name: NGINX_CPU_REQUESTS
+    displayName: Nginx CPU Requests
+    type: string
+    default: '500m'
+  - name: NGINX_MEMORY_LIMITS
+    displayName: Nginx Memory Limits
+    type: string
+    default: '1000Mi'
+  - name: NGINX_MEMORY_REQUESTS
+    displayName: Nginx Memory Requests
+    type: string
+    default: '500Mi'
+  - name: NGINX_TARGET_CPU_UTILIZATION
+    displayName: Nginx HPA Target CPU Utilization (%)
+    type: string
+    default: '80'
+  - name: NGINX_TARGET_MEMORY_UTILIZATION
+    displayName: Nginx HPA Target Memory Utilization (%)
+    type: string
+    default: '80'
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -133,6 +167,14 @@ jobs:
         parameters:
           LB_INTERNAL_IP: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_IP)
           LB_INTERNAL_SUBNET: $(INTERNAL_NGINX_CONTROLLER_LB_INTERNAL_SUBNET)
+          NO_OF_REPLICAS: ${{ parameters.NGINX_REPLICAS }}
+          MAX_REPLICAS: ${{ parameters.NGINX_MAX_REPLICAS }}
+          NGINX_CPU_LIMITS: ${{ parameters.NGINX_CPU_LIMITS }}
+          NGINX_CPU_REQUESTS: ${{ parameters.NGINX_CPU_REQUESTS }}
+          NGINX_MEMORY_LIMITS: ${{ parameters.NGINX_MEMORY_LIMITS }}
+          NGINX_MEMORY_REQUESTS: ${{ parameters.NGINX_MEMORY_REQUESTS }}
+          TARGET_CPU_UTILIZATION: ${{ parameters.NGINX_TARGET_CPU_UTILIZATION }}
+          TARGET_MEMORY_UTILIZATION: ${{ parameters.NGINX_TARGET_MEMORY_UTILIZATION }}
 
   - job: setup_db_schema
     displayName: Setup Database Schema
