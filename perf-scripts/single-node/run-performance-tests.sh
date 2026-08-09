@@ -50,6 +50,17 @@ function after_execute_test_scenario() {
         base_name=$(basename "$log_file")
         download_file "$wso2thunder_host_alias" "$log_file" "$wso2thunder_host_alias-$base_name"
     done
+
+    # Collect the Nginx error log. Any 5xx Nginx generates itself (a 502 when it cannot
+    # reach Thunder, for example) never reaches the Thunder logs, so this is the only
+    # record of why those samples failed. The log is root owned on the load balancer, so
+    # read it over ssh instead of scp. Non-fatal: a collection failure must not abort the
+    # post-test chain under `set -e`, so capture stderr in the file and warn on stdout.
+    echo ""
+    echo "Collecting Nginx error log from $lb_ssh_host_alias."
+    ssh "$lb_ssh_host_alias" "sudo cat /var/log/nginx/error.log" \
+        >"$report_location"/"$lb_ssh_host_alias"_nginx_error.log 2>&1 \
+        || echo "WARN: Nginx error log collection failed (exit $?); see ${lb_ssh_host_alias}_nginx_error.log"
 }
 
 test_scenarios
