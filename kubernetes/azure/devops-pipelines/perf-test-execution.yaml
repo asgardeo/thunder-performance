@@ -257,12 +257,20 @@ resources:
       type: github
       endpoint: asgardeo
       name: $(PERFORMANCE_REPO)
-      ref: $(PERFORMANCE_REPO_BRANCH)
+      # Compile-time expression, not $(VAR). Azure DevOps normalises a repository ref that
+      # does not literally start with refs/ by prefixing refs/heads/, which it does before
+      # runtime macros expand. Using ${{ parameters.* }} puts the literal value in the YAML
+      # so a tag such as refs/tags/v1.0.0-alpha resolves correctly.
+      ref: ${{ parameters.PERFORMANCE_REPO_BRANCH }}
     - repository: thunder-helm-repo
       type: github
       endpoint: asgardeo
       name: $(THUNDER_HELM_REPO)
-      ref: $(THUNDER_HELM_REPO_BRANCH)
+      # Compile-time expression, not $(VAR). Azure DevOps normalises a repository ref that
+      # does not literally start with refs/ by prefixing refs/heads/, which it does before
+      # runtime macros expand. Using ${{ parameters.* }} puts the literal value in the YAML
+      # so a tag such as refs/tags/v1.0.0-alpha resolves correctly.
+      ref: ${{ parameters.THUNDER_HELM_REPO_BRANCH }}
 
 jobs:
   - job: scale_up_env

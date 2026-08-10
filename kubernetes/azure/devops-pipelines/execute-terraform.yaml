@@ -119,7 +119,11 @@ resources:
       type: github
       endpoint: asgardeo
       name: $(TERRAFORM_REPO_NAME)
-      ref: $(TERRAFORM_REPO_BRANCH)
+      # Compile-time expression, not $(VAR). Azure DevOps normalises a repository ref that
+      # does not literally start with refs/ by prefixing refs/heads/, which it does before
+      # runtime macros expand. Using ${{ parameters.* }} puts the literal value in the YAML
+      # so a tag such as refs/tags/v1.0.0-alpha resolves correctly.
+      ref: ${{ parameters.TERRAFORM_PERFORMANCE_REPO_BRANCH }}
 
 stages:
   - stage: PrePlan_Terraform
