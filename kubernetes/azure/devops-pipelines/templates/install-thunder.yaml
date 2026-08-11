@@ -1,4 +1,4 @@
-# Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+# Copyright (c) 2025-2026, WSO2 LLC. (https://www.wso2.com).
 #
 # WSO2 LLC. licenses this file to you under the Apache License,
 # Version 2.0 (the "License"); you may not use this file except
@@ -35,6 +35,13 @@ parameters:
   - name: RUN_SETUP_SCRIPT
     type: boolean
     default: true
+  - name: CACHE_MODE
+    type: string
+    default: 'in-memory'
+    values:
+      - disabled
+      - in-memory
+      - redis
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
@@ -88,6 +95,55 @@ steps:
         ) &
         SETUP_LOG_COLLECTOR_PID=$!
         echo "Installing Thunder Helm Chart"
+
+        # Cache backend. "disabled" turns the cache off entirely; the other two modes enable it
+        # and select the implementation.
+        if [[ "$CACHE_MODE" == "disabled" ]]; then
+          CACHE_FLAGS="--set configuration.cache.disabled=true"
+        elif [[ "$CACHE_MODE" == "redis" ]]; then
+          REDIS_CLUSTER_IP=$(kubectl get svc $(REDIS_RELEASE_NAME)-master -n $(REDIS_NAMESPACE) -o jsonpath='{.spec.clusterIP}')
+          echo "Resolved Redis ClusterIP: $REDIS_CLUSTER_IP"
+          # The chart gates the whole cache.redis block on type == "redis", and keys the cache
+          # prefix as camelCase keyPrefix (unlike the database block, which uses key_prefix).
+          CACHE_FLAGS="--set configuration.cache.disabled=false \
+            --set configuration.cache.type=redis \
+            --set configuration.cache.redis.address=${REDIS_CLUSTER_IP}:6379 \
+            --set configuration.cache.redis.password=$(REDIS-PASSWORD) \
+            --set configuration.cache.redis.db=0 \
+            --set configuration.cache.redis.keyPrefix=thunderid"
+        else
+          # "inmemory" with no hyphen is the value the chart expects.
+          CACHE_FLAGS="--set configuration.cache.disabled=false \
+            --set configuration.cache.type=inmemory"
+        fi
+
+        # Transient runtime store. Only this store can be moved to Redis: the Redis deployment
+        # uses allkeys-lru eviction with persistence disabled (see redis-values.yaml), so the
+        # persistent runtime store and the entity store always stay on Postgres.
+        if [[ "$(RUNTIME_DB_TYPE)" == "redis" ]]; then
+          echo "Configuring transient runtime DB with Redis backend"
+          RUNTIME_TRANSIENT_DB_FLAGS="--set configuration.database.runtime_transient.type=redis \
+            --set configuration.database.runtime_transient.redis.address=$(REDIS_ADDRESS) \
+            --set configuration.database.runtime_transient.redis.password=$(REDIS-PASSWORD) \
+            --set configuration.database.runtime_transient.redis.db=1 \
+            --set configuration.database.runtime_transient.redis.key_prefix=$(RUNTIME_TRANSIENT_DB_REDIS_KEY_PREFIX)"
+        else
+          echo "Configuring transient runtime DB with Postgres backend"
+          RUNTIME_TRANSIENT_DB_FLAGS="--set configuration.database.runtime_transient.type=$(RUNTIME_DB_TYPE) \
+            --set configuration.database.runtime_transient.postgres.name=$(RUNTIME_DB_NAME) \
+            --set configuration.database.runtime_transient.postgres.hostname=$(RUNTIME_DB_HOST) \
+            --set configuration.database.runtime_transient.postgres.port=$(RUNTIME_DB_PORT) \
+            --set configuration.database.runtime_transient.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
+            --set configuration.database.runtime_transient.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
+            --set configuration.database.runtime_transient.postgres.sslmode=$(DB_SSL_MODE) \
+            --set configuration.database.runtime_transient.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
+            --set configuration.database.runtime_transient.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
+            --set configuration.database.runtime_transient.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
+            --set configuration.database.runtime_transient.postgres.max_retries=$(DB_MAX_RETRIES) \
+            --set configuration.database.runtime_transient.postgres.min_retry_backoff_ms=$(DB_MIN_RETRY_BACKOFF_MS) \
+            --set configuration.database.runtime_transient.postgres.max_retry_backoff_ms=$(DB_MAX_RETRY_BACKOFF_MS)"
+        fi
+
         helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
           --namespace ${{ parameters.NAMESPACE }} \
           --set deployment.replicaCount=$(THUNDER_REPLICAS) \
@@ -116,19 +172,7 @@ steps:
           --set configuration.database.config.postgres.max_retries=$(DB_MAX_RETRIES) \
           --set configuration.database.config.postgres.min_retry_backoff_ms=$(DB_MIN_RETRY_BACKOFF_MS) \
           --set configuration.database.config.postgres.max_retry_backoff_ms=$(DB_MAX_RETRY_BACKOFF_MS) \
-          --set configuration.database.runtime_transient.type=$(RUNTIME_DB_TYPE) \
-          --set configuration.database.runtime_transient.postgres.name=$(RUNTIME_DB_NAME) \
-          --set configuration.database.runtime_transient.postgres.hostname=$(RUNTIME_DB_HOST) \
-          --set configuration.database.runtime_transient.postgres.port=$(RUNTIME_DB_PORT) \
-          --set configuration.database.runtime_transient.postgres.username=$(POSTGRES-ADMIN-USERNAME) \
-          --set configuration.database.runtime_transient.postgres.password=$(POSTGRES-ADMIN-PASSWORD) \
-          --set configuration.database.runtime_transient.postgres.sslmode=$(DB_SSL_MODE) \
-          --set configuration.database.runtime_transient.postgres.max_open_conns=$(DB_MAX_OPEN_CONNS) \
-          --set configuration.database.runtime_transient.postgres.max_idle_conns=$(DB_MAX_IDLE_CONNS) \
-          --set configuration.database.runtime_transient.postgres.conn_max_lifetime=$(DB_CONN_MAX_LIFETIME) \
-          --set configuration.database.runtime_transient.postgres.max_retries=$(DB_MAX_RETRIES) \
-          --set configuration.database.runtime_transient.postgres.min_retry_backoff_ms=$(DB_MIN_RETRY_BACKOFF_MS) \
-          --set configuration.database.runtime_transient.postgres.max_retry_backoff_ms=$(DB_MAX_RETRY_BACKOFF_MS) \
+          $RUNTIME_TRANSIENT_DB_FLAGS \
           --set configuration.database.runtime_persistent.type=$(RUNTIME_PERSISTENT_DB_TYPE) \
           --set configuration.database.runtime_persistent.postgres.name=$(RUNTIME_PERSISTENT_DB_NAME) \
           --set configuration.database.runtime_persistent.postgres.hostname=$(RUNTIME_PERSISTENT_DB_HOST) \
@@ -165,7 +209,7 @@ steps:
           --set certs.persistence.storageClass=$(THUNDER_SETUP_STORAGE_CLASS) \
           --set secrets.persistence.accessMode=ReadWriteMany \
           --set secrets.persistence.storageClass=$(THUNDER_SETUP_STORAGE_CLASS) \
-          --set configuration.cache.disabled=false \
+          $CACHE_FLAGS \
           --wait \
           --timeout 5m
         kill "$SETUP_LOG_COLLECTOR_PID" 2>/dev/null || true
@@ -179,3 +223,5 @@ steps:
         kubectl get endpoints -n ${{ parameters.NAMESPACE }} || true
         echo "--- Ingress ---"
         kubectl get ingress -n ${{ parameters.NAMESPACE }} -o wide || true
+    env:
+      CACHE_MODE: ${{ parameters.CACHE_MODE }}

@@ -64,7 +64,10 @@ parameters:
       - "GP_Standard_D4s_v3"
       - "GP_Standard_D8s_v3"
       - "GP_Standard_D16s_v3"
-  # Changing the node pool VM size replaces the node pool, so the cluster is rebuilt on apply.
+  # Settable only at cluster creation. On an existing cluster azurerm cycles the default node pool
+  # in place and requires `temporary_name_for_rotation`, which the WSO2 AKS-Generic module does not
+  # expose, so the apply fails. Destroy and recreate the cluster to change it. Node counts below
+  # are updatable in place.
   - name: AKS_NODE_POOL_VM_SIZE
     type: string
     displayName: "AKS Node Pool VM Size"
@@ -116,7 +119,11 @@ resources:
       type: github
       endpoint: asgardeo
       name: $(TERRAFORM_REPO_NAME)
-      ref: $(TERRAFORM_REPO_BRANCH)
+      # Compile-time expression, not $(VAR). Azure DevOps normalises a repository ref that
+      # does not literally start with refs/ by prefixing refs/heads/, which it does before
+      # runtime macros expand. Using ${{ parameters.* }} puts the literal value in the YAML
+      # so a tag such as refs/tags/v1.0.0-alpha resolves correctly.
+      ref: ${{ parameters.TERRAFORM_PERFORMANCE_REPO_BRANCH }}
 
 stages:
   - stage: PrePlan_Terraform

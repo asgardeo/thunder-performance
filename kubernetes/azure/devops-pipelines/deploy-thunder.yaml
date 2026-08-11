@@ -39,6 +39,74 @@ parameters:
     displayName: Add Hosts Entry to VM
     type: boolean
     default: true
+  - name: RUNTIME_DB_TYPE
+    displayName: Runtime Database Type
+    type: string
+    default: 'postgres'
+    values:
+      - postgres
+      - redis
+  - name: CACHE_MODE
+    displayName: Cache Mode
+    type: string
+    default: 'in-memory'
+    values:
+      - disabled
+      - in-memory
+      - redis
+  # Redis sizing. Only applied when Cache Mode or Runtime Database Type is 'redis'.
+  # The master's CPU/memory requests must fit on a single node, so a 16 vCore master
+  # needs a node pool of Standard_F32s_v2 or larger.
+  # NOTE: redis-values.yaml pins 'maxmemory' (14gb master, 6gb replica). Keep those below
+  # the memory limits set here, or Redis will grow past its limit and be OOM-killed.
+  - name: REDIS_CPU_REQUESTS
+    displayName: Redis Master CPU Requests
+    type: string
+    default: '16'
+  - name: REDIS_CPU_LIMITS
+    displayName: Redis Master CPU Limits
+    type: string
+    default: '16'
+  - name: REDIS_MEMORY_REQUESTS
+    displayName: Redis Master Memory Requests
+    type: string
+    default: '32Gi'
+  - name: REDIS_MEMORY_LIMITS
+    displayName: Redis Master Memory Limits
+    type: string
+    default: '32Gi'
+  - name: REDIS_REPLICA_CPU_REQUESTS
+    displayName: Redis Replica CPU Requests
+    type: string
+    default: '6'
+  - name: REDIS_REPLICA_CPU_LIMITS
+    displayName: Redis Replica CPU Limits
+    type: string
+    default: '6'
+  - name: REDIS_REPLICA_MEMORY_REQUESTS
+    displayName: Redis Replica Memory Requests
+    type: string
+    default: '8Gi'
+  - name: REDIS_REPLICA_MEMORY_LIMITS
+    displayName: Redis Replica Memory Limits
+    type: string
+    default: '8Gi'
+  - name: REDIS_REPLICA_HPA_MIN_REPLICAS
+    displayName: Redis Replica HPA Min Replicas
+    type: string
+    default: '5'
+  - name: REDIS_REPLICA_HPA_MAX_REPLICAS
+    displayName: Redis Replica HPA Max Replicas
+    type: string
+    default: '10'
+  - name: REDIS_REPLICA_HPA_CPU_UTILIZATION
+    displayName: Redis Replica HPA Target CPU Utilization (%)
+    type: string
+    default: '70'
+  - name: REDIS_REPLICA_HPA_MEMORY_UTILIZATION
+    displayName: Redis Replica HPA Target Memory Utilization (%)
+    type: string
+    default: '80'
   - name: POPULATE_TEST_DATA
     displayName: Populate Test Data
     type: boolean
@@ -121,6 +189,32 @@ variables:
     value: ${{parameters.PERFORMANCE_REPO}}
   - name: PERFORMANCE_REPO_BRANCH
     value: ${{parameters.PERFORMANCE_REPO_BRANCH}}
+  - name: RUNTIME_DB_TYPE
+    value: ${{parameters.RUNTIME_DB_TYPE}}
+  - name: REDIS_CPU_REQUESTS
+    value: ${{parameters.REDIS_CPU_REQUESTS}}
+  - name: REDIS_CPU_LIMITS
+    value: ${{parameters.REDIS_CPU_LIMITS}}
+  - name: REDIS_MEMORY_REQUESTS
+    value: ${{parameters.REDIS_MEMORY_REQUESTS}}
+  - name: REDIS_MEMORY_LIMITS
+    value: ${{parameters.REDIS_MEMORY_LIMITS}}
+  - name: REDIS_REPLICA_CPU_REQUESTS
+    value: ${{parameters.REDIS_REPLICA_CPU_REQUESTS}}
+  - name: REDIS_REPLICA_CPU_LIMITS
+    value: ${{parameters.REDIS_REPLICA_CPU_LIMITS}}
+  - name: REDIS_REPLICA_MEMORY_REQUESTS
+    value: ${{parameters.REDIS_REPLICA_MEMORY_REQUESTS}}
+  - name: REDIS_REPLICA_MEMORY_LIMITS
+    value: ${{parameters.REDIS_REPLICA_MEMORY_LIMITS}}
+  - name: REDIS_REPLICA_HPA_MIN_REPLICAS
+    value: ${{parameters.REDIS_REPLICA_HPA_MIN_REPLICAS}}
+  - name: REDIS_REPLICA_HPA_MAX_REPLICAS
+    value: ${{parameters.REDIS_REPLICA_HPA_MAX_REPLICAS}}
+  - name: REDIS_REPLICA_HPA_CPU_UTILIZATION
+    value: ${{parameters.REDIS_REPLICA_HPA_CPU_UTILIZATION}}
+  - name: REDIS_REPLICA_HPA_MEMORY_UTILIZATION
+    value: ${{parameters.REDIS_REPLICA_HPA_MEMORY_UTILIZATION}}
 
 resources:
   repositories:
@@ -128,12 +222,20 @@ resources:
       type: github
       endpoint: asgardeo
       name: $(THUNDER_REPO)
-      ref: $(THUNDER_REPO_BRANCH)
+      # Compile-time expression, not $(VAR). Azure DevOps normalises a repository ref that
+      # does not literally start with refs/ by prefixing refs/heads/, which it does before
+      # runtime macros expand. Using ${{ parameters.* }} puts the literal value in the YAML
+      # so a tag such as refs/tags/v1.0.0-alpha resolves correctly.
+      ref: ${{ parameters.THUNDER_REPO_BRANCH }}
     - repository: thunder-performance
       type: github
       endpoint: asgardeo
       name: $(PERFORMANCE_REPO)
-      ref: $(PERFORMANCE_REPO_BRANCH)
+      # Compile-time expression, not $(VAR). Azure DevOps normalises a repository ref that
+      # does not literally start with refs/ by prefixing refs/heads/, which it does before
+      # runtime macros expand. Using ${{ parameters.* }} puts the literal value in the YAML
+      # so a tag such as refs/tags/v1.0.0-alpha resolves correctly.
+      ref: ${{ parameters.PERFORMANCE_REPO_BRANCH }}
 
 jobs:
   - job: create_tls_secret
@@ -169,9 +271,23 @@ jobs:
         parameters:
           WORKING_DIRECTORY: $(Agent.BuildDirectory)/thunder-repo/backend
 
+  - job: install_redis
+    displayName: Install Redis
+    condition: or(eq('${{ parameters.CACHE_MODE }}', 'redis'), eq('${{ parameters.RUNTIME_DB_TYPE }}', 'redis'))
+    steps:
+      - checkout: self
+      - template: './templates/install-redis.yaml'
+        parameters:
+          RELEASE_NAME: $(REDIS_RELEASE_NAME)
+          NAMESPACE: $(REDIS_NAMESPACE)
+          REDIS_PASSWORD: $(REDIS-PASSWORD)
+          INSTALL_REDIS_INSIGHT: true
+
   - job: install_thunder
     displayName: Install Thunder
-    dependsOn: setup_db_schema
+    dependsOn:
+      - setup_db_schema
+      - install_redis
     condition: eq('${{ parameters.INSTALL_THUNDER }}', true)
     steps:
       - checkout: thunder-repo
@@ -182,6 +298,7 @@ jobs:
           THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
+          CACHE_MODE: ${{ parameters.CACHE_MODE }}
 
   - job: add_hosts_entry_to_vm
     displayName: Add Hosts Entry to VM
