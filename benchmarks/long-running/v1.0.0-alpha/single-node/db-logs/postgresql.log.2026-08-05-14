@@ -1,0 +1,45 @@
+2026-08-05 14:03:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 34534 buffers (6.9%); 0 WAL file(s) added, 0 removed, 10 recycled; write=269.870 s, sync=0.009 s, total=269.924 s; sync files=71, longest=0.003 s, average=0.001 s; distance=696589 kB, estimate=911027 kB; lsn=F8/FB9DF118, redo lsn=F8/D5982F08
+2026-08-05 14:04:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:08:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 39235 buffers (7.9%); 0 WAL file(s) added, 0 removed, 11 recycled; write=269.854 s, sync=0.009 s, total=269.911 s; sync files=64, longest=0.003 s, average=0.001 s; distance=690708 kB, estimate=888995 kB; lsn=F9/2517A0C8, redo lsn=F8/FFC08040
+2026-08-05 14:09:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:13:58 UTC::@:[1349]:LOG:  checkpoint complete: wrote 38151 buffers (7.7%); 0 WAL file(s) added, 33 removed, 0 recycled; write=269.792 s, sync=3.351 s, total=273.262 s; sync files=73, longest=1.514 s, average=0.046 s; distance=680191 kB, estimate=868115 kB; lsn=F9/D1A18B80, redo lsn=F9/29447C98
+2026-08-05 14:14:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:18:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 201136 buffers (40.5%); 0 WAL file(s) added, 0 removed, 45 recycled; write=269.453 s, sync=0.213 s, total=269.736 s; sync files=79, longest=0.115 s, average=0.003 s; distance=2951764 kB, estimate=2951764 kB; lsn=FA/836AB718, redo lsn=F9/DD6DCF80
+2026-08-05 14:19:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:23:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 179789 buffers (36.2%); 0 WAL file(s) added, 0 removed, 40 recycled; write=269.660 s, sync=0.249 s, total=270.153 s; sync files=77, longest=0.058 s, average=0.004 s; distance=2967460 kB, estimate=2967460 kB; lsn=FA/FFC3D5E8, redo lsn=FA/928C60F0
+2026-08-05 14:24:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:24:27 UTC::@:[22915]:LOG:  automatic aggressive vacuum of table "runtime_transient.public.AUTHORIZATION_CODE": index scans: 1
+	pages: 0 removed, 893553 remain, 893553 scanned (100.00% of total)
+	tuples: 5565277 removed, 129661 remain, 28 are dead but not yet removable
+	removable cutoff: 650776645, which was 806515 XIDs old when operation ended
+	new relfrozenxid: 649596363, which is 165373745 XIDs ahead of previous value
+	frozen: 782 pages from table (0.09% of total) had 10500 tuples frozen
+	index scan needed: 885777 pages from table (99.13% of total) had 14598943 dead item identifiers removed
+	index "AUTHORIZATION_CODE_pkey": pages: 110655 in total, 108531 newly deleted, 109471 currently deleted, 109459 reusable
+	index "idx_authorization_code_code_deployment": pages: 161954 in total, 56311 newly deleted, 58133 currently deleted, 58132 reusable
+	index "idx_authz_code_expiry_time": pages: 13397 in total, 13127 newly deleted, 13241 currently deleted, 13236 reusable
+	I/O timings: read: 64875.555 ms, write: 7536.499 ms
+	avg read rate: 24.121 MB/s, avg write rate: 21.467 MB/s
+	buffer usage: 3000741 hits, 1724252 misses, 1534563 dirtied
+	WAL usage: 2782621 records, 1540109 full page images, 774571067 bytes
+	system usage: CPU: user: 33.34 s, system: 16.87 s, elapsed: 558.46 s
+2026-08-05 14:28:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 128262 buffers (25.8%); 0 WAL file(s) added, 0 removed, 26 recycled; write=270.000 s, sync=0.044 s, total=270.145 s; sync files=73, longest=0.015 s, average=0.001 s; distance=2062774 kB, estimate=2876991 kB; lsn=FB/66A4F1E0, redo lsn=FB/10733AA0
+2026-08-05 14:29:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:30:07 UTC::@:[24025]:LOG:  automatic analyze of table "runtime_transient.public.AUTHORIZATION_CODE"
+	I/O timings: read: 8535.515 ms, write: 2.377 ms
+	avg read rate: 20.523 MB/s, avg write rate: 0.007 MB/s
+	buffer usage: 746 hits, 29687 misses, 10 dirtied
+	system usage: CPU: user: 0.31 s, system: 0.31 s, elapsed: 11.30 s
+2026-08-05 14:33:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 58006 buffers (11.7%); 0 WAL file(s) added, 0 removed, 24 recycled; write=269.793 s, sync=0.056 s, total=269.918 s; sync files=73, longest=0.028 s, average=0.001 s; distance=1551516 kB, estimate=2744444 kB; lsn=FB/C67914C0, redo lsn=FB/6F25AE20
+2026-08-05 14:34:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:38:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 119106 buffers (24.0%); 0 WAL file(s) added, 0 removed, 22 recycled; write=269.697 s, sync=0.032 s, total=269.797 s; sync files=71, longest=0.021 s, average=0.001 s; distance=1556242 kB, estimate=2625624 kB; lsn=FC/1CBA6338, redo lsn=FB/CE21F9E0
+2026-08-05 14:39:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:43:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 101589 buffers (20.4%); 0 WAL file(s) added, 0 removed, 20 recycled; write=269.757 s, sync=0.004 s, total=269.819 s; sync files=70, longest=0.002 s, average=0.001 s; distance=1404585 kB, estimate=2503520 kB; lsn=FC/6C00F908, redo lsn=FC/23DC9E30
+2026-08-05 14:44:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:48:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 90896 buffers (18.3%); 0 WAL file(s) added, 0 removed, 18 recycled; write=269.827 s, sync=0.004 s, total=269.895 s; sync files=71, longest=0.003 s, average=0.001 s; distance=1292528 kB, estimate=2382421 kB; lsn=FC/B6D0A338, redo lsn=FC/72C060B0
+2026-08-05 14:49:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:53:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 92833 buffers (18.7%); 0 WAL file(s) added, 0 removed, 18 recycled; write=269.787 s, sync=0.007 s, total=269.856 s; sync files=73, longest=0.003 s, average=0.001 s; distance=1221340 kB, estimate=2266312 kB; lsn=FC/FD4C95E8, redo lsn=FC/BD4BD0F8
+2026-08-05 14:54:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-05 14:58:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 78312 buffers (15.8%); 0 WAL file(s) added, 8 removed, 17 recycled; write=269.898 s, sync=0.012 s, total=270.000 s; sync files=79, longest=0.005 s, average=0.001 s; distance=1150996 kB, estimate=2154781 kB; lsn=FD/632B0D38, redo lsn=FD/38C2470
+2026-08-05 14:59:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+

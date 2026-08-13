@@ -1,0 +1,4 @@
+Thunder Instance ID: i-0914eb20df64689ac
+Nginx Instance ID: i-001b57fda539f25cb
+Bastion Instance ID: i-0fdf53a0cd415197d
+RDS Instance ID: wso2thunderdbinstance6232

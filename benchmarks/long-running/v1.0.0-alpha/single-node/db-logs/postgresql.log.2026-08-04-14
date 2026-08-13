@@ -1,0 +1,147 @@
+2026-08-04 14:03:56 UTC::@:[1349]:LOG:  checkpoint complete: wrote 54225 buffers (10.9%); 0 WAL file(s) added, 0 removed, 41 recycled; write=257.433 s, sync=0.159 s, total=257.715 s; sync files=81, longest=0.063 s, average=0.002 s; distance=2310852 kB, estimate=3159562 kB; lsn=C9/CEE64B60, redo lsn=C9/1AD9CF40
+2026-08-04 14:04:25 UTC::@:[1349]:LOG:  checkpoint starting: wal
+2026-08-04 14:06:00 UTC::@:[14416]:LOG:  automatic vacuum of table "runtime_transient.public.AUTHORIZATION_CODE": index scans: 0
+	pages: 0 removed, 866240 remain, 12426 scanned (1.43% of total)
+	tuples: 3816 removed, 278155 remain, 92 are dead but not yet removable
+	removable cutoff: 522189351, which was 10976 XIDs old when operation ended
+	frozen: 1401 pages from table (0.16% of total) had 9279 tuples frozen
+	index scan bypassed: 1695 pages from table (0.20% of total) have 2541 dead item identifiers
+	I/O timings: read: 7378.284 ms, write: 84.396 ms
+	avg read rate: 5.139 MB/s, avg write rate: 4.283 MB/s
+	buffer usage: 11434 hits, 12069 misses, 10058 dirtied
+	WAL usage: 12983 records, 5285 full page images, 7446280 bytes
+	system usage: CPU: user: 0.27 s, system: 0.14 s, elapsed: 18.34 s
+2026-08-04 14:06:13 UTC::@:[14416]:LOG:  automatic analyze of table "runtime_transient.public.AUTHORIZATION_CODE"
+	I/O timings: read: 8873.868 ms, write: 2.407 ms
+	avg read rate: 17.163 MB/s, avg write rate: 0.004 MB/s
+	buffer usage: 447 hits, 29985 misses, 7 dirtied
+	system usage: CPU: user: 0.37 s, system: 0.41 s, elapsed: 13.64 s
+2026-08-04 14:06:19 UTC::@:[13870]:LOG:  automatic vacuum of table "runtime_persistent.public.SSO_SESSION": index scans: 1
+	pages: 0 removed, 824705 remain, 421503 scanned (51.11% of total)
+	tuples: 428001 removed, 13513613 remain, 632000 are dead but not yet removable
+	removable cutoff: 521405466, which was 816098 XIDs old when operation ended
+	frozen: 13 pages from table (0.00% of total) had 87 tuples frozen
+	index scan needed: 237045 pages from table (28.74% of total) had 5686000 dead item identifiers removed
+	index "SSO_SESSION_pkey": pages: 185428 in total, 53630 newly deleted, 55676 currently deleted, 55539 reusable
+	index "idx_sso_session_handle_id": pages: 392332 in total, 0 newly deleted, 0 currently deleted, 0 reusable
+	index "idx_sso_session_flow_execution": pages: 249237 in total, 71731 newly deleted, 75001 currently deleted, 74858 reusable
+	index "idx_sso_session_subject_flow": pages: 30872 in total, 6066 newly deleted, 6584 currently deleted, 6584 reusable
+	index "idx_sso_session_absolute_expires_at": pages: 54140 in total, 15591 newly deleted, 16329 currently deleted, 16294 reusable
+	I/O timings: read: 71226.136 ms, write: 5445.840 ms
+	avg read rate: 20.627 MB/s, avg write rate: 15.795 MB/s
+	buffer usage: 2038863 hits, 1243169 misses, 951989 dirtied
+	WAL usage: 1497381 records, 935902 full page images, 1538116809 bytes
+	system usage: CPU: user: 39.41 s, system: 13.36 s, elapsed: 470.85 s
+2026-08-04 14:08:56 UTC::@:[1349]:LOG:  checkpoint complete: wrote 86576 buffers (17.4%); 0 WAL file(s) added, 0 removed, 50 recycled; write=269.336 s, sync=1.023 s, total=270.521 s; sync files=84, longest=0.401 s, average=0.013 s; distance=3230171 kB, estimate=3230171 kB; lsn=CA/8BAA62E0, redo lsn=C9/E0013E50
+2026-08-04 14:09:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:11:40 UTC::@:[14481]:LOG:  automatic vacuum of table "runtime_persistent.public.SSO_SESSION": index scans: 1
+	pages: 0 removed, 824705 remain, 202807 scanned (24.59% of total)
+	tuples: 238539 removed, 7101744 remain, 7024 are dead but not yet removable
+	removable cutoff: 522258244, which was 441096 XIDs old when operation ended
+	frozen: 687 pages from table (0.08% of total) had 8332 tuples frozen
+	index scan needed: 198571 pages from table (24.08% of total) had 4757976 dead item identifiers removed
+	index "SSO_SESSION_pkey": pages: 185428 in total, 44566 newly deleted, 99725 currently deleted, 99725 reusable
+	index "idx_sso_session_handle_id": pages: 392332 in total, 0 newly deleted, 0 currently deleted, 0 reusable
+	index "idx_sso_session_flow_execution": pages: 249237 in total, 59096 newly deleted, 133463 currently deleted, 133463 reusable
+	index "idx_sso_session_subject_flow": pages: 30872 in total, 6699 newly deleted, 13281 currently deleted, 13281 reusable
+	index "idx_sso_session_absolute_expires_at": pages: 54140 in total, 12882 newly deleted, 29053 currently deleted, 29053 reusable
+	I/O timings: read: 25894.952 ms, write: 3662.166 ms
+	avg read rate: 27.919 MB/s, avg write rate: 18.949 MB/s
+	buffer usage: 1675921 hits, 1058592 misses, 718463 dirtied
+	WAL usage: 1179830 records, 697455 full page images, 786289479 bytes
+	system usage: CPU: user: 24.51 s, system: 9.97 s, elapsed: 296.22 s
+2026-08-04 14:11:59 UTC::@:[14868]:LOG:  automatic analyze of table "runtime_persistent.public.SSO_SESSION"
+	I/O timings: read: 11132.267 ms, write: 3.906 ms
+	avg read rate: 14.464 MB/s, avg write rate: 0.011 MB/s
+	buffer usage: 2633 hits, 27970 misses, 22 dirtied
+	system usage: CPU: user: 0.67 s, system: 0.34 s, elapsed: 15.10 s
+2026-08-04 14:13:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 121050 buffers (24.4%); 0 WAL file(s) added, 0 removed, 47 recycled; write=269.778 s, sync=0.289 s, total=270.220 s; sync files=82, longest=0.135 s, average=0.004 s; distance=3134652 kB, estimate=3220619 kB; lsn=CB/2223F668, redo lsn=CA/9F542FF0
+2026-08-04 14:14:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:18:56 UTC::@:[1349]:LOG:  checkpoint complete: wrote 292908 buffers (58.9%); 0 WAL file(s) added, 0 removed, 25 recycled; write=269.389 s, sync=0.395 s, total=270.962 s; sync files=85, longest=0.112 s, average=0.005 s; distance=2293878 kB, estimate=3127945 kB; lsn=CB/83658828, redo lsn=CB/2B5609D8
+2026-08-04 14:19:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:21:38 UTC::@:[14868]:LOG:  automatic vacuum of table "runtime_persistent.public.SSO_SESSION_PARTICIPANT": index scans: 1
+	pages: 3240 removed, 336474 remain, 263977 scanned (77.71% of total)
+	tuples: 2156598 removed, 4955775 remain, 2266 are dead but not yet removable
+	removable cutoff: 522677196, which was 827049 XIDs old when operation ended
+	frozen: 78 pages from table (0.02% of total) had 1379 tuples frozen
+	index scan needed: 252551 pages from table (74.34% of total) had 14631462 dead item identifiers removed
+	index "SSO_SESSION_PARTICIPANT_pkey": pages: 298681 in total, 220310 newly deleted, 223728 currently deleted, 219323 reusable
+	I/O timings: read: 37597.218 ms, write: 3325.353 ms
+	avg read rate: 9.999 MB/s, avg write rate: 7.269 MB/s
+	buffer usage: 2380016 hits, 741103 misses, 538781 dirtied
+	WAL usage: 1249947 records, 531860 full page images, 769461952 bytes
+	system usage: CPU: user: 20.78 s, system: 7.22 s, elapsed: 579.06 s
+2026-08-04 14:22:20 UTC::@:[15300]:LOG:  automatic vacuum of table "runtime_transient.public.AUTHORIZATION_CODE": index scans: 0
+	pages: 119281 removed, 746959 remain, 19844 scanned (2.29% of total)
+	tuples: 3676 removed, 611937 remain, 121 are dead but not yet removable
+	removable cutoff: 523512402, which was 54924 XIDs old when operation ended
+	frozen: 1497 pages from table (0.17% of total) had 21450 tuples frozen
+	index scan bypassed: 4179 pages from table (0.48% of total) have 5313 dead item identifiers
+	I/O timings: read: 6114.744 ms, write: 28.532 ms
+	avg read rate: 26.207 MB/s, avg write rate: 1.930 MB/s
+	buffer usage: 31872 hits, 124649 misses, 9182 dirtied
+	WAL usage: 15058 records, 9690 full page images, 15022516 bytes
+	system usage: CPU: user: 1.67 s, system: 1.03 s, elapsed: 37.15 s
+2026-08-04 14:22:55 UTC::@:[15300]:LOG:  automatic vacuum of table "runtime_transient.pg_toast.pg_toast_16775": index scans: 1
+	pages: 0 removed, 32194 remain, 32194 scanned (100.00% of total)
+	tuples: 127109 removed, 1518 remain, 1516 are dead but not yet removable
+	removable cutoff: 523593367, which was 26247 XIDs old when operation ended
+	new relfrozenxid: 523577062, which is 856779 XIDs ahead of previous value
+	frozen: 1 pages from table (0.00% of total) had 2 tuples frozen
+	index scan needed: 32194 pages from table (100.00% of total) had 191719 dead item identifiers removed
+	index "pg_toast_16775_index": pages: 596 in total, 521 newly deleted, 567 currently deleted, 567 reusable
+	I/O timings: read: 3.919 ms, write: 0.181 ms
+	avg read rate: 0.058 MB/s, avg write rate: 9.724 MB/s
+	buffer usage: 101173 hits, 131 misses, 22043 dirtied
+	WAL usage: 118616 records, 21579 full page images, 92857787 bytes
+	system usage: CPU: user: 0.81 s, system: 0.07 s, elapsed: 17.70 s
+2026-08-04 14:23:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 158329 buffers (31.9%); 0 WAL file(s) added, 0 removed, 22 recycled; write=269.395 s, sync=0.588 s, total=270.079 s; sync files=74, longest=0.354 s, average=0.008 s; distance=1544476 kB, estimate=2969598 kB; lsn=CB/D8951600, redo lsn=CB/899A7C38
+2026-08-04 14:23:55 UTC::@:[14901]:LOG:  automatic vacuum of table "runtime_persistent.public.SSO_SESSION": index scans: 1
+	pages: 17898 removed, 806807 remain, 180261 scanned (21.86% of total)
+	tuples: 333940 removed, 4030184 remain, 103728 are dead but not yet removable
+	removable cutoff: 522677196, which was 1031890 XIDs old when operation ended
+	frozen: 0 pages from table (0.00% of total) had 0 tuples frozen
+	index scan needed: 170601 pages from table (20.69% of total) had 4086024 dead item identifiers removed
+	index "SSO_SESSION_pkey": pages: 185428 in total, 38845 newly deleted, 138021 currently deleted, 138021 reusable
+	index "idx_sso_session_handle_id": pages: 392332 in total, 10 newly deleted, 10 currently deleted, 10 reusable
+	index "idx_sso_session_flow_execution": pages: 249237 in total, 52765 newly deleted, 185080 currently deleted, 185080 reusable
+	index "idx_sso_session_subject_flow": pages: 30872 in total, 5888 newly deleted, 19169 currently deleted, 19169 reusable
+	index "idx_sso_session_absolute_expires_at": pages: 54140 in total, 11367 newly deleted, 40143 currently deleted, 40143 reusable
+	I/O timings: read: 48447.970 ms, write: 4394.029 ms
+	avg read rate: 13.081 MB/s, avg write rate: 7.498 MB/s
+	buffer usage: 1516886 hits, 1160939 misses, 665438 dirtied
+	WAL usage: 1084308 records, 661255 full page images, 578891163 bytes
+	system usage: CPU: user: 22.05 s, system: 11.59 s, elapsed: 693.35 s
+2026-08-04 14:24:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:28:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 310420 buffers (62.5%); 0 WAL file(s) added, 0 removed, 9 recycled; write=269.207 s, sync=0.059 s, total=269.289 s; sync files=85, longest=0.049 s, average=0.001 s; distance=1348160 kB, estimate=2807454 kB; lsn=CB/FC685D20, redo lsn=CB/DBE37F98
+2026-08-04 14:29:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:30:34 UTC::@:[14882]:LOG:  automatic vacuum of table "runtime_persistent.public.SSO_SESSION_CONTEXT": index scans: 1
+	pages: 13269 removed, 1636896 remain, 1537739 scanned (93.19% of total)
+	tuples: 438588 removed, 5190989 remain, 103728 are dead but not yet removable
+	removable cutoff: 522677196, which was 1578170 XIDs old when operation ended
+	frozen: 2 pages from table (0.00% of total) had 11 tuples frozen
+	index scan needed: 1211004 pages from table (73.39% of total) had 14530000 dead item identifiers removed
+	index "SSO_SESSION_CONTEXT_pkey": pages: 206924 in total, 152745 newly deleted, 153072 currently deleted, 153063 reusable
+	I/O timings: read: 91179.514 ms, write: 9279.454 ms
+	avg read rate: 19.405 MB/s, avg write rate: 12.224 MB/s
+	buffer usage: 3150934 hits, 2769770 misses, 1744741 dirtied
+	WAL usage: 3267645 records, 1729711 full page images, 974718542 bytes
+	system usage: CPU: user: 37.17 s, system: 24.71 s, elapsed: 1115.09 s
+2026-08-04 14:30:45 UTC::@:[14882]:LOG:  automatic analyze of table "runtime_persistent.public.SSO_SESSION_CONTEXT"
+	I/O timings: read: 7271.267 ms, write: 12.177 ms
+	avg read rate: 20.331 MB/s, avg write rate: 0.008 MB/s
+	buffer usage: 714 hits, 29747 misses, 12 dirtied
+	system usage: CPU: user: 1.64 s, system: 0.23 s, elapsed: 11.43 s
+2026-08-04 14:33:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 93176 buffers (18.7%); 0 WAL file(s) added, 0 removed, 8 recycled; write=269.804 s, sync=0.005 s, total=269.839 s; sync files=72, longest=0.003 s, average=0.001 s; distance=598097 kB, estimate=2586519 kB; lsn=CC/1C4D8CE0, redo lsn=CC/64C5E8
+2026-08-04 14:34:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:38:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 64569 buffers (13.0%); 0 WAL file(s) added, 0 removed, 8 recycled; write=269.880 s, sync=0.006 s, total=269.923 s; sync files=77, longest=0.003 s, average=0.001 s; distance=517934 kB, estimate=2379660 kB; lsn=CC/3C630128, redo lsn=CC/20018180
+2026-08-04 14:39:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:43:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 97807 buffers (19.7%); 0 WAL file(s) added, 0 removed, 7 recycled; write=269.886 s, sync=0.005 s, total=269.929 s; sync files=68, longest=0.003 s, average=0.001 s; distance=514490 kB, estimate=2193143 kB; lsn=CC/5B83C710, redo lsn=CC/3F686B08
+2026-08-04 14:44:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:48:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 92717 buffers (18.7%); 0 WAL file(s) added, 2 removed, 6 recycled; write=269.847 s, sync=0.005 s, total=269.893 s; sync files=65, longest=0.003 s, average=0.001 s; distance=510014 kB, estimate=2024830 kB; lsn=CC/7BC8F5E8, redo lsn=CC/5E8966E8
+2026-08-04 14:49:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:53:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 103962 buffers (20.9%); 0 WAL file(s) added, 5 removed, 3 recycled; write=269.826 s, sync=0.005 s, total=269.874 s; sync files=72, longest=0.003 s, average=0.001 s; distance=528605 kB, estimate=1875208 kB; lsn=CC/9BE35F48, redo lsn=CC/7ECCDD60
+2026-08-04 14:54:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+2026-08-04 14:58:55 UTC::@:[1349]:LOG:  checkpoint complete: wrote 95707 buffers (19.3%); 0 WAL file(s) added, 4 removed, 4 recycled; write=269.886 s, sync=0.006 s, total=269.931 s; sync files=63, longest=0.003 s, average=0.001 s; distance=527319 kB, estimate=1740419 kB; lsn=CC/BB574998, redo lsn=CC/9EFC3AD0
+2026-08-04 14:59:25 UTC::@:[1349]:LOG:  checkpoint starting: time
+
