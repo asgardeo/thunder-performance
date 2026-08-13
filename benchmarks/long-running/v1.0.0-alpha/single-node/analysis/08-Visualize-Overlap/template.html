@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Error events vs autovacuum vs sampler vs latency</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --surface-2: #f4f3f0;
+    --grid: #e6e5e1;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #85837c;
+    --errors: #eb6834;
+    --vacuum: #2a78d6;
+    --sampler: #1baf7a;
+    /* Ordinal violet ramp for p50 -> p99: one hue, light->dark as the tail gets
+       heavier. Validated light->dark against #fcfcfb (all checks pass). */
+    --lat-1: #9085e9;
+    --lat-2: #6a5cd0;
+    --lat-3: #4a3aa7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --grid: #33332f;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #8d8c83;
+      --errors: #d95926;
+      --vacuum: #3987e5;
+      --sampler: #199e70;
+      /* Same ramp re-stepped for the dark surface: prominence now runs lighter,
+         so p99 stays the heaviest mark. Validated against #1a1a19. */
+      --lat-1: #5f51c9;
+      --lat-2: #9085e9;
+      --lat-3: #c0b8f3;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --grid: #33332f;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8d8c83;
+    --errors: #d95926;
+    --vacuum: #3987e5;
+    --sampler: #199e70;
+    --lat-1: #5f51c9;
+    --lat-2: #9085e9;
+    --lat-3: #c0b8f3;
+  }
+
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--surface-1);
+    font: 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  .viz-root { max-width: 1400px; margin: 0 auto; padding: 28px 20px 56px; }
+
+  header h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--text-secondary); max-width: 76ch; }
+  .topbar { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 24px 0 20px; }
+  .kpi { background: var(--surface-2); border-radius: 8px; padding: 12px 14px; }
+  .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .kpi .value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  button {
+    font: inherit; font-size: 13px; color: var(--text-primary);
+    background: var(--surface-2); border: 1px solid var(--grid);
+    border-radius: 6px; padding: 5px 11px; cursor: pointer;
+  }
+  button:hover { border-color: var(--text-muted); }
+  button:focus-visible { outline: 2px solid var(--vacuum); outline-offset: 1px; }
+  .spacer { flex: 1; }
+  .range { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 14px; font-size: 13px; color: var(--text-secondary); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  #llegend { display: contents; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+
+  .chart { display: grid; grid-template-columns: 148px 1fr; gap: 0 10px; align-items: stretch; }
+  .lanes { display: flex; flex-direction: column; }
+  .lane-label { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .lane-label b { font-weight: 600; font-size: 13px; }
+  .lane-label small { color: var(--text-muted); font-size: 11px; }
+  .plotwrap { position: relative; min-width: 0; }
+  canvas { display: block; width: 100%; touch-action: none; }
+  #main { cursor: grab; }
+  #main.dragging { cursor: grabbing; }
+  #ov { cursor: crosshair; margin-top: 6px; border-radius: 4px; }
+  .ovlabel { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  .tip {
+    position: fixed; z-index: 10; pointer-events: none; opacity: 0;
+    transition: opacity .08s; background: var(--surface-1);
+    border: 1px solid var(--grid); border-radius: 7px;
+    padding: 8px 10px; font-size: 12px; line-height: 1.45;
+    box-shadow: 0 6px 20px rgba(0,0,0,.16); max-width: 320px;
+  }
+  .tip b { display: block; margin-bottom: 3px; font-size: 12px; }
+  .tip .k { color: var(--text-muted); }
+  .tip .v { font-variant-numeric: tabular-nums; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .yes { color: var(--text-primary); font-weight: 600; }
+  .no { color: var(--text-muted); }
+  .tablewrap { overflow-x: auto; margin-top: 20px; }
+  [hidden] { display: none !important; }
+
+  .notes { margin-top: 26px; font-size: 12px; color: var(--text-secondary); max-width: 88ch; }
+  .notes li { margin-bottom: 5px; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <div class="topbar">
+    <header>
+      <h1>Do the 502 error bursts line up with autovacuum, the sampler, or a latency spike?</h1>
+      <p>Three interval sets, the JMeter latency buckets and the RDS metrics on one time axis.
+         Scroll to zoom, drag to pan, or drag a range in the overview strip. Every error event
+         draws a dashed guide through every lane and panel.</p>
+    </header>
+    <button id="theme" title="Toggle light/dark">◐ Theme</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="controls">
+    <button id="zin">Zoom in</button>
+    <button id="zout">Zoom out</button>
+    <button id="burst">Largest burst</button>
+    <button id="lspike">Worst p99 spike</button>
+    <button id="reset">Full run</button>
+    <span class="spacer"></span>
+    <span class="range" id="range"></span>
+  </div>
+
+  <div class="controls">
+    <label for="lsel" style="font-size:13px;color:var(--text-secondary)">Latency</label>
+    <select id="lsel"></select>
+    <label style="font-size:13px;color:var(--text-secondary)">
+      <input type="checkbox" id="logy" checked> Log Y
+    </label>
+    <label style="font-size:13px;color:var(--text-secondary)">
+      <input type="checkbox" id="lautoy"> Auto-scale Y to view
+    </label>
+    <span class="spacer"></span>
+    <label for="msel" style="font-size:13px;color:var(--text-secondary)">RDS metric</label>
+    <select id="msel"></select>
+    <label style="font-size:13px;color:var(--text-secondary)">
+      <input type="checkbox" id="autoy"> Auto-scale Y to view
+    </label>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--errors)"></i> Error events</span>
+    <span><i class="swatch" style="background:var(--vacuum)"></i> Autovacuum / autoanalyze</span>
+    <span><i class="swatch" style="background:var(--sampler)"></i> Sampler busy window</span>
+    <span id="llegend"></span>
+    <span><i class="swatch" style="background:var(--text-secondary)"></i> RDS metric (min–max band + mean)</span>
+  </div>
+
+  <div class="chart">
+    <div class="lanes" id="lanes">
+      <div class="lane-label"><b>Errors</b><small></small></div>
+      <div class="lane-label"><b>Autovacuum</b><small></small></div>
+      <div class="lane-label"><b>Sampler</b><small></small></div>
+    </div>
+    <div class="plotwrap"><canvas id="main"></canvas></div>
+
+    <div class="lane-label" id="llabel"><b></b><small></small></div>
+    <div class="plotwrap"><canvas id="lat"></canvas></div>
+
+    <div class="lane-label" id="mlabel"><b></b><small></small></div>
+    <div class="plotwrap"><canvas id="metric"></canvas></div>
+
+    <div></div>
+    <div class="plotwrap"><canvas id="axis"></canvas></div>
+
+    <div></div>
+    <div class="plotwrap">
+      <canvas id="ov"></canvas>
+      <div class="ovlabel">Overview — full run, four rows: errors, autovacuum, sampler, p99 latency.
+        Shaded box is the current view; drag to select a range.</div>
+    </div>
+  </div>
+
+  <div class="controls" style="margin-top:22px">
+    <button id="ttoggle" aria-expanded="false">Show data table</button>
+  </div>
+  <div class="tablewrap" id="tablewrap" hidden></div>
+
+  <ul class="notes">
+    <li><b>Bars have a 2px minimum width.</b> A 5-second event on a 7-day axis is far narrower than
+        one pixel, so at wide zoom a bar's width shows <em>presence</em>, not duration. Zoom in
+        before comparing widths.</li>
+    <li><b>A lane too dense to resolve switches to a coverage profile</b> (its label then reads
+        <em>coverage %</em>): bar height becomes the fraction of that pixel-column's time span that is
+        covered. The sampler lane starts this way — 1872 windows over 7 days cannot be drawn as
+        separate bars, and drawing them at the 2px floor would falsely read as "always busy" when the
+        real duty cycle is 7.7%. Zoom in and the lane reverts to true bars.</li>
+    <li><b>The autovacuum lane is hatched before 2026-08-03 12:05Z</b> — AWS retains these postgres
+        logs for 3 days only, so vacuum activity in the first two days of the run is unknown, not absent.
+        Overlap percentages for autovacuum are computed only over the covered span.</li>
+    <li><b>Sampler windows are derived, not logged.</b> <code>long-run-sampler.sh</code> sleeps 300s
+        <em>after</em> each sample, so a window is <code>[t[i], t[i+1] − 300s]</code>.</li>
+    <li>Autovacuum start times are also derived: postgres logs on completion, so
+        <code>start = end − elapsed</code> at 1-second log resolution.</li>
+    <li><b>The latency panel is JMeter-side, at 5-minute resolution</b> — from
+        <code>latency-drift.csv</code> for
+        <code>01-thunder_oauth_authorization_code_grant / 1000 users</code>. Each point is a whole
+        bucket, so a 2-second error burst is diluted across 300 seconds of ~250k requests: expect a
+        burst to nudge p99, not to spike it. The three percentiles share one ms axis because they
+        share one unit; throughput and error rate are separate views, never a second y-scale.</li>
+    <li><b>Y is logarithmic by default here</b> — p50 sits at 5 ms and the worst p99 bucket at
+        3172 ms. On a linear axis fixed to that peak, p50 and p95 are a flat line on the floor.
+        Untick <em>Log Y</em> for a linear axis; the label under the panel name always says which
+        is in force.</li>
+    <li><b>The error-rate view is JMeter's own, and it is not the error lane.</b> Its one large
+        spike (6.3% of the 08-01 08:40Z bucket) is the RDS minor-version upgrade, which step 03
+        removes from the error lane as planned downtime. The nine remaining buckets with any
+        errors at all sit at 0.01%.</li>
+    <li><b>Latency buckets stop being contiguous after 2026-08-07 04:05Z</b> — 22 buckets are
+        missing across 12 breaks, all between 04:05Z and 07:00Z. The buckets on either side carry
+        a normal ~248k requests, so this is missing measurement data rather than a visible stall;
+        the cause is not established here. The line breaks at a missing bucket rather than
+        bridging it, so a gap reads as absent data, not as flat latency.</li>
+    <li><b>The RDS metric panel shares this x-axis but has its own y-axis</b> — one metric at a time,
+        never two scales on one plot. At 1-minute resolution a pixel column usually holds several
+        samples, so the band is that column's min–max and the line is its mean. Y is fixed to the
+        whole run's peak by default so zooming doesn't silently rescale; tick "Auto-scale Y" to
+        expand small features.</li>
+    <li><b><code>rds-iops.csv</code>'s <code>timestamp_utc</code> column is misnamed</b> — its values
+        carry a <code>+05:30</code> offset. They are parsed with that offset, so the panel is aligned
+        in true UTC like everything else. Reading them as UTC would shift the whole series 5.5 hours.</li>
+    <li>RDS metrics cover 2026-07-31 12:06Z → 2026-08-07 07:03Z, so the last ~5 hours of the run
+        have no metric data — the panel is simply empty there.</li>
+  </ul>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+const D = __PAYLOAD__;
+
+const LANES = [
+  {key: 'events',  name: 'Errors',     color: '--errors'},
+  {key: 'vacuums', name: 'Autovacuum', color: '--vacuum'},
+  {key: 'samples', name: 'Sampler',    color: '--sampler'},
+];
+const SPAN = D.t1 - D.t0;
+const LANE_H = 58, BAR_H = 26, AXIS_H = 30, OV_H = 72, MINW = 2, MET_H = 132;
+const LAT_H = 158;
+let view = {a: 0, b: SPAN};
+let metric = D.iops.default || D.iops.meta[0].key, autoY = false, crossX = null;
+let latView = D.lat.default, logY = true, latAutoY = false, latCrossX = null;
+
+const cvs = id => document.getElementById(id);
+const main = cvs('main'), axis = cvs('axis'), ov = cvs('ov'), tip = cvs('tip');
+const metc = cvs('metric'), latc = cvs('lat');
+const css = n => getComputedStyle(document.body).getPropertyValue(n).trim() ||
+                 getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(n).trim();
+
+let W = 800;
+function fit(c, h) {
+  const dpr = window.devicePixelRatio || 1;
+  W = c.parentElement.clientWidth;
+  c.width = Math.max(1, Math.round(W * dpr));
+  c.height = Math.round(h * dpr);
+  c.style.height = h + 'px';
+  const x = c.getContext('2d');
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return x;
+}
+
+/* ---------- time helpers (all UTC) ---------- */
+const abs = rel => new Date((D.t0 + rel) * 1000);
+const p2 = n => String(n).padStart(2, '0');
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmt(rel, grain) {
+  const d = abs(rel);
+  const day = MON[d.getUTCMonth()] + ' ' + p2(d.getUTCDate());
+  const hm = p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes());
+  if (grain === 'day') return day;
+  if (grain === 'hour') return day + ' ' + hm;
+  if (grain === 'min') return hm;
+  return hm + ':' + p2(d.getUTCSeconds());
+}
+function stamp(rel) {
+  const d = abs(rel);
+  return d.getUTCFullYear() + '-' + p2(d.getUTCMonth() + 1) + '-' + p2(d.getUTCDate()) +
+         ' ' + p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + ':' + p2(d.getUTCSeconds()) + 'Z';
+}
+function dur(s) {
+  if (s < 1) return s.toFixed(2) + 's';
+  if (s < 90) return s.toFixed(s < 10 ? 1 : 0) + 's';
+  if (s < 5400) return (s / 60).toFixed(1) + 'm';
+  if (s < 172800) return (s / 3600).toFixed(1) + 'h';
+  return (s / 86400).toFixed(1) + 'd';
+}
+
+/* ---------- scales ---------- */
+const x = t => (t - view.a) / (view.b - view.a) * W;
+const inv = px => view.a + px / W * (view.b - view.a);
+const laneY = i => i * LANE_H + (LANE_H - BAR_H) / 2;
+
+function clamp() {
+  const min = 5, max = SPAN;
+  let w = Math.min(max, Math.max(min, view.b - view.a));
+  let a = Math.max(0, Math.min(SPAN - w, view.a));
+  view = {a, b: a + w};
+}
+
+/* ---------- draw ---------- */
+const STEPS = [1,2,5,10,15,30,60,120,300,600,900,1800,3600,7200,10800,21600,43200,86400,172800];
+function tickStep(span) {
+  for (const s of STEPS) if (span / s <= 11) return s;
+  return 172800;
+}
+
+function roundRect(c, X, Y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  if (c.roundRect) c.roundRect(X, Y, w, h, r);
+  else {
+    c.moveTo(X + r, Y); c.arcTo(X + w, Y, X + w, Y + h, r);
+    c.arcTo(X + w, Y + h, X, Y + h, r); c.arcTo(X, Y + h, X, Y, r);
+    c.arcTo(X, Y, X + w, Y, r); c.closePath();
+  }
+  c.fill();
+}
+
+/* Too many intervals to resolve as bars: draw per-pixel time coverage instead.
+   Height = fraction of that column's time span that is covered, so a lane with a
+   7% duty cycle reads as a low ribbon rather than a solid block. */
+function coverage(intervals, va, vb, n) {
+  const perCol = (vb - va) / n, cols = new Float32Array(n);
+  for (const [o, d] of intervals) {
+    const a = Math.max(o, va), b = Math.min(o + d, vb);
+    if (b < a) continue;
+    const c0 = (a - va) / perCol, c1 = (b - va) / perCol;
+    if (c1 - c0 < 1) {
+      cols[Math.min(n - 1, Math.max(0, Math.floor(c0)))] += (b - a);
+    } else {
+      for (let i = Math.max(0, Math.floor(c0)); i < Math.min(n, Math.ceil(c1)); i++)
+        cols[i] += (Math.min(i + 1, c1) - Math.max(i, c0)) * perCol;
+    }
+  }
+  return {cols, perCol};
+}
+
+function drawDensity(c, vis, color, Y, h0) {
+  const n = Math.ceil(W), H = h0 || BAR_H;
+  const {cols, perCol} = coverage(vis, view.a, view.b, n);
+  c.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    if (cols[i] <= 0) continue;
+    const h = Math.max(1, Math.min(1, cols[i] / perCol) * H);
+    c.fillRect(i, Y + H - h, 1, h);
+  }
+}
+
+function labelLanes() {
+  const meta = [
+    D.events.length + ' events · ' + D.stats.errors + ' errors',
+    D.vacuums.length + ' periods',
+    D.samples.length + ' windows',
+  ];
+  document.querySelectorAll('#lanes .lane-label').forEach((el, i) => {
+    el.querySelector('b').textContent = LANES[i].name;
+    el.querySelector('small').textContent = meta[i] + (LANES[i].agg ? ' · coverage %' : '');
+  });
+}
+
+function drawMain() {
+  const H = LANES.length * LANE_H;
+  const c = fit(main, H);
+  const surface = css('--surface-1');
+  c.clearRect(0, 0, W, H);
+
+  // lane bands
+  c.fillStyle = css('--surface-2');
+  for (let i = 0; i < LANES.length; i++)
+    if (i % 2 === 0) c.fillRect(0, i * LANE_H, W, LANE_H);
+
+  // vertical grid
+  const step = tickStep(view.b - view.a);
+  c.strokeStyle = css('--grid'); c.lineWidth = 1;
+  for (let t = Math.ceil(view.a / step) * step; t <= view.b; t += step) {
+    const px = Math.round(x(t)) + .5;
+    c.beginPath(); c.moveTo(px, 0); c.lineTo(px, H); c.stroke();
+  }
+
+  // "no log coverage" hatch on the autovacuum lane
+  const covEnd = D.vacLo - D.t0;
+  if (view.a < covEnd) {
+    const x0 = Math.max(0, x(0)), x1 = Math.min(W, x(covEnd));
+    const y0 = 1 * LANE_H, y1 = y0 + LANE_H;
+    c.save();
+    c.beginPath(); c.rect(x0, y0, Math.max(0, x1 - x0), LANE_H); c.clip();
+    c.strokeStyle = css('--grid'); c.lineWidth = 1;
+    for (let k = -LANE_H; k < (x1 - x0) + LANE_H; k += 7) {
+      c.beginPath(); c.moveTo(x0 + k, y1); c.lineTo(x0 + k + LANE_H, y0); c.stroke();
+    }
+    c.restore();
+    if (x1 - x0 > 130) {
+      c.fillStyle = css('--text-muted');
+      c.font = '11px ui-sans-serif, sans-serif'; c.textBaseline = 'middle';
+      c.fillText('no DB log coverage', x0 + 8, y0 + LANE_H / 2);
+    }
+  }
+
+  // error guides across every lane
+  c.save();
+  c.strokeStyle = css('--errors'); c.globalAlpha = .38;
+  c.lineWidth = 1; c.setLineDash([3, 3]);
+  for (const [o] of D.events) {
+    if (o < view.a || o > view.b) continue;
+    const px = Math.round(x(o)) + .5;
+    c.beginPath(); c.moveTo(px, 0); c.lineTo(px, H); c.stroke();
+  }
+  c.restore();
+
+  // bars — or an honest coverage profile when the lane is over-plotted
+  LANES.forEach((L, i) => {
+    const col = css(L.color), Y = laneY(i);
+    const vis = D[L.key].filter(([o, d]) => o + d >= view.a && o <= view.b);
+    if (vis.length > W / 4) { drawDensity(c, vis, col, Y); L.agg = true; return; }
+    L.agg = false;
+    c.fillStyle = col; c.strokeStyle = surface; c.lineWidth = 1;
+    for (const it of vis) {
+      const [o, d] = it;
+      let X = x(o), w = x(o + d) - X;
+      if (w < MINW) { X -= (MINW - w) / 2; w = MINW; }
+      roundRect(c, X, Y, w, BAR_H, 2);
+      if (w >= 4) c.stroke();
+    }
+  });
+  labelLanes();
+
+  // lane separators
+  c.strokeStyle = css('--grid'); c.lineWidth = 1;
+  for (let i = 1; i < LANES.length; i++) {
+    const py = i * LANE_H + .5;
+    c.beginPath(); c.moveTo(0, py); c.lineTo(W, py); c.stroke();
+  }
+  drawAxis(step);
+}
+
+function drawAxis(step) {
+  const c = fit(axis, AXIS_H);
+  c.clearRect(0, 0, W, AXIS_H);
+  const grain = step >= 86400 ? 'day' : step >= 3600 ? 'hour' : step >= 60 ? 'min' : 'sec';
+  c.strokeStyle = css('--grid'); c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0, .5); c.lineTo(W, .5); c.stroke();
+  c.fillStyle = css('--text-secondary');
+  c.font = '11px ui-sans-serif, sans-serif';
+  c.textBaseline = 'top'; c.textAlign = 'center';
+  for (let t = Math.ceil(view.a / step) * step; t <= view.b; t += step) {
+    const px = x(t);
+    if (px < 18 || px > W - 18) continue;
+    c.strokeStyle = css('--grid');
+    c.beginPath(); c.moveTo(Math.round(px) + .5, 0); c.lineTo(Math.round(px) + .5, 4); c.stroke();
+    c.fillText(fmt(t, grain), px, 7);
+  }
+  c.textAlign = 'left';
+}
+
+function drawOv() {
+  const c = fit(ov, OV_H);
+  c.clearRect(0, 0, W, OV_H);
+  c.fillStyle = css('--surface-2');
+  c.fillRect(0, 0, W, OV_H);
+  // Same coverage-profile encoding as an over-plotted lane — at full-run scale
+  // every one of these lanes is over-plotted, so bars would be a lie here too.
+  const h = 12, pad = 5, n = Math.ceil(W);
+  LANES.forEach((L, i) => {
+    const {cols, perCol} = coverage(D[L.key], 0, SPAN, n);
+    c.fillStyle = css(L.color);
+    const Y = pad + i * (h + 4);
+    for (let k = 0; k < n; k++) {
+      if (cols[k] <= 0) continue;
+      const bh = Math.max(1, Math.min(1, cols[k] / perCol) * h);
+      c.fillRect(k, Y + h - bh, 1, bh);
+    }
+  });
+  // Fourth row: p99 latency, column max on a log height so a 3-second spike
+  // doesn't flatten the 30 ms baseline to a single pixel.
+  const Y3 = pad + LANES.length * (h + 4);
+  const p99 = D.lat.series.p99, LTo = D.lat.t;
+  const top = Math.log10(Math.max(10, latMax('p99')));
+  const cmax = new Float64Array(n);
+  for (let i = 0; i < LTo.length; i++) {
+    const k = Math.max(0, Math.min(n - 1, Math.floor(LTo[i] / SPAN * n)));
+    if (p99[i] > cmax[k]) cmax[k] = p99[i];
+  }
+  c.fillStyle = css('--lat-3');
+  for (let k = 0; k < n; k++) {
+    if (!cmax[k]) continue;
+    const bh = Math.max(1, Math.min(1, Math.log10(cmax[k]) / top) * h);
+    c.fillRect(k, Y3 + h - bh, 1, bh);
+  }
+  // brush
+  const bx = view.a / SPAN * W, bw = Math.max(2, (view.b - view.a) / SPAN * W);
+  c.fillStyle = css('--text-primary'); c.globalAlpha = .1;
+  c.fillRect(bx, 0, bw, OV_H);
+  c.globalAlpha = 1;
+  c.strokeStyle = css('--text-secondary'); c.lineWidth = 1;
+  c.strokeRect(Math.round(bx) + .5, .5, Math.max(1, Math.round(bw) - 1), OV_H - 1);
+}
+
+/* ---------- RDS metric panel ---------- */
+const IT = D.iops.t;
+const mmeta = () => D.iops.meta.find(m => m.key === metric);
+
+function lowerBound(arr, v) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < v) lo = m + 1; else hi = m; }
+  return lo;
+}
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const e = Math.pow(10, Math.floor(Math.log10(v))), f = v / e;
+  for (const s of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (f <= s) return s * e;
+  return 10 * e;
+}
+const fmtY = v => v >= 1000 ? Math.round(v).toLocaleString()
+                : v >= 10 ? v.toFixed(0) : v.toFixed(2);
+
+function drawMetric() {
+  const c = fit(metc, MET_H);
+  const V = D.iops.series[metric], M = mmeta();
+  const n = Math.ceil(W), PADT = 17, H = MET_H - PADT - 1;
+  c.clearRect(0, 0, W, MET_H);
+
+  // bucket the visible samples into pixel columns
+  const mn = new Float64Array(n).fill(NaN), mx = new Float64Array(n).fill(NaN);
+  const sum = new Float64Array(n), cnt = new Int32Array(n);
+  const tFirst = new Float64Array(n), tLast = new Float64Array(n);
+  let hi = 0;
+  for (let i = Math.max(0, lowerBound(IT, view.a) - 1); i < IT.length; i++) {
+    if (IT[i] > view.b + 60) break;
+    const v = V[i];
+    if (v === null) continue;
+    let col = Math.floor((IT[i] - view.a) / (view.b - view.a) * n);
+    col = Math.max(0, Math.min(n - 1, col));
+    if (!cnt[col]) tFirst[col] = IT[i];
+    tLast[col] = IT[i];
+    if (isNaN(mn[col]) || v < mn[col]) mn[col] = v;
+    if (isNaN(mx[col]) || v > mx[col]) mx[col] = v;
+    sum[col] += v; cnt[col]++;
+    if (v > hi) hi = v;
+  }
+  const yMax = niceMax(autoY ? (hi || 1) : M.max);
+  const y = v => PADT + H - Math.min(1, v / yMax) * H;
+
+  // y grid + labels
+  c.strokeStyle = css('--grid'); c.lineWidth = 1;
+  c.fillStyle = css('--text-muted'); c.font = '10px ui-sans-serif, sans-serif';
+  c.textBaseline = 'bottom';
+  for (const f of [0, .5, 1]) {
+    const py = Math.round(y(yMax * f)) + .5;
+    c.beginPath(); c.moveTo(0, py); c.lineTo(W, py); c.stroke();
+    c.fillText(fmtY(yMax * f), 3, py - 2);
+  }
+
+  // error guides, continuing the ones drawn through the lanes
+  c.save();
+  c.strokeStyle = css('--errors'); c.globalAlpha = .38;
+  c.lineWidth = 1; c.setLineDash([3, 3]);
+  for (const [o] of D.events) {
+    if (o < view.a || o > view.b) continue;
+    const px = Math.round(x(o)) + .5;
+    c.beginPath(); c.moveTo(px, PADT - 6); c.lineTo(px, MET_H); c.stroke();
+  }
+  c.restore();
+
+  // Min-max band + mean line. A run breaks on a real gap in the DATA (a missing
+  // minute), never on an empty pixel column — zoomed in, samples are sparser than
+  // pixels and column-contiguity would leave every run one point long.
+  const GAP = 180;
+  const ink = css('--text-secondary');
+  let run = [];
+  const flushBand = () => {
+    if (!run.length) return;
+    if (run.length === 1) {                       // lone sample: mark it
+      c.fillStyle = ink;
+      c.beginPath(); c.arc(run[0].i, y(run[0].me), 2.5, 0, 6.284); c.fill();
+      run = []; return;
+    }
+    c.beginPath();
+    c.moveTo(run[0].i, y(run[0].mx));
+    for (let k = 1; k < run.length; k++) c.lineTo(run[k].i, y(run[k].mx));
+    for (let k = run.length - 1; k >= 0; k--) c.lineTo(run[k].i, y(run[k].mn));
+    c.closePath();
+    c.fillStyle = ink; c.globalAlpha = .22; c.fill(); c.globalAlpha = 1;
+    c.beginPath();
+    run.forEach((p, k) => k ? c.lineTo(p.i, y(p.me)) : c.moveTo(p.i, y(p.me)));
+    c.strokeStyle = ink; c.lineWidth = 1.5; c.lineJoin = 'round'; c.stroke();
+    if (run.length <= 70) {                       // few enough to show samples
+      c.fillStyle = ink;
+      for (const p of run) { c.beginPath(); c.arc(p.i, y(p.me), 2, 0, 6.284); c.fill(); }
+    }
+    run = [];
+  };
+  let prevT = null;
+  for (let i = 0; i < n; i++) {
+    if (!cnt[i]) continue;
+    if (prevT !== null && tFirst[i] - prevT > GAP) flushBand();
+    run.push({i, mn: mn[i], mx: mx[i], me: sum[i] / cnt[i]});
+    prevT = tLast[i];
+  }
+  flushBand();
+
+  // crosshair
+  if (crossX !== null) {
+    c.save();
+    c.strokeStyle = css('--text-muted'); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(Math.round(crossX) + .5, PADT - 6);
+    c.lineTo(Math.round(crossX) + .5, MET_H); c.stroke();
+    c.restore();
+  }
+
+  // baseline
+  c.strokeStyle = css('--grid');
+  c.beginPath(); c.moveTo(0, MET_H - .5); c.lineTo(W, MET_H - .5); c.stroke();
+
+  const ml = cvs('mlabel');
+  ml.querySelector('b').textContent = M.label;
+  ml.querySelector('small').textContent =
+    (M.unit || 'ratio') + ' · axis to ' + fmtY(yMax) + (autoY ? ' (view)' : ' (run)');
+}
+
+/* ---------- latency panel ---------- */
+const LT = D.lat.t, LB = D.lat.bucket;
+const lview = () => D.lat.views.find(v => v.key === latView);
+const latMax = key => D.lat.views.find(v => v.key === key).max;
+const useLog = () => logY && lview().log;
+
+/* log axis bottoms out at 1 ms — a percentile is never below that here, and a
+   true zero has no place on a log scale. */
+const LOG_LO = 1;
+/* Snap to 1/2/5 x 10^k rather than the next whole decade: a 3172 ms peak under a
+   10,000 ms ceiling would leave the top half of the panel permanently empty. */
+function logMax(v) {
+  const e = Math.pow(10, Math.floor(Math.log10(Math.max(v, 1))));
+  const f = v / e;
+  return Math.max(10, (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * e);
+}
+function decades(hi) {
+  const out = [];
+  for (let d = LOG_LO; d < hi; d *= 10) out.push(d);
+  out.push(hi);
+  return out;
+}
+const fmtLog = v => v >= 1000 ? v.toLocaleString() : String(v);
+
+function drawLat() {
+  const c = fit(latc, LAT_H);
+  const V = lview(), n = Math.ceil(W), PADT = 17, H = LAT_H - PADT - 1;
+  c.clearRect(0, 0, W, LAT_H);
+
+  // One pass over the visible buckets: every series shares the same columns.
+  const cnt = new Int32Array(n), tFirst = new Float64Array(n), tLast = new Float64Array(n);
+  const S = V.series.map(s => ({
+    s, v: D.lat.series[s.key],
+    mn: new Float64Array(n).fill(NaN), mx: new Float64Array(n).fill(NaN),
+    sum: new Float64Array(n),
+  }));
+  let hi = 0;
+  for (let i = Math.max(0, lowerBound(LT, view.a - LB) - 1); i < LT.length; i++) {
+    if (LT[i] > view.b) break;
+    let col = Math.floor((LT[i] + LB / 2 - view.a) / (view.b - view.a) * n);
+    col = Math.max(0, Math.min(n - 1, col));
+    if (!cnt[col]) tFirst[col] = LT[i];
+    tLast[col] = LT[i];
+    cnt[col]++;
+    for (const g of S) {
+      const v = g.v[i];
+      if (isNaN(g.mn[col]) || v < g.mn[col]) g.mn[col] = v;
+      if (isNaN(g.mx[col]) || v > g.mx[col]) g.mx[col] = v;
+      g.sum[col] += v;
+      if (v > hi) hi = v;
+    }
+  }
+
+  const log = useLog();
+  const raw = latAutoY ? (hi || 1) : V.max;
+  const yMax = log ? logMax(raw) : niceMax(raw);
+  const lspan = Math.log10(yMax) - Math.log10(LOG_LO);
+  const y = v => log
+    ? PADT + H - Math.max(0, Math.min(1, (Math.log10(Math.max(v, LOG_LO)) - Math.log10(LOG_LO)) / lspan)) * H
+    : PADT + H - Math.max(0, Math.min(1, v / yMax)) * H;
+
+  // y grid + labels
+  c.strokeStyle = css('--grid'); c.lineWidth = 1;
+  c.fillStyle = css('--text-muted'); c.font = '10px ui-sans-serif, sans-serif';
+  c.textBaseline = 'bottom';
+  for (const t of (log ? decades(yMax) : [0, .5, 1].map(f => yMax * f))) {
+    const py = Math.round(y(t)) + .5;
+    c.beginPath(); c.moveTo(0, py); c.lineTo(W, py); c.stroke();
+    c.fillText(log ? fmtLog(t) : fmtY(t), 3, py - 2);
+  }
+
+  // error guides, same dashed verticals as the lanes above
+  c.save();
+  c.strokeStyle = css('--errors'); c.globalAlpha = .38;
+  c.lineWidth = 1; c.setLineDash([3, 3]);
+  for (const [o] of D.events) {
+    if (o < view.a || o > view.b) continue;
+    const px = Math.round(x(o)) + .5;
+    c.beginPath(); c.moveTo(px, PADT - 6); c.lineTo(px, LAT_H); c.stroke();
+  }
+  c.restore();
+
+  // A run breaks on a missing bucket, not on an empty pixel column — the last
+  // hours of the run have real bucket gaps and must not be bridged.
+  const GAP = LB * 1.5;
+  const runs = [];
+  let run = [], prevT = null;
+  for (let i = 0; i < n; i++) {
+    if (!cnt[i]) continue;
+    if (prevT !== null && tFirst[i] - prevT > GAP) { runs.push(run); run = []; }
+    run.push(i);
+    prevT = tLast[i];
+  }
+  if (run.length) runs.push(run);
+
+  for (const g of S) {
+    const col = css(g.s.color);
+    for (const r of runs) {
+      if (r.length === 1) {
+        const i = r[0];
+        c.fillStyle = col;
+        c.beginPath(); c.arc(i, y(g.sum[i] / cnt[i]), 2.5, 0, 6.284); c.fill();
+        continue;
+      }
+      // min-max band: with several buckets per pixel column the mean alone
+      // would swallow exactly the spikes this chart exists to find
+      c.beginPath();
+      c.moveTo(r[0], y(g.mx[r[0]]));
+      for (let k = 1; k < r.length; k++) c.lineTo(r[k], y(g.mx[r[k]]));
+      for (let k = r.length - 1; k >= 0; k--) c.lineTo(r[k], y(g.mn[r[k]]));
+      c.closePath();
+      c.fillStyle = col; c.globalAlpha = .2; c.fill(); c.globalAlpha = 1;
+      c.beginPath();
+      r.forEach((i, k) => k ? c.lineTo(i, y(g.sum[i] / cnt[i]))
+                            : c.moveTo(i, y(g.sum[i] / cnt[i])));
+      c.strokeStyle = col; c.lineWidth = 1.5; c.lineJoin = 'round'; c.stroke();
+      if (r.length <= 70) {
+        c.fillStyle = col;
+        for (const i of r) { c.beginPath(); c.arc(i, y(g.sum[i] / cnt[i]), 2, 0, 6.284); c.fill(); }
+      }
+    }
+  }
+
+  // Direct labels so identity never rests on colour alone. Haloed in the surface
+  // colour — they land on top of the busiest part of the plot.
+  if (S.length > 1) {
+    let last = -1;
+    for (let i = n - 1; i >= 0; i--) if (cnt[i]) { last = i; break; }
+    if (last >= 0) {
+      // p95 and p99 can sit a pixel apart; push them apart so both stay readable
+      const lab = S.map(g => ({t: g.s.label, col: css(g.s.color),
+                               y: y(g.sum[last] / cnt[last])}))
+                   .sort((a, b) => a.y - b.y);
+      for (let i = 1; i < lab.length; i++)
+        lab[i].y = Math.max(lab[i].y, lab[i - 1].y + 11);
+      const over = lab[lab.length - 1].y - (LAT_H - 4);
+      if (over > 0) for (const l of lab) l.y -= over;
+      c.font = '600 10px ui-sans-serif, sans-serif';
+      c.textBaseline = 'middle'; c.textAlign = 'right';
+      c.lineWidth = 3; c.lineJoin = 'round'; c.strokeStyle = css('--surface-1');
+      for (const l of lab) {
+        const px = Math.min(W - 4, last - 4);
+        c.strokeText(l.t, px, l.y);
+        c.fillStyle = l.col;
+        c.fillText(l.t, px, l.y);
+      }
+      c.textAlign = 'left';
+    }
+  }
+
+  if (latCrossX !== null) {
+    c.save();
+    c.strokeStyle = css('--text-muted'); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(Math.round(latCrossX) + .5, PADT - 6);
+    c.lineTo(Math.round(latCrossX) + .5, LAT_H); c.stroke();
+    c.restore();
+  }
+
+  c.strokeStyle = css('--grid');
+  c.beginPath(); c.moveTo(0, LAT_H - .5); c.lineTo(W, LAT_H - .5); c.stroke();
+
+  const ll = cvs('llabel');
+  ll.querySelector('b').textContent = V.label;
+  ll.querySelector('small').textContent =
+    V.unit + ' · ' + (log ? 'log' : 'linear') + ' to ' + fmtY(yMax) +
+    (latAutoY ? ' (view)' : ' (run)');
+  // One series needs no legend entry — the panel title names it. It also keeps a
+  // single-series view from putting a second orange swatch next to "Error events".
+  cvs('llegend').innerHTML = V.series.length < 2 ? '' : V.series.map(s =>
+    '<span><i class="swatch" style="background:var(' + s.color + ')"></i> Latency ' +
+    s.label + '</span>').join('');
+}
+
+function latTip(ev) {
+  const r = latc.getBoundingClientRect(), mx = ev.clientX - r.left;
+  latCrossX = mx;
+  const t = inv(mx);
+  let i = lowerBound(LT, t);
+  if (i > 0 && (i >= LT.length || LT[i] > t)) i--;
+  drawLat();
+  if (i < 0 || i >= LT.length || t < LT[i] || t > LT[i] + LB) {
+    tip.style.opacity = 0; return;
+  }
+  const row = (k, label, val) =>
+    '<span class="k">' + (lview().series.some(s => s.key === k) ? '▸ ' : '') + label +
+    '</span> <span class="v">' + val + '</span>';
+  const S = D.lat.series;
+  tip.innerHTML = '<b>' + stamp(LT[i]) + ' + ' + (LB / 60) + 'm</b>' +
+    [row('p50', 'p50', S.p50[i] + ' ms'), row('p95', 'p95', S.p95[i] + ' ms'),
+     row('p99', 'p99', S.p99[i] + ' ms'), row('mean', 'mean', S.mean[i] + ' ms'),
+     row('count', 'requests', S.count[i].toLocaleString()),
+     row('err', 'error rate', S.err[i] ? S.err[i].toFixed(3) + ' %' : '0 %')].join('<br>');
+  tip.style.opacity = 1;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - tw - 10, ev.clientX + 14) + 'px';
+  tip.style.top = Math.max(8, ev.clientY - th - 12) + 'px';
+}
+latc.addEventListener('mousemove', ev => { if (!drag) latTip(ev); });
+latc.addEventListener('mouseleave', () => {
+  tip.style.opacity = 0; latCrossX = null; drawLat();
+});
+
+function drawRange() {
+  const w = view.b - view.a;
+  cvs('range').textContent = stamp(view.a) + '  →  ' + stamp(view.b) + '   (' + dur(w) + ' visible)';
+}
+
+function redraw() {
+  clamp(); drawMain(); drawLat(); drawMetric(); drawOv(); drawRange(); syncHash();
+}
+
+/* deep-link the current window as #<startRel>,<endRel> so a view is shareable */
+let hashTimer;
+function syncHash() {
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(() => {
+    const h = '#' + view.a.toFixed(0) + ',' + view.b.toFixed(0);
+    if (location.hash !== h) history.replaceState(null, '', h);
+  }, 220);
+}
+function readHash() {
+  const m = /^#(-?[\d.]+),(-?[\d.]+)$/.exec(location.hash);
+  if (!m) return false;
+  const a = parseFloat(m[1]), b = parseFloat(m[2]);
+  if (!(b > a)) return false;
+  view = {a, b};
+  return true;
+}
+
+/* ---------- hit testing ---------- */
+function hit(mx, my) {
+  const i = Math.floor(my / LANE_H);
+  if (i < 0 || i >= LANES.length) return null;
+  const Y = laneY(i);
+  if (my < Y - 4 || my > Y + BAR_H + 4) return null;
+  const L = LANES[i];
+  let best = null, bestd = Infinity;
+  for (const it of D[L.key]) {
+    const [o, d] = it;
+    let X = x(o), w = x(o + d) - X;
+    if (w < MINW) { X -= (MINW - w) / 2; w = MINW; }
+    if (mx >= X - 3 && mx <= X + w + 3) {
+      const dd = Math.abs(mx - (X + w / 2));
+      if (dd < bestd) { bestd = dd; best = {lane: i, it}; }
+    }
+  }
+  return best;
+}
+
+function tipHTML(lane, it) {
+  const [o, d] = it;
+  const rows = [
+    ['start', stamp(o)], ['end', stamp(o + d)], ['duration', dur(d)],
+  ];
+  let title = LANES[lane].name;
+  if (lane === 0) {
+    title = it[2] + (it[2] === 1 ? ' error' : ' errors');
+    rows.push(['during vacuum', it[3] ? 'yes' + (it[5] ? ' — ' + it[5] : '') : 'no']);
+    rows.push(['during sampler', it[4] ? 'yes' : 'no']);
+  } else if (lane === 1) {
+    title = it[2];
+    rows.push(['kind', it[3]]);
+  }
+  return '<b>' + title + '</b>' +
+    rows.map(r => '<span class="k">' + r[0] + '</span> <span class="v">' + r[1] + '</span>').join('<br>');
+}
+
+main.addEventListener('mousemove', ev => {
+  if (drag) return;
+  const r = main.getBoundingClientRect();
+  const h = hit(ev.clientX - r.left, ev.clientY - r.top);
+  if (!h) { tip.style.opacity = 0; return; }
+  tip.innerHTML = tipHTML(h.lane, h.it);
+  tip.style.opacity = 1;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - tw - 10, ev.clientX + 14) + 'px';
+  tip.style.top = Math.max(8, ev.clientY - th - 12) + 'px';
+});
+main.addEventListener('mouseleave', () => tip.style.opacity = 0);
+
+/* metric panel: crosshair + value readout */
+metc.addEventListener('mousemove', ev => {
+  if (drag) return;
+  const r = metc.getBoundingClientRect(), mx = ev.clientX - r.left;
+  crossX = mx;
+  const t = inv(mx);
+  let i = lowerBound(IT, t);
+  if (i > 0 && (i >= IT.length || Math.abs(IT[i - 1] - t) < Math.abs(IT[i] - t))) i--;
+  drawMetric();
+  if (i < 0 || i >= IT.length || Math.abs(IT[i] - t) > Math.max(90, (view.b - view.a) / W * 3)) {
+    tip.style.opacity = 0; return;
+  }
+  const show = ['total_iops', 'ReadIOPS', 'WriteIOPS', 'DiskQueueDepth', 'ReadLatency'];
+  const rows = D.iops.meta.filter(m => m.key === metric || show.includes(m.key)).map(m => {
+    const v = D.iops.series[m.key][i];
+    const val = v === null ? '—' : v.toLocaleString() + (m.unit ? ' ' + m.unit : '');
+    return '<span class="k">' + (m.key === metric ? '▸ ' : '') + m.label + '</span> ' +
+           '<span class="v">' + val + '</span>';
+  });
+  tip.innerHTML = '<b>' + stamp(IT[i]) + '</b>' + rows.join('<br>');
+  tip.style.opacity = 1;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - tw - 10, ev.clientX + 14) + 'px';
+  tip.style.top = Math.max(8, ev.clientY - th - 12) + 'px';
+});
+metc.addEventListener('mouseleave', () => {
+  tip.style.opacity = 0; crossX = null; drawMetric();
+});
+
+/* ---------- zoom & pan (shared by the lane and metric panels) ---------- */
+function wheelZoom(ev) {
+  ev.preventDefault();
+  const r = main.getBoundingClientRect();
+  const t = inv(ev.clientX - r.left);
+  const k = Math.exp(ev.deltaY * 0.0016);
+  const w = (view.b - view.a) * k;
+  const f = (t - view.a) / (view.b - view.a);
+  view = {a: t - f * w, b: t + (1 - f) * w};
+  redraw();
+}
+main.addEventListener('wheel', wheelZoom, {passive: false});
+metc.addEventListener('wheel', wheelZoom, {passive: false});
+latc.addEventListener('wheel', wheelZoom, {passive: false});
+
+let drag = null;
+function startDrag(ev) {
+  drag = {x: ev.clientX, a: view.a, b: view.b};
+  main.classList.add('dragging');
+  tip.style.opacity = 0;
+}
+main.addEventListener('mousedown', startDrag);
+metc.addEventListener('mousedown', startDrag);
+latc.addEventListener('mousedown', startDrag);
+window.addEventListener('mousemove', ev => {
+  if (!drag) return;
+  const dt = (ev.clientX - drag.x) / W * (drag.b - drag.a);
+  view = {a: drag.a - dt, b: drag.b - dt};
+  redraw();
+});
+window.addEventListener('mouseup', () => { drag = null; main.classList.remove('dragging'); });
+main.addEventListener('dblclick', () => { view = {a: 0, b: SPAN}; redraw(); });
+
+/* overview brush */
+let sel = null;
+ov.addEventListener('mousedown', ev => {
+  const r = ov.getBoundingClientRect();
+  sel = {x0: ev.clientX - r.left, x1: ev.clientX - r.left};
+});
+window.addEventListener('mousemove', ev => {
+  if (!sel) return;
+  const r = ov.getBoundingClientRect();
+  sel.x1 = Math.max(0, Math.min(W, ev.clientX - r.left));
+  const a = Math.min(sel.x0, sel.x1) / W * SPAN, b = Math.max(sel.x0, sel.x1) / W * SPAN;
+  if (b - a > 2) { view = {a, b}; redraw(); }
+});
+window.addEventListener('mouseup', () => {
+  if (sel && Math.abs(sel.x1 - sel.x0) <= 4) {
+    const w = view.b - view.a, t = sel.x0 / W * SPAN;
+    view = {a: t - w / 2, b: t + w / 2};
+    redraw();
+  }
+  sel = null;
+});
+
+function zoom(k) {
+  const m = (view.a + view.b) / 2, w = (view.b - view.a) * k;
+  view = {a: m - w / 2, b: m + w / 2};
+  redraw();
+}
+cvs('zin').onclick = () => zoom(1 / 2.5);
+cvs('zout').onclick = () => zoom(2.5);
+cvs('reset').onclick = () => { view = {a: 0, b: SPAN}; redraw(); };
+cvs('burst').onclick = () => {
+  const top = D.events.reduce((p, q) => q[2] > p[2] ? q : p);
+  const pad = 240;
+  view = {a: top[0] - pad, b: top[0] + top[1] + pad};
+  redraw();
+};
+cvs('lspike').onclick = () => {
+  const p = D.lat.series.p99;
+  let k = 0;
+  for (let i = 1; i < p.length; i++) if (p[i] > p[k]) k = i;
+  const pad = 3600;
+  view = {a: LT[k] - pad, b: LT[k] + LB + pad};
+  redraw();
+};
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'BUTTON' && ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+  const w = view.b - view.a;
+  if (ev.key === '+' || ev.key === '=') zoom(1 / 1.6);
+  else if (ev.key === '-') zoom(1.6);
+  else if (ev.key === 'ArrowLeft') { view = {a: view.a - w * .2, b: view.b - w * .2}; redraw(); }
+  else if (ev.key === 'ArrowRight') { view = {a: view.a + w * .2, b: view.b + w * .2}; redraw(); }
+});
+
+/* ---------- KPIs ---------- */
+const S = D.stats;
+const kpi = (label, value, sub) =>
+  '<div class="kpi"><div class="label">' + label + '</div><div class="value">' + value +
+  '</div><div class="sub">' + sub + '</div></div>';
+cvs('kpis').innerHTML =
+  kpi('Error events', S.events, S.errors + ' errors, all 502') +
+  kpi('Overlap a sampler window', S.smp_events + ' / ' + S.events,
+      'vs ' + S.smp_duty.toFixed(1) + '% expected by chance') +
+  kpi('Overlap an autovacuum', S.vac_events + ' / ' + S.vac_total,
+      'vs ' + S.vac_duty.toFixed(1) + '% expected · covered span only') +
+  kpi('Errors during a vacuum', S.vac_errors + ' / ' + S.vac_errtotal,
+      (S.vac_errtotal ? (100 * S.vac_errors / S.vac_errtotal).toFixed(0) + '% of error volume'
+                      : 'no events in covered span')) +
+  kpi('Overlap neither', S.neither, 'of ' + S.vac_total + ' events in covered span') +
+  kpi('p95 drift', (S.lat_slope >= 0 ? '+' : '') + S.lat_slope.toFixed(3) + ' ms/h',
+      'least squares over ' + S.lat_buckets + ' buckets · R² ' + S.lat_r2.toFixed(3)) +
+  kpi('p99 in error buckets', Math.round(S.lat_p99_err) + ' ms',
+      'median of the ' + S.lat_err_buckets + ' buckets holding an error event · ' +
+      Math.round(S.lat_p99_base) + ' ms in the other ' +
+      (S.lat_buckets - S.lat_err_buckets));
+
+/* ---------- table ---------- */
+function buildTable() {
+  const head = '<tr><th>Start (UTC)</th><th>End (UTC)</th><th class="num">Span</th>' +
+    '<th class="num">Errors</th><th>In vacuum</th><th>In sampler</th><th>Vacuumed table(s)</th></tr>';
+  const body = D.events.map(e =>
+    '<tr><td>' + stamp(e[0]) + '</td><td>' + stamp(e[0] + e[1]) + '</td>' +
+    '<td class="num">' + dur(e[1]) + '</td><td class="num">' + e[2] + '</td>' +
+    '<td class="' + (e[3] ? 'yes' : 'no') + '">' + (e[3] ? 'yes' : 'no') + '</td>' +
+    '<td class="' + (e[4] ? 'yes' : 'no') + '">' + (e[4] ? 'yes' : 'no') + '</td>' +
+    '<td>' + (e[5] || '—') + '</td></tr>').join('');
+  cvs('tablewrap').innerHTML = '<table><caption class="ovlabel" style="text-align:left;margin-bottom:6px">' +
+    'Error events with overlap flags</caption><thead>' + head + '</thead><tbody>' + body + '</tbody></table>';
+}
+cvs('ttoggle').onclick = e => {
+  const w = cvs('tablewrap'), show = w.hidden;
+  if (show && !w.innerHTML) buildTable();
+  w.hidden = !show;
+  e.target.textContent = show ? 'Hide data table' : 'Show data table';
+  e.target.setAttribute('aria-expanded', show);
+};
+
+/* ---------- theme + resize ---------- */
+cvs('theme').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const dark = cur ? cur === 'dark'
+    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  redraw();
+};
+new ResizeObserver(redraw).observe(main.parentElement);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+cvs('lanes').style.height = (LANES.length * LANE_H) + 'px';
+cvs('mlabel').style.height = MET_H + 'px';
+cvs('llabel').style.height = LAT_H + 'px';
+
+const lsel = cvs('lsel');
+lsel.innerHTML = D.lat.views.map(v =>
+  '<option value="' + v.key + '">' + v.label + ' (' + v.unit + ')</option>').join('');
+lsel.value = latView;
+const syncLog = () => { cvs('logy').disabled = !lview().log; };
+lsel.onchange = () => { latView = lsel.value; syncLog(); redraw(); };
+syncLog();                                   // a log axis cannot hold a 0% bucket
+cvs('logy').onchange = e => { logY = e.target.checked; redraw(); };
+cvs('lautoy').onchange = e => { latAutoY = e.target.checked; redraw(); };
+
+const msel = cvs('msel');
+msel.innerHTML = D.iops.meta.map(m =>
+  '<option value="' + m.key + '">' + m.label + (m.unit ? ' (' + m.unit + ')' : '') +
+  '</option>').join('');
+msel.value = metric;
+msel.onchange = () => { metric = msel.value; redraw(); };
+cvs('autoy').onchange = e => { autoY = e.target.checked; redraw(); };
+
+window.addEventListener('hashchange', () => { if (readHash()) redraw(); });
+readHash();
+redraw();
+</script>
+</body>
+</html>
