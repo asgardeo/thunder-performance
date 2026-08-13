@@ -1,0 +1,15 @@
+{
+  "bucket_seconds": 300,
+  "scenarios": [
+    {
+      "scenario": "01-thunder_oauth_authorization_code_grant/default/1000_users",
+      "source_type": "merged",
+      "buckets": 1995,
+      "total_requests": 488483405,
+      "p95_slope_ms_per_hour": 0.113,
+      "p95_r_squared": 0.0044,
+      "p95_first_bucket_ms": 14,
+      "p95_last_bucket_ms": 15
+    }
+  ]
+}
