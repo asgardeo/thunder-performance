@@ -32,36 +32,46 @@ parameters:
   - name: THUNDER_IMAGE_TAG
     type: string
     default: '0.7.0'
-  # Reinstall uninstalls Thunder first, which drops the certs PVC holding crypto.key. Setup must
-  # run on the fresh install to regenerate certs/crypto.key, otherwise Thunder crash-loops with
-  # "crypto.key: no such file or directory". Mirrors install-thunder.yaml's default.
+  # Setup must run on any fresh install. certs-pvc carries no hook-delete-policy, so Helm applies
+  # its default of before-hook-creation and deletes/recreates the claim on every install; with a
+  # Delete reclaim policy the file share and crypto.key go with it, and Thunder then crash-loops
+  # with "crypto.key: no such file or directory". Only setup regenerates that key material.
   - name: RUN_SETUP_SCRIPT
+    type: boolean
+    default: true
+  # Uninstalling turns the following step into a fresh install, which re-runs every pre-install
+  # hook: certs-pvc is wiped and regenerated, and the resource bootstrap replays over the existing
+  # database. A perf run needs neither, it only needs the new sizing applied. Left off, the step
+  # becomes an in-place helm upgrade, which skips pre-install hooks and preserves the key material.
+  # Turn it on only to rebuild a release that is beyond repair.
+  - name: UNINSTALL_BEFORE_INSTALL
     type: boolean
     default: true
 
 steps:
   - template: ./utils/set-aks-credentials.yaml
-  - task: AzureCLI@2
-    displayName: 'Uninstall Thunder'
-    inputs:
-      azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
-      inlineScript: |
-        if ! helm list -n ${{ parameters.NAMESPACE }} -q --filter "^${{ parameters.RELEASE_NAME }}$" | grep -q "^${{ parameters.RELEASE_NAME }}$"; then
-          echo "Release ${{ parameters.RELEASE_NAME }} not found. Skipping uninstallation."
-          exit 0
-        fi
-        echo "Uninstalling Thunder Helm Chart"
-        if ! helm uninstall ${{ parameters.RELEASE_NAME }} \
-          --namespace ${{ parameters.NAMESPACE }}; then
-          echo "Error: Failed to uninstall Thunder Helm Chart"
-          exit 1
-        fi
-        echo "Waiting for 10 seconds to ensure complete uninstallation"
-        sleep 10
-        echo "Uninstallation completed"
+  - ${{ if eq(parameters.UNINSTALL_BEFORE_INSTALL, true) }}:
+    - task: AzureCLI@2
+      displayName: 'Uninstall Thunder'
+      inputs:
+        azureSubscription: $(AZURE_SERVICE_CONNECTION_NAME)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        workingDirectory: ${{ parameters.WORKING_DIRECTORY }}
+        inlineScript: |
+          if ! helm list -n ${{ parameters.NAMESPACE }} -q --filter "^${{ parameters.RELEASE_NAME }}$" | grep -q "^${{ parameters.RELEASE_NAME }}$"; then
+            echo "Release ${{ parameters.RELEASE_NAME }} not found. Skipping uninstallation."
+            exit 0
+          fi
+          echo "Uninstalling Thunder Helm Chart"
+          if ! helm uninstall ${{ parameters.RELEASE_NAME }} \
+            --namespace ${{ parameters.NAMESPACE }}; then
+            echo "Error: Failed to uninstall Thunder Helm Chart"
+            exit 1
+          fi
+          echo "Waiting for 10 seconds to ensure complete uninstallation"
+          sleep 10
+          echo "Uninstallation completed"
 
   - template: ./install-thunder.yaml
     parameters:

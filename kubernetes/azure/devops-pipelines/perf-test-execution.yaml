@@ -240,6 +240,12 @@ jobs:
           THUNDER_IMAGE_REGISTRY: ${{ parameters.THUNDER_IMAGE_REGISTRY }}
           THUNDER_IMAGE_REPOSITORY: ${{ parameters.THUNDER_IMAGE_REPOSITORY }}
           THUNDER_IMAGE_TAG: ${{ parameters.THUNDER_IMAGE_TAG }}
+          # Reinstall in place. Uninstalling first would make this a fresh install, which re-runs
+          # every pre-install hook: certs-pvc is deleted and recreated (losing crypto.key, which
+          # only setup can regenerate) and the resource bootstrap replays over the existing
+          # database. This job only needs the run's sizing parameters applied, which helm upgrade
+          # does on its own.
+          UNINSTALL_BEFORE_INSTALL: false
 
   - job: thunder_performance_test
     displayName: Thunder performance test
