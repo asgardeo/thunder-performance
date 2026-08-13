@@ -49,6 +49,7 @@ steps:
         set -e
         SETUP_JOB=${{ parameters.RELEASE_NAME }}-thunderid-setup
         SETUP_LOG=$(mktemp)
+        SETUP_CAPTURE_DIR=$(mktemp -d)
         dump_thunder_diagnostics() {
           echo "##[error]Thunder install did not become ready. Dumping diagnostics:"
           kubectl get pods -n ${{ parameters.NAMESPACE }} -o wide || true
@@ -63,30 +64,64 @@ steps:
           kubectl describe job "$SETUP_JOB" -n ${{ parameters.NAMESPACE }} || true
           # The setup pod is deleted the instant the job hits BackoffLimitExceeded, so a
           # post-hoc "kubectl logs" loses the race. Prefer the log captured live below.
-          echo "--- Setup/bootstrap job logs (captured live) ---"
+          # Snapshot count doubles as proof this template version is the one that ran: zero means
+          # the collector never saw the pod, not that the pod produced no output.
+          echo "--- Setup/bootstrap job logs (captured live, snapshots: $(ls -1 "$SETUP_CAPTURE_DIR" 2>/dev/null | wc -l | tr -d ' ')) ---"
           cat "$SETUP_LOG" 2>/dev/null || true
+          for f in "$SETUP_CAPTURE_DIR"/*; do
+            [ -s "$f" ] || continue
+            echo "--- $(basename "$f") ---"
+            cat "$f"
+          done
           echo "--- Setup/bootstrap job logs (post-hoc, may be empty if pod already deleted) ---"
           kubectl logs job/"$SETUP_JOB" -n ${{ parameters.NAMESPACE }} --all-containers --tail=200 || true
           kubectl logs -n ${{ parameters.NAMESPACE }} -l job-name="$SETUP_JOB" --all-containers --tail=200 || true
           kubectl logs -n ${{ parameters.NAMESPACE }} -l job-name="$SETUP_JOB" --all-containers --previous --tail=200 || true
         }
         trap dump_thunder_diagnostics ERR
-        # Background collector: stream the setup pod's logs to a file while the pre-install
-        # hook runs, so the crash output survives the job controller deleting the failed pod.
+        # Background collector: snapshot the setup pod's logs while the pre-install hook runs, so
+        # the crash output survives the job controller deleting the failed pod. The setup job uses
+        # restartPolicy: OnFailure, so a crashing container spends nearly all of its life in
+        # CrashLoopBackOff; "kubectl logs -f" only blocks there until it times out and captures
+        # nothing. Poll instead, and take --previous as well: once the container has crashed once,
+        # --previous returns the full failing run even while the next attempt is backing off.
         (
-          for _ in $(seq 1 90); do
-            POD=$(kubectl get pods -n ${{ parameters.NAMESPACE }} -l job-name="$SETUP_JOB" \
-              -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true)
-            if [ -n "$POD" ]; then
-              for p in $POD; do
-                kubectl logs -f "$p" -n ${{ parameters.NAMESPACE }} --all-containers \
-                  --pod-running-timeout=30s >> "$SETUP_LOG" 2>/dev/null || true
+          for _ in $(seq 1 150); do
+            # Match on the pod name prefix rather than a label: "job-name" is deprecated and newer
+            # clusters only set "batch.kubernetes.io/job-name", so a label selector can silently
+            # match nothing. Job pods are always named "<job>-<suffix>".
+            POD=$(kubectl get pods -n ${{ parameters.NAMESPACE }} \
+              -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+              | grep "^$SETUP_JOB-" || true)
+            for p in $POD; do
+              for which in current previous; do
+                [ "$which" = "previous" ] && PREV_FLAG=--previous || PREV_FLAG=
+                OUT="$SETUP_CAPTURE_DIR/$p.$which.log"
+                # Snapshot to a temp file and only promote it when non-empty, so a failed read
+                # after the pod is deleted does not wipe what was already captured.
+                if kubectl logs "$p" -n ${{ parameters.NAMESPACE }} --all-containers $PREV_FLAG \
+                  --tail=-1 > "$OUT.tmp" 2>/dev/null && [ -s "$OUT.tmp" ]; then
+                  mv "$OUT.tmp" "$OUT"
+                fi
+                rm -f "$OUT.tmp"
               done
-            fi
+              # Container-level failures (image pull, missing secret key, mount errors) never
+              # produce logs at all; the pod description is the only place they show up.
+              if kubectl describe pod "$p" -n ${{ parameters.NAMESPACE }} \
+                > "$SETUP_CAPTURE_DIR/$p.describe.txt.tmp" 2>/dev/null; then
+                mv "$SETUP_CAPTURE_DIR/$p.describe.txt.tmp" "$SETUP_CAPTURE_DIR/$p.describe.txt"
+              fi
+              rm -f "$SETUP_CAPTURE_DIR/$p.describe.txt.tmp"
+            done
             sleep 2
           done
         ) &
         SETUP_LOG_COLLECTOR_PID=$!
+        # Record which chart source this run used. deploy-thunder and perf-test-execution check out
+        # the Thunder repo through different parameters, so a mismatch here is otherwise invisible.
+        echo "=== Chart source ==="
+        helm show chart . | grep -E '^(name|version|appVersion):' || true
+        git -C . rev-parse --short HEAD 2>/dev/null || true
         echo "Installing Thunder Helm Chart"
         helm upgrade --install ${{ parameters.RELEASE_NAME }} . \
           --namespace ${{ parameters.NAMESPACE }} \
